@@ -17,13 +17,14 @@ import { CheckCircle2, Clock, List } from "lucide-react";
 // ─────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────
-type QType = "fill_blank" | "dropdown" | "choose_word" | "matching" | "short_answer" | "true_false_ng";
+type QType = "fill_blank" | "dropdown" | "choose_word" | "matching" | "short_answer" | "true_false_ng" | "multi_select";
 interface FillBlankOpts    { sentence: string; blanks: string[] }
 interface DropdownOpts     { stem: string; choices: string[]; correct: string }
 interface ChooseWordOpts   { instruction: string; wordLimit: number; passageText?: string; imageUrl?: string; correct: string }
 interface MatchingOpts     { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[] }
 interface ShortAnswerOpts  { prompt: string; correct?: string; wordLimit?: number }
 interface TrueFalseNgOpts  { statement: string; correct: "TRUE" | "FALSE" | "NOT GIVEN" | "" }
+interface MultiSelectOpts  { instruction: string; options: string[]; maxSelect: number; correct: number[] }
 
 type AnswerMap = Record<number, string | string[] | Record<number, string>>;
 
@@ -32,6 +33,7 @@ function isAnswered(qId: number, qType: QType, answers: AnswerMap): boolean {
   if (ans === undefined || ans === null) return false;
   if (qType === "fill_blank") return Array.isArray(ans) && (ans as string[]).some(Boolean);
   if (qType === "matching") return Object.keys(ans as Record<number, string>).length > 0;
+  if (qType === "multi_select") return Array.isArray(ans) && (ans as number[]).length > 0;
   return typeof ans === "string" && ans.trim() !== "";
 }
 
@@ -39,6 +41,10 @@ function questionSlots(q: { type: string; options: unknown }): number {
   if (q.type === "matching") {
     const opts = q.options as MatchingOpts;
     return Math.max(1, (opts.leftItems ?? []).filter(Boolean).length);
+  }
+  if (q.type === "multi_select") {
+    const opts = q.options as MultiSelectOpts;
+    return Math.max(1, opts.maxSelect ?? 1);
   }
   return 1;
 }
@@ -218,6 +224,75 @@ function MatchingQuestion({
   );
 }
 
+function MultiSelectQuestion({
+  opts, qId, answers, setAnswers, slotStart,
+}: { opts: MultiSelectOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number }) {
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const selected: number[] = (answers[qId] as number[] | undefined) ?? [];
+  const maxSelect = opts.maxSelect ?? 1;
+  const slotEnd = slotStart + maxSelect - 1;
+  const toggle = (i: number) => {
+    if (selected.includes(i)) {
+      setAnswers({ ...answers, [qId]: selected.filter((s) => s !== i) });
+    } else if (selected.length < maxSelect) {
+      setAnswers({ ...answers, [qId]: [...selected, i].sort((a, b) => a - b) });
+    }
+  };
+  const rangeLabel = maxSelect > 1 ? `Questions ${slotStart}–${slotEnd}` : `Question ${slotStart}`;
+  return (
+    <div id={`q-${qId}`} className="space-y-3">
+      <p className="text-[15px] font-bold text-[#2d6a2d] dark:text-green-400">{rangeLabel}</p>
+      {opts.instruction && (
+        <div className="text-sm leading-relaxed space-y-0.5">
+          {opts.instruction.split("\n").map((line, li) => (
+            <p key={li}>{line}</p>
+          ))}
+        </div>
+      )}
+      <div className="space-y-2 mt-2">
+        {opts.options.filter(Boolean).map((option, i) => {
+          const isSelected = selected.includes(i);
+          const isDisabled = !isSelected && selected.length >= maxSelect;
+          return (
+            <button
+              key={i}
+              type="button"
+              disabled={isDisabled}
+              onClick={() => toggle(i)}
+              className={cn(
+                "w-full flex items-start gap-3 px-3 py-2.5 rounded text-left transition-colors",
+                isDisabled ? "opacity-40 cursor-not-allowed" : "hover:bg-muted/60",
+              )}
+            >
+              <span className={cn(
+                "w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold shrink-0 mt-0.5",
+                isSelected ? "bg-[#2d6a2d] text-white dark:bg-green-700" : "bg-muted text-muted-foreground"
+              )}>
+                {letters[i] ?? i + 1}
+              </span>
+              <span className={cn(
+                "w-5 h-5 flex items-center justify-center border-2 rounded-sm shrink-0 mt-0.5 transition-colors",
+                isSelected ? "border-[#2d6a2d] bg-[#2d6a2d] dark:border-green-600 dark:bg-green-600" : "border-[#b0b8c9] bg-white dark:bg-transparent dark:border-border"
+              )}>
+                {isSelected && (
+                  <svg viewBox="0 0 12 10" className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <polyline points="1,5 4,9 11,1" />
+                  </svg>
+                )}
+              </span>
+              <span className="text-sm leading-relaxed">{option}</span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-xs text-muted-foreground pl-1">
+        {selected.length}/{maxSelect} selected
+        {selected.length === maxSelect && <span className="text-green-600 dark:text-green-400 ml-1">✓ Complete</span>}
+      </p>
+    </div>
+  );
+}
+
 function TrueFalseNgQuestion({
   opts, qId, answers, setAnswers, slotStart,
 }: { opts: TrueFalseNgOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number }) {
@@ -382,6 +457,13 @@ export default function StudentQuizTake() {
       const opts = q.options as MatchingOpts;
       const rows = (opts.leftItems ?? []).filter(Boolean).length;
       for (let i = 0; i < rows; i++) if (matchingRowAnswered(answers, q.id, i)) sum++;
+      return sum;
+    }
+    if (q.type === "multi_select") {
+      const opts = q.options as MultiSelectOpts;
+      const selected: number[] = (answers[q.id] as number[] | undefined) ?? [];
+      const slots = Math.max(1, opts.maxSelect ?? 1);
+      for (let i = 0; i < slots; i++) if (i < selected.length) sum++;
       return sum;
     }
     return sum + (answeredIds.has(q.id) ? 1 : 0);
@@ -624,6 +706,9 @@ export default function StudentQuizTake() {
                             {q.type === "true_false_ng" && (
                               <TrueFalseNgQuestion opts={opts as TrueFalseNgOpts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
                             )}
+                            {q.type === "multi_select" && (
+                              <MultiSelectQuestion opts={opts as MultiSelectOpts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
+                            )}
                           </div>
                         );
                       })}
@@ -699,6 +784,31 @@ export default function StudentQuizTake() {
                 );
               });
             }
+            if (q.type === "multi_select") {
+              const opts = q.options as MultiSelectOpts;
+              const slots = Math.max(1, opts.maxSelect ?? 1);
+              const selected: number[] = (answers[q.id] as number[] | undefined) ?? [];
+              return Array.from({ length: slots }, (_, ri) => {
+                const done = ri < selected.length;
+                const slotNum = si.slotStart + ri + 1;
+                return (
+                  <button
+                    key={`${q.id}-ms-${ri}`}
+                    onClick={() => scrollToQ(q.id)}
+                    className={cn(
+                      "w-7 h-7 text-xs rounded font-medium transition-all",
+                      done
+                        ? "bg-primary text-primary-foreground"
+                        : isCurrentTab
+                        ? "border border-primary text-primary"
+                        : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {slotNum}
+                  </button>
+                );
+              });
+            }
 
             const done = answeredIds.has(q.id);
             return [(
@@ -744,6 +854,28 @@ export default function StudentQuizTake() {
                   return (
                     <button
                       key={`${q.id}-${ri}`}
+                      onClick={() => { setReviewOpen(false); setTimeout(() => scrollToQ(q.id), 150); }}
+                      className={cn(
+                        "h-9 flex items-center justify-center rounded text-sm font-semibold",
+                        done
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted border border-destructive/40 text-destructive"
+                      )}
+                    >
+                      {si.slotStart + ri + 1}
+                    </button>
+                  );
+                });
+              }
+              if (q.type === "multi_select") {
+                const opts = q.options as MultiSelectOpts;
+                const slots = Math.max(1, opts.maxSelect ?? 1);
+                const selected: number[] = (answers[q.id] as number[] | undefined) ?? [];
+                return Array.from({ length: slots }, (_, ri) => {
+                  const done = ri < selected.length;
+                  return (
+                    <button
+                      key={`${q.id}-ms-${ri}`}
                       onClick={() => { setReviewOpen(false); setTimeout(() => scrollToQ(q.id), 150); }}
                       className={cn(
                         "h-9 flex items-center justify-center rounded text-sm font-semibold",

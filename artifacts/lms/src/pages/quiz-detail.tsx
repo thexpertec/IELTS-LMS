@@ -72,9 +72,9 @@ import {
 } from "lucide-react";
 
 // ─────────────────────────────────────────────
-// Types for the six question formats
+// Types for the seven question formats
 // ─────────────────────────────────────────────
-type QType = "fill_blank" | "dropdown" | "choose_word" | "matching" | "short_answer" | "true_false_ng";
+type QType = "fill_blank" | "dropdown" | "choose_word" | "matching" | "short_answer" | "true_false_ng" | "multi_select";
 
 interface FillBlankOpts    { sentence: string; blanks: string[] }
 interface DropdownOpts     { stem: string; choices: string[]; correct: string }
@@ -82,7 +82,8 @@ interface ChooseWordOpts   { instruction: string; wordLimit: number; passageText
 interface MatchingOpts     { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[] }
 interface ShortAnswerOpts  { prompt: string; correct?: string; wordLimit?: number }
 interface TrueFalseNgOpts  { statement: string; correct: "TRUE" | "FALSE" | "NOT GIVEN" | "" }
-type QOptions = FillBlankOpts | DropdownOpts | ChooseWordOpts | MatchingOpts | ShortAnswerOpts | TrueFalseNgOpts;
+interface MultiSelectOpts  { instruction: string; options: string[]; maxSelect: number; correct: number[] }
+type QOptions = FillBlankOpts | DropdownOpts | ChooseWordOpts | MatchingOpts | ShortAnswerOpts | TrueFalseNgOpts | MultiSelectOpts;
 
 const Q_TYPE_LABELS: Record<QType, string> = {
   fill_blank:    "Fill in the Blanks",
@@ -91,6 +92,7 @@ const Q_TYPE_LABELS: Record<QType, string> = {
   matching:      "Column Matching",
   short_answer:  "Short Answer",
   true_false_ng: "True / False / Not Given",
+  multi_select:  "Multiple Selection",
 };
 
 const Q_TYPE_COLORS: Record<QType, string> = {
@@ -100,6 +102,7 @@ const Q_TYPE_COLORS: Record<QType, string> = {
   matching:      "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
   short_answer:  "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300",
   true_false_ng: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
+  multi_select:  "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
 };
 
 // ─────────────────────────────────────────────
@@ -113,6 +116,7 @@ function defaultOptions(type: QType): QOptions {
     case "matching":      return { leftItems: ["", ""], rightItems: ["", ""], pairs: [] };
     case "short_answer":  return { prompt: "", correct: "", wordLimit: undefined };
     case "true_false_ng": return { statement: "", correct: "" };
+    case "multi_select":  return { instruction: "", options: ["", "", "", ""], maxSelect: 2, correct: [] };
   }
 }
 
@@ -329,6 +333,88 @@ function MatchingEditor({ opts, onChange }: { opts: MatchingOpts; onChange: (o: 
   );
 }
 
+function MultiSelectEditor({ opts, onChange }: { opts: MultiSelectOpts; onChange: (o: MultiSelectOpts) => void }) {
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const setOption = (i: number, val: string) => {
+    const next = [...opts.options];
+    next[i] = val;
+    onChange({ ...opts, options: next });
+  };
+  const addOption = () => onChange({ ...opts, options: [...opts.options, ""] });
+  const removeOption = (i: number) => {
+    const next = opts.options.filter((_, idx) => idx !== i);
+    const correct = opts.correct.filter((c) => c !== i).map((c) => (c > i ? c - 1 : c));
+    onChange({ ...opts, options: next, correct });
+  };
+  const toggleCorrect = (i: number) => {
+    const has = opts.correct.includes(i);
+    const next = has ? opts.correct.filter((c) => c !== i) : [...opts.correct, i].sort((a, b) => a - b);
+    onChange({ ...opts, correct: next });
+  };
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>Instruction Text</Label>
+        <Textarea
+          className="mt-1.5 min-h-[80px]"
+          placeholder={`e.g. Choose THREE letters A-${letters[opts.options.length - 1]}.\nNB Your answers may be given in any order.\nWhich THREE of the following statements are true?`}
+          value={opts.instruction}
+          onChange={(e) => onChange({ ...opts, instruction: e.target.value })}
+        />
+      </div>
+      <div>
+        <Label>Number of Selections Allowed</Label>
+        <Input
+          className="mt-1.5 w-28"
+          type="number"
+          min={1}
+          max={opts.options.length}
+          value={opts.maxSelect}
+          onChange={(e) => onChange({ ...opts, maxSelect: Math.max(1, Number(e.target.value)) })}
+        />
+        <p className="text-xs text-muted-foreground mt-1">Students must pick exactly this many options.</p>
+      </div>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label>Options <span className="text-muted-foreground text-xs ml-1">(check the correct ones)</span></Label>
+          <Button type="button" size="sm" variant="outline" onClick={addOption} className="h-7 text-xs gap-1">
+            <Plus className="h-3 w-3" /> Add
+          </Button>
+        </div>
+        {opts.options.map((opt, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <span className="w-7 h-7 flex items-center justify-center rounded-full bg-muted text-xs font-bold shrink-0">
+              {letters[i] ?? i + 1}
+            </span>
+            <input
+              type="checkbox"
+              className="h-4 w-4 shrink-0 accent-primary"
+              checked={opts.correct.includes(i)}
+              onChange={() => toggleCorrect(i)}
+            />
+            <Input
+              className="flex-1 h-8 text-sm"
+              placeholder={`Option ${letters[i] ?? i + 1}`}
+              value={opt}
+              onChange={(e) => setOption(i, e.target.value)}
+            />
+            {opts.options.length > 2 && (
+              <Button type="button" size="icon" variant="ghost" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => removeOption(i)}>
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+        ))}
+        {opts.correct.length > 0 && opts.correct.length !== opts.maxSelect && (
+          <p className="text-xs text-amber-600 dark:text-amber-400">
+            ⚠ {opts.correct.length} answer{opts.correct.length !== 1 ? "s" : ""} checked but max selection is {opts.maxSelect}. Consider aligning these.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function TrueFalseNgEditor({ opts, onChange }: { opts: TrueFalseNgOpts; onChange: (o: TrueFalseNgOpts) => void }) {
   const options = ["TRUE", "FALSE", "NOT GIVEN"] as const;
   return (
@@ -428,6 +514,11 @@ function QuestionSummary({ type, options }: { type: QType; options: QOptions }) 
   if (type === "true_false_ng") {
     const o = options as TrueFalseNgOpts;
     return <p className="text-xs text-muted-foreground truncate">{o.statement || "—"}{o.correct ? ` · ✓ ${o.correct}` : ""}</p>;
+  }
+  if (type === "multi_select") {
+    const o = options as MultiSelectOpts;
+    const n = o.options.filter(Boolean).length;
+    return <p className="text-xs text-muted-foreground truncate">Choose {o.maxSelect} of {n} · {o.instruction || "—"}</p>;
   }
   return null;
 }
@@ -1153,6 +1244,9 @@ export default function QuizDetail() {
             )}
             {qType === "true_false_ng" && (
               <TrueFalseNgEditor opts={qOptions as TrueFalseNgOpts} onChange={(o) => setQOptions(o)} />
+            )}
+            {qType === "multi_select" && (
+              <MultiSelectEditor opts={qOptions as MultiSelectOpts} onChange={(o) => setQOptions(o)} />
             )}
           </div>
 

@@ -16,4 +16,5 @@ export const QuizQuestionType = {
   matching: "matching",
   short_answer: "short_answer",
   true_false_ng: "true_false_ng",
+  multi_select: "multi_select",
 } as const;

@@ -690,7 +690,7 @@ export const GetQuizResponse = zod.object({
     zod.object({
       id: zod.number(),
       quizId: zod.number(),
-      type: zod.enum(["fill_blank", "dropdown", "choose_word", "matching", "short_answer", "true_false_ng"]),
+      type: zod.enum(["fill_blank", "dropdown", "choose_word", "matching", "short_answer", "true_false_ng", "multi_select"]),
       order: zod.number(),
       questionText: zod.string(),
       options: zod
@@ -750,7 +750,7 @@ export const AddQuizQuestionParams = zod.object({
 });
 
 export const AddQuizQuestionBody = zod.object({
-  type: zod.enum(["fill_blank", "dropdown", "choose_word", "matching", "short_answer", "true_false_ng"]),
+  type: zod.enum(["fill_blank", "dropdown", "choose_word", "matching", "short_answer", "true_false_ng", "multi_select"]),
   order: zod.number().optional(),
   questionText: zod.string(),
   options: zod.object({}).passthrough(),
@@ -765,7 +765,7 @@ export const UpdateQuizQuestionParams = zod.object({
 });
 
 export const UpdateQuizQuestionBody = zod.object({
-  type: zod.enum(["fill_blank", "dropdown", "choose_word", "matching", "short_answer", "true_false_ng"]),
+  type: zod.enum(["fill_blank", "dropdown", "choose_word", "matching", "short_answer", "true_false_ng", "multi_select"]),
   order: zod.number().optional(),
   questionText: zod.string(),
   options: zod.object({}).passthrough(),
@@ -774,7 +774,7 @@ export const UpdateQuizQuestionBody = zod.object({
 export const UpdateQuizQuestionResponse = zod.object({
   id: zod.number(),
   quizId: zod.number(),
-  type: zod.enum(["fill_blank", "dropdown", "choose_word", "matching", "short_answer", "true_false_ng"]),
+  type: zod.enum(["fill_blank", "dropdown", "choose_word", "matching", "short_answer", "true_false_ng", "multi_select"]),
   order: zod.number(),
   questionText: zod.string(),
   options: zod.object({}).passthrough().describe("Type-specific options JSON"),
