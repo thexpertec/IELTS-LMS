@@ -223,7 +223,7 @@ export default function StudentQuizTake() {
   const activeParts = quizParts.filter((p) => sortedQs.some((_, i) => i + 1 >= p.from && i + 1 <= p.to));
   // Parts that have media content for the left panel
   const partsWithMedia = activeParts.filter((p) => p.passageText || p.imageUrl || p.audioUrl);
-  const hasLeftPanel = partsWithMedia.length > 0 || !!(quiz as { passageText?: string }).passageText;
+  const hasLeftPanel = partsWithMedia.length > 0 || !!(quiz as { passageText?: string })?.passageText;
 
   const handleExpire = useCallback(() => setSubmitOpen(true), []);
   const { display: timerDisplay, isWarning } = useTimer(quiz?.timeLimitMinutes, handleExpire);
