@@ -756,6 +756,9 @@ export default function StudentQuizTake() {
                             {q.questionText && (
                               <p className="text-xs text-muted-foreground mb-1 italic">{q.questionText}</p>
                             )}
+                            {q.type === "fill_blank_dropdown" && (
+                              <FillBlankDropdownQuestion opts={opts as FillBlankDropdownOpts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
+                            )}
                             {q.type === "fill_blank" && (
                               <FillBlankQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
                             )}
@@ -969,6 +972,28 @@ export default function StudentQuizTake() {
                   return (
                     <button
                       key={`${q.id}-ms-${ri}`}
+                      onClick={() => { setReviewOpen(false); setTimeout(() => scrollToQ(q.id), 150); }}
+                      className={cn(
+                        "h-9 flex items-center justify-center rounded text-sm font-semibold",
+                        done
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted border border-destructive/40 text-destructive"
+                      )}
+                    >
+                      {si.slotStart + ri + 1}
+                    </button>
+                  );
+                });
+              }
+              if (q.type === "fill_blank_dropdown") {
+                const opts = q.options as FillBlankDropdownOpts;
+                const current = (answers[q.id] as Record<number, string> | undefined) ?? {};
+                const rows = (opts.sentences ?? []).filter(Boolean).length;
+                return Array.from({ length: rows }, (_, ri) => {
+                  const done = !!current[ri];
+                  return (
+                    <button
+                      key={`${q.id}-fbd-${ri}`}
                       onClick={() => { setReviewOpen(false); setTimeout(() => scrollToQ(q.id), 150); }}
                       className={cn(
                         "h-9 flex items-center justify-center rounded text-sm font-semibold",
