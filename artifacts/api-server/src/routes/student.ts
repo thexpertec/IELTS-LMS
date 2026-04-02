@@ -185,6 +185,26 @@ router.get("/student/my-enrollments", async (req, res): Promise<void> => {
           )
         );
 
+      const [quizCount] = await db
+        .select({ total: sql<number>`COUNT(*)` })
+        .from(quizzesTable)
+        .where(eq(quizzesTable.courseId, row.courseId));
+
+      const [assignmentCount] = await db
+        .select({ total: sql<number>`COUNT(*)` })
+        .from(assignmentsTable)
+        .where(eq(assignmentsTable.courseId, row.courseId));
+
+      const [enrolledCount] = await db
+        .select({ total: sql<number>`COUNT(*)` })
+        .from(enrollmentsTable)
+        .where(
+          and(
+            eq(enrollmentsTable.courseId, row.courseId),
+            not(eq(enrollmentsTable.status, "dropped"))
+          )
+        );
+
       return {
         id: row.id,
         courseId: row.courseId,
@@ -196,6 +216,9 @@ router.get("/student/my-enrollments", async (req, res): Promise<void> => {
         progressPercent: row.progressPercent,
         completedLessons: Number(completedCount.completed),
         totalLessons: Number(lessonCount.total),
+        totalQuizzes: Number(quizCount.total),
+        totalAssignments: Number(assignmentCount.total),
+        totalEnrolled: Number(enrolledCount.total),
         enrolledAt: row.enrolledAt.toISOString(),
       };
     })

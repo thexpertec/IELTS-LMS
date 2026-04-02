@@ -9,6 +9,7 @@ import { Link } from "wouter";
 import {
   BookOpen, Bell, FileText, ArrowRight, Clock, AlertCircle, CheckCircle,
   LayoutGrid, Headphones, Mic, PenTool, Type, GraduationCap, Play,
+  Users, ClipboardList,
 } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -100,7 +101,7 @@ export default function StudentDashboard() {
 
       <div className="grid gap-6 md:grid-cols-12">
 
-        {/* Left: Courses grid */}
+        {/* Left: Courses list — full width cards */}
         <div className="md:col-span-8 space-y-5">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">My Courses</h2>
@@ -112,11 +113,11 @@ export default function StudentDashboard() {
           </div>
 
           {enrollLoading ? (
-            <div className="grid sm:grid-cols-2 gap-4">
-              {[1, 2, 3, 4].map((i) => (
-                <Card key={i} className="flex flex-col">
-                  <CardContent className="p-5 flex-1">
-                    <Skeleton className="h-16 w-full" />
+            <div className="space-y-4">
+              {[1, 2].map((i) => (
+                <Card key={i}>
+                  <CardContent className="p-5">
+                    <Skeleton className="h-24 w-full" />
                   </CardContent>
                 </Card>
               ))}
@@ -135,39 +136,84 @@ export default function StudentDashboard() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-4">
               {activeEnrollments.map((enrollment) => {
                 const Icon = categoryIcon(enrollment.courseCategory ?? "");
                 const started = enrollment.progressPercent > 0;
+                const e = enrollment as any;
                 return (
                   <Card key={enrollment.id} className="flex flex-col hover:shadow-md transition-shadow">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center gap-2.5">
-                        <div className="p-2 bg-primary/10 rounded-md flex-shrink-0">
-                          <Icon className="w-4 h-4 text-primary" />
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2.5 bg-primary/10 rounded-lg flex-shrink-0 mt-0.5">
+                          <Icon className="w-5 h-5 text-primary" />
                         </div>
-                        <div className="min-w-0">
-                          <CardTitle className="text-sm leading-snug line-clamp-2">
+                        <div className="min-w-0 flex-1">
+                          <CardTitle className="text-base leading-snug">
                             {enrollment.courseTitle}
                           </CardTitle>
-                          {enrollment.courseCategory && (
-                            <Badge variant="outline" className="text-xs mt-1">
-                              {enrollment.courseCategory}
-                            </Badge>
-                          )}
+                          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                            {enrollment.courseCategory && (
+                              <Badge variant="outline" className="text-xs">
+                                {enrollment.courseCategory}
+                              </Badge>
+                            )}
+                            {enrollment.instructor && (
+                              <span className="text-xs text-muted-foreground">
+                                by {enrollment.instructor}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="flex-1 pb-2">
-                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                        <span>
-                          {enrollment.completedLessons}/{enrollment.totalLessons} lessons
-                        </span>
-                        <span className="font-medium">{enrollment.progressPercent}%</span>
+
+                    <CardContent className="pb-3 space-y-4">
+                      {/* Progress bar */}
+                      <div>
+                        <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
+                          <span>
+                            {enrollment.completedLessons}/{enrollment.totalLessons} lessons completed
+                          </span>
+                          <span className="font-semibold text-foreground">{enrollment.progressPercent}%</span>
+                        </div>
+                        <Progress value={enrollment.progressPercent} className="h-2" />
                       </div>
-                      <Progress value={enrollment.progressPercent} className="h-2" />
+
+                      {/* Stats row */}
+                      <div className="grid grid-cols-4 gap-2">
+                        <StatChip
+                          icon={<BookOpen className="w-3.5 h-3.5" />}
+                          label="Lessons"
+                          value={enrollment.totalLessons}
+                          color="text-blue-600 dark:text-blue-400"
+                          bg="bg-blue-50 dark:bg-blue-950/40"
+                        />
+                        <StatChip
+                          icon={<FileText className="w-3.5 h-3.5" />}
+                          label="Quizzes"
+                          value={e.totalQuizzes ?? 0}
+                          color="text-violet-600 dark:text-violet-400"
+                          bg="bg-violet-50 dark:bg-violet-950/40"
+                        />
+                        <StatChip
+                          icon={<ClipboardList className="w-3.5 h-3.5" />}
+                          label="Assignments"
+                          value={e.totalAssignments ?? 0}
+                          color="text-amber-600 dark:text-amber-400"
+                          bg="bg-amber-50 dark:bg-amber-950/40"
+                        />
+                        <StatChip
+                          icon={<Users className="w-3.5 h-3.5" />}
+                          label="Enrolled"
+                          value={e.totalEnrolled ?? 0}
+                          color="text-green-600 dark:text-green-400"
+                          bg="bg-green-50 dark:bg-green-950/40"
+                        />
+                      </div>
                     </CardContent>
-                    <CardFooter className="pt-3">
+
+                    <CardFooter className="pt-2 border-t">
                       <Link href={`/student/courses/${enrollment.courseId}`} className="w-full">
                         <Button
                           className="w-full gap-2"
@@ -175,15 +221,9 @@ export default function StudentDashboard() {
                           size="sm"
                         >
                           {started ? (
-                            <>
-                              <Play className="w-3.5 h-3.5" />
-                              Continue
-                            </>
+                            <><Play className="w-3.5 h-3.5" />Continue Learning</>
                           ) : (
-                            <>
-                              Start Course
-                              <ArrowRight className="w-3.5 h-3.5" />
-                            </>
+                            <>Start Course<ArrowRight className="w-3.5 h-3.5" /></>
                           )}
                         </Button>
                       </Link>
@@ -272,35 +312,28 @@ export default function StudentDashboard() {
               </CardContent>
             </Card>
           )}
-
-          {/* Quick Links */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Quick Access</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Link href="/student/quizzes">
-                <Button variant="outline" className="w-full justify-start gap-3 h-9" size="sm">
-                  <FileText className="w-4 h-4 text-primary" />
-                  My Quizzes
-                </Button>
-              </Link>
-              <Link href="/student/assignments">
-                <Button variant="outline" className="w-full justify-start gap-3 h-9" size="sm">
-                  <AlertCircle className="w-4 h-4 text-primary" />
-                  Assignments
-                </Button>
-              </Link>
-              <Link href="/student/courses">
-                <Button variant="outline" className="w-full justify-start gap-3 h-9" size="sm">
-                  <BookOpen className="w-4 h-4 text-primary" />
-                  Browse Courses
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Stat chip ──────────────────────────────────────────────────────────────────
+
+function StatChip({
+  icon, label, value, color, bg,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  color: string;
+  bg: string;
+}) {
+  return (
+    <div className={`rounded-lg p-2.5 flex flex-col items-center gap-1 ${bg}`}>
+      <span className={color}>{icon}</span>
+      <span className="text-sm font-bold leading-none">{value}</span>
+      <span className="text-[10px] text-muted-foreground leading-none">{label}</span>
     </div>
   );
 }
