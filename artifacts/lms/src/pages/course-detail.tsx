@@ -18,6 +18,8 @@ import { AlertCircle } from "lucide-react";
 import { GradesTab } from "@/components/course-grades-tab";
 import { CurriculumTab } from "@/components/curriculum-tab";
 import { StreamTab } from "@/components/stream-tab";
+import { StudentsTab } from "@/components/course-students-tab";
+import { InstructorsTab } from "@/components/course-instructors-tab";
 
 export default function CourseDetail() {
   const { id: idStr } = useParams();
@@ -52,7 +54,7 @@ export default function CourseDetail() {
     }
   });
 
-  const tab = new URLSearchParams(search).get("tab") ?? "curriculum";
+  const tab = new URLSearchParams(search).get("tab") ?? "stream";
 
   if (courseLoading) {
     return (
@@ -165,34 +167,23 @@ export default function CourseDetail() {
         className="w-full"
       >
         <TabsList className="h-auto w-full justify-start gap-0 rounded-none border-b bg-transparent p-0 mb-8">
-          <TabsTrigger
-            value="curriculum"
-            data-testid="tab-curriculum"
-            className="rounded-none border-b-2 border-transparent px-6 py-3 text-base font-semibold text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
-          >
-            Curriculum
-          </TabsTrigger>
-          <TabsTrigger
-            value="grades"
-            data-testid="tab-grades"
-            className="rounded-none border-b-2 border-transparent px-6 py-3 text-base font-semibold text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
-          >
-            Grades
-          </TabsTrigger>
-          <TabsTrigger
-            value="stream"
-            data-testid="tab-stream"
-            className="rounded-none border-b-2 border-transparent px-6 py-3 text-base font-semibold text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
-          >
-            Stream
-          </TabsTrigger>
-          <TabsTrigger
-            value="settings"
-            data-testid="tab-settings"
-            className="rounded-none border-b-2 border-transparent px-6 py-3 text-base font-semibold text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
-          >
-            Settings
-          </TabsTrigger>
+          {[
+            { value: "stream", label: "Stream", testId: "tab-stream" },
+            { value: "curriculum", label: "Curriculum", testId: "tab-curriculum" },
+            { value: "grades", label: "Grades", testId: "tab-grades" },
+            { value: "students", label: "Students", testId: "tab-students" },
+            { value: "instructors", label: "Instructors", testId: "tab-instructors" },
+            { value: "settings", label: "Settings", testId: "tab-settings" },
+          ].map(({ value, label, testId }) => (
+            <TabsTrigger
+              key={value}
+              value={value}
+              data-testid={testId}
+              className="rounded-none border-b-2 border-transparent px-6 py-3 text-base font-semibold text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
+            >
+              {label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         {/* ── Curriculum ── */}
@@ -220,6 +211,28 @@ export default function CourseDetail() {
             </p>
           </div>
           <StreamTab courseId={id} />
+        </TabsContent>
+
+        {/* ── Students ── */}
+        <TabsContent value="students" className="space-y-4">
+          <div>
+            <h2 className="text-xl font-semibold">Students</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Manage student enrollments and track their progress.
+            </p>
+          </div>
+          <StudentsTab courseId={id} />
+        </TabsContent>
+
+        {/* ── Instructors ── */}
+        <TabsContent value="instructors" className="space-y-4">
+          <div>
+            <h2 className="text-xl font-semibold">Instructors</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              View and manage the instructors for this course.
+            </p>
+          </div>
+          <InstructorsTab course={course} />
         </TabsContent>
 
         {/* ── Settings ── */}
