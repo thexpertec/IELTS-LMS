@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, ilike, and, type SQL } from "drizzle-orm";
-import { db, coursesTable } from "@workspace/db";
+import { eq, ilike, and, inArray, type SQL } from "drizzle-orm";
+import { db, coursesTable, enrollmentsTable, assignmentsTable, assignmentSubmissionsTable } from "@workspace/db";
 import {
   ListCoursesResponse,
   CreateCourseBody,
@@ -98,6 +98,53 @@ router.delete("/courses/:id", async (req, res): Promise<void> => {
   }
 
   res.sendStatus(204);
+});
+
+router.get("/courses/:id/gradebook", async (req, res): Promise<void> => {
+  const courseId = Number(req.params.id);
+  if (!courseId) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const enrollments = await db
+    .select({
+      id: enrollmentsTable.id,
+      studentEmail: enrollmentsTable.studentEmail,
+      studentName: enrollmentsTable.studentName,
+      status: enrollmentsTable.status,
+    })
+    .from(enrollmentsTable)
+    .where(eq(enrollmentsTable.courseId, courseId))
+    .orderBy(enrollmentsTable.studentName);
+
+  const assignments = await db
+    .select({
+      id: assignmentsTable.id,
+      title: assignmentsTable.title,
+      dueDate: assignmentsTable.dueDate,
+      maxScore: assignmentsTable.maxScore,
+      createdAt: assignmentsTable.createdAt,
+    })
+    .from(assignmentsTable)
+    .where(eq(assignmentsTable.courseId, courseId))
+    .orderBy(assignmentsTable.dueDate);
+
+  const assignmentIds = assignments.map((a) => a.id);
+  const submissions = assignmentIds.length > 0
+    ? await db
+        .select({
+          id: assignmentSubmissionsTable.id,
+          assignmentId: assignmentSubmissionsTable.assignmentId,
+          enrollmentId: assignmentSubmissionsTable.enrollmentId,
+          studentEmail: assignmentSubmissionsTable.studentEmail,
+          content: assignmentSubmissionsTable.content,
+          score: assignmentSubmissionsTable.score,
+          feedback: assignmentSubmissionsTable.feedback,
+          submittedAt: assignmentSubmissionsTable.submittedAt,
+        })
+        .from(assignmentSubmissionsTable)
+        .where(inArray(assignmentSubmissionsTable.assignmentId, assignmentIds))
+    : [];
+
+  res.json({ enrollments, assignments, submissions });
 });
 
 export default router;
