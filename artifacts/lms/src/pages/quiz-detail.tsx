@@ -70,6 +70,7 @@ import {
 import {
   ArrowLeft, Plus, Trash2, Edit, ClipboardList, Timer, Eye, EyeOff, X, GripVertical, ExternalLink,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // ─────────────────────────────────────────────
 // Types for the eight question formats
