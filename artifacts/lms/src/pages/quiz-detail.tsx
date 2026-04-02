@@ -344,12 +344,12 @@ export default function QuizDetail() {
   const [qText, setQText] = useState("");
   const [qOptions, setQOptions] = useState<QOptions>(defaultOptions("fill_blank"));
 
-  const { data: quiz, isLoading } = useGetQuiz({ id: quizId });
+  const { data: quiz, isLoading } = useGetQuiz(quizId);
 
   const updateQuiz = useUpdateQuiz({
     mutation: {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetQuizQueryKey({ id: quizId }) });
+        queryClient.invalidateQueries({ queryKey: getGetQuizQueryKey(quizId) });
         toast({ title: "Quiz updated" });
         setEditSettings(false);
       },
@@ -360,7 +360,7 @@ export default function QuizDetail() {
   const addQuestion = useAddQuizQuestion({
     mutation: {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetQuizQueryKey({ id: quizId }) });
+        queryClient.invalidateQueries({ queryKey: getGetQuizQueryKey(quizId) });
         toast({ title: "Question added" });
         closeDialog();
       },
@@ -371,7 +371,7 @@ export default function QuizDetail() {
   const updateQuestion = useUpdateQuizQuestion({
     mutation: {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetQuizQueryKey({ id: quizId }) });
+        queryClient.invalidateQueries({ queryKey: getGetQuizQueryKey(quizId) });
         toast({ title: "Question updated" });
         closeDialog();
       },
@@ -382,7 +382,7 @@ export default function QuizDetail() {
   const deleteQuestion = useDeleteQuizQuestion({
     mutation: {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetQuizQueryKey({ id: quizId }) });
+        queryClient.invalidateQueries({ queryKey: getGetQuizQueryKey(quizId) });
         toast({ title: "Question deleted" });
       },
       onError: () => toast({ title: "Failed to delete question", variant: "destructive" }),
