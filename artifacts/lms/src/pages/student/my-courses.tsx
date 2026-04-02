@@ -45,19 +45,6 @@ function statusColor(status: string) {
   return "bg-blue-500/10 text-blue-600 border-blue-500/30";
 }
 
-// ── Stat chip ──────────────────────────────────────────────────────────────────
-function StatChip({ icon, label, value, color, bg }: {
-  icon: React.ReactNode; label: string; value: number; color: string; bg: string;
-}) {
-  return (
-    <div className={`rounded-lg p-2.5 flex flex-col items-center gap-1 ${bg}`}>
-      <span className={color}>{icon}</span>
-      <span className="text-sm font-bold leading-none">{value}</span>
-      <span className="text-[10px] text-muted-foreground leading-none">{label}</span>
-    </div>
-  );
-}
-
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function MyCourses() {
@@ -165,9 +152,12 @@ export default function MyCourses() {
           )}
 
           {enrollLoading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <Card key={i}><CardContent className="p-5"><Skeleton className="h-32 w-full" /></CardContent></Card>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {[1, 2, 3, 4].map((i) => (
+                <Card key={i} className="overflow-hidden">
+                  <Skeleton className="h-24 w-full" />
+                  <CardContent className="p-5"><Skeleton className="h-24 w-full" /></CardContent>
+                </Card>
               ))}
             </div>
           ) : filteredEnrollments.length === 0 ? (
@@ -181,86 +171,116 @@ export default function MyCourses() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {filteredEnrollments.map((enrollment) => {
                 const Icon = categoryIcon(enrollment.courseCategory ?? "");
                 const started = enrollment.progressPercent > 0;
                 const e = enrollment as any;
+                const isCompleted = enrollment.status === "completed";
                 return (
-                  <Card key={enrollment.id} className="flex flex-col hover:shadow-md transition-shadow">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2.5 bg-primary/10 rounded-lg flex-shrink-0 mt-0.5">
-                          <Icon className="w-5 h-5 text-primary" />
+                  <Card
+                    key={enrollment.id}
+                    className="flex flex-col overflow-hidden hover:shadow-lg transition-all duration-200 group border-0 shadow-sm ring-1 ring-border"
+                  >
+                    {/* ── Coloured header strip ── */}
+                    <div className={`relative px-5 pt-5 pb-4 ${isCompleted
+                      ? "bg-gradient-to-br from-green-500/10 via-emerald-50 to-teal-50 dark:from-green-900/20 dark:via-green-950/10 dark:to-teal-950/10"
+                      : "bg-gradient-to-br from-primary/8 via-indigo-50/60 to-violet-50/40 dark:from-primary/10 dark:via-indigo-950/20 dark:to-violet-950/10"
+                    }`}>
+                      <div className="flex items-start gap-3.5">
+                        {/* Icon bubble */}
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${
+                          isCompleted
+                            ? "bg-green-500 text-white"
+                            : "bg-primary text-primary-foreground"
+                        }`}>
+                          <Icon className="w-6 h-6" />
                         </div>
+
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <Badge variant="outline" className={`text-xs ${statusColor(enrollment.status)}`}>
+                          <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                            <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                              isCompleted
+                                ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400"
+                                : "bg-primary/10 text-primary"
+                            }`}>
+                              {isCompleted ? <CheckCircle className="w-3 h-3" /> : <Play className="w-3 h-3" />}
                               {enrollment.status}
-                            </Badge>
+                            </span>
                             {enrollment.courseCategory && (
-                              <Badge variant="secondary" className="text-xs">{enrollment.courseCategory}</Badge>
+                              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-muted-foreground">
+                                {enrollment.courseCategory}
+                              </span>
                             )}
                           </div>
-                          <CardTitle className="text-base leading-snug">{enrollment.courseTitle}</CardTitle>
+                          <h3 className="font-bold text-base leading-tight line-clamp-1">{enrollment.courseTitle}</h3>
                           {enrollment.instructor && (
                             <p className="text-xs text-muted-foreground mt-0.5">by {enrollment.instructor}</p>
                           )}
                         </div>
                       </div>
-                    </CardHeader>
+                    </div>
 
-                    <CardContent className="pb-3 space-y-4">
-                      {/* Progress */}
-                      <div>
-                        <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
-                          <span>{enrollment.completedLessons}/{enrollment.totalLessons} lessons completed</span>
-                          <span className="font-semibold text-foreground">{enrollment.progressPercent}%</span>
+                    <CardContent className="flex-1 p-5 space-y-4">
+                      {/* Progress bar */}
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground">
+                            {enrollment.completedLessons} of {enrollment.totalLessons} lessons completed
+                          </span>
+                          <span className={`text-sm font-bold ${isCompleted ? "text-green-600" : "text-primary"}`}>
+                            {enrollment.progressPercent}%
+                          </span>
                         </div>
-                        <Progress value={enrollment.progressPercent} className="h-2" />
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-700 ${isCompleted ? "bg-green-500" : "bg-primary"}`}
+                            style={{ width: `${enrollment.progressPercent}%` }}
+                          />
+                        </div>
                       </div>
 
-                      {/* Stats */}
+                      {/* Stat chips */}
                       <div className="grid grid-cols-4 gap-2">
-                        <StatChip
-                          icon={<BookOpen className="w-3.5 h-3.5" />} label="Lessons"
-                          value={enrollment.totalLessons}
-                          color="text-blue-600 dark:text-blue-400" bg="bg-blue-50 dark:bg-blue-950/40"
-                        />
-                        <StatChip
-                          icon={<FileText className="w-3.5 h-3.5" />} label="Quizzes"
-                          value={e.totalQuizzes ?? 0}
-                          color="text-violet-600 dark:text-violet-400" bg="bg-violet-50 dark:bg-violet-950/40"
-                        />
-                        <StatChip
-                          icon={<ClipboardList className="w-3.5 h-3.5" />} label="Assignments"
-                          value={e.totalAssignments ?? 0}
-                          color="text-amber-600 dark:text-amber-400" bg="bg-amber-50 dark:bg-amber-950/40"
-                        />
-                        <StatChip
-                          icon={<Users className="w-3.5 h-3.5" />} label="Enrolled"
-                          value={e.totalEnrolled ?? 0}
-                          color="text-green-600 dark:text-green-400" bg="bg-green-50 dark:bg-green-950/40"
-                        />
+                        {[
+                          { icon: <BookOpen className="w-3.5 h-3.5" />, label: "Lessons", value: enrollment.totalLessons, cls: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-950/50 border border-blue-100 dark:border-blue-900" },
+                          { icon: <FileText className="w-3.5 h-3.5" />, label: "Quizzes", value: e.totalQuizzes ?? 0, cls: "text-violet-600 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-950/50 border border-violet-100 dark:border-violet-900" },
+                          { icon: <ClipboardList className="w-3.5 h-3.5" />, label: "Tasks", value: e.totalAssignments ?? 0, cls: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/50 border border-amber-100 dark:border-amber-900" },
+                          { icon: <Users className="w-3.5 h-3.5" />, label: "Students", value: e.totalEnrolled ?? 0, cls: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-100 dark:border-emerald-900" },
+                        ].map((s) => (
+                          <div key={s.label} className={`rounded-xl p-2.5 flex flex-col items-center gap-1 ${s.bg}`}>
+                            <span className={s.cls}>{s.icon}</span>
+                            <span className="text-sm font-bold leading-none">{s.value}</span>
+                            <span className="text-[10px] text-muted-foreground leading-none">{s.label}</span>
+                          </div>
+                        ))}
                       </div>
                     </CardContent>
 
-                    <CardFooter className="pt-2 border-t">
-                      {enrollment.status === "completed" ? (
-                        <Link href={`/student/courses/${enrollment.courseId}`} className="w-full">
-                          <Button variant="outline" size="sm" className="w-full gap-2 text-green-600 border-green-500/50">
-                            <CheckCircle className="w-4 h-4" />Review Course
-                          </Button>
-                        </Link>
-                      ) : (
-                        <Link href={`/student/courses/${enrollment.courseId}`} className="w-full">
-                          <Button size="sm" className="w-full gap-2" variant={started ? "secondary" : "default"}>
-                            <Play className="w-3.5 h-3.5" />
-                            {started ? "Continue Learning" : "Start Course"}
-                          </Button>
-                        </Link>
-                      )}
-                    </CardFooter>
+                    {/* CTA footer */}
+                    <div className="px-5 pb-5">
+                      <Link href={`/student/courses/${enrollment.courseId}`} className="block">
+                        <Button
+                          size="sm"
+                          className={`w-full gap-2 h-9 font-semibold transition-all group-hover:shadow-md ${
+                            isCompleted
+                              ? "bg-green-500 hover:bg-green-600 text-white"
+                              : started
+                              ? "variant-secondary"
+                              : ""
+                          }`}
+                          variant={!isCompleted && started ? "secondary" : isCompleted ? "default" : "default"}
+                        >
+                          {isCompleted ? (
+                            <><CheckCircle className="w-4 h-4" />Review Course</>
+                          ) : started ? (
+                            <><Play className="w-4 h-4" />Continue Learning</>
+                          ) : (
+                            <>Start Course<ArrowRight className="w-4 h-4" /></>
+                          )}
+                        </Button>
+                      </Link>
+                    </div>
                   </Card>
                 );
               })}
