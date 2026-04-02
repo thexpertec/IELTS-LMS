@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, ilike, and, inArray, type SQL } from "drizzle-orm";
-import { db, coursesTable, enrollmentsTable, assignmentsTable, assignmentSubmissionsTable } from "@workspace/db";
+import { db, coursesTable, enrollmentsTable, assignmentsTable, assignmentSubmissionsTable, quizzesTable, quizAttemptsTable } from "@workspace/db";
 import {
   ListCoursesResponse,
   CreateCourseBody,
@@ -144,7 +144,35 @@ router.get("/courses/:id/gradebook", async (req, res): Promise<void> => {
         .where(inArray(assignmentSubmissionsTable.assignmentId, assignmentIds))
     : [];
 
-  res.json({ enrollments, assignments, submissions });
+  const quizzes = await db
+    .select({
+      id: quizzesTable.id,
+      title: quizzesTable.title,
+      timeLimitMinutes: quizzesTable.timeLimitMinutes,
+      createdAt: quizzesTable.createdAt,
+    })
+    .from(quizzesTable)
+    .where(eq(quizzesTable.courseId, courseId))
+    .orderBy(quizzesTable.createdAt);
+
+  const quizIds = quizzes.map((q) => q.id);
+  const quizAttempts = quizIds.length > 0
+    ? await db
+        .select({
+          id: quizAttemptsTable.id,
+          quizId: quizAttemptsTable.quizId,
+          enrollmentId: quizAttemptsTable.enrollmentId,
+          studentEmail: quizAttemptsTable.studentEmail,
+          score: quizAttemptsTable.score,
+          maxScore: quizAttemptsTable.maxScore,
+          feedback: quizAttemptsTable.feedback,
+          submittedAt: quizAttemptsTable.submittedAt,
+        })
+        .from(quizAttemptsTable)
+        .where(inArray(quizAttemptsTable.quizId, quizIds))
+    : [];
+
+  res.json({ enrollments, assignments, submissions, quizzes, quizAttempts });
 });
 
 export default router;

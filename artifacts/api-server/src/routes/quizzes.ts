@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, sql } from "drizzle-orm";
-import { db, quizzesTable, quizQuestionsTable } from "@workspace/db";
+import { eq, sql, and } from "drizzle-orm";
+import { db, quizzesTable, quizQuestionsTable, quizAttemptsTable } from "@workspace/db";
 import {
   ListQuizzesQueryParams,
   CreateQuizBody,
@@ -230,6 +230,53 @@ router.delete("/quizzes/:id/questions/:questionId", async (req, res): Promise<vo
 
   await db.delete(quizQuestionsTable).where(eq(quizQuestionsTable.id, params.data.questionId));
   res.status(204).send();
+});
+
+// ── Quiz grade (upsert attempt score) ─────────────────────────────────────
+router.put("/quizzes/:id/grade", async (req, res): Promise<void> => {
+  const quizId = Number(req.params.id);
+  if (!quizId) { res.status(400).json({ error: "Invalid quiz id" }); return; }
+
+  const { enrollmentId, studentEmail, score, maxScore, feedback } = req.body;
+  if (!enrollmentId || !studentEmail) {
+    res.status(400).json({ error: "enrollmentId and studentEmail are required" });
+    return;
+  }
+
+  const existing = await db
+    .select({ id: quizAttemptsTable.id })
+    .from(quizAttemptsTable)
+    .where(and(
+      eq(quizAttemptsTable.quizId, quizId),
+      eq(quizAttemptsTable.enrollmentId, Number(enrollmentId))
+    ))
+    .limit(1);
+
+  if (existing.length > 0) {
+    const update: Record<string, unknown> = {};
+    if (score !== undefined) update.score = score === null ? null : Number(score);
+    if (maxScore !== undefined) update.maxScore = Number(maxScore);
+    if (feedback !== undefined) update.feedback = feedback;
+    const [row] = await db
+      .update(quizAttemptsTable)
+      .set(update)
+      .where(eq(quizAttemptsTable.id, existing[0].id))
+      .returning();
+    res.json(row);
+  } else {
+    const [row] = await db
+      .insert(quizAttemptsTable)
+      .values({
+        quizId,
+        enrollmentId: Number(enrollmentId),
+        studentEmail,
+        score: score !== undefined && score !== null ? Number(score) : null,
+        maxScore: maxScore ? Number(maxScore) : 100,
+        feedback: feedback ?? null,
+      })
+      .returning();
+    res.json(row);
+  }
 });
 
 export default router;
