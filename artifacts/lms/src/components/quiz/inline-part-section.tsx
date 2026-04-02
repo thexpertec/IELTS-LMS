@@ -18,6 +18,8 @@ interface InlinePartSectionProps {
   onDeletePart: () => void;
 }
 
+type MediaTab = "passage" | "image" | "audio" | null;
+
 export function InlinePartSection({
   groupKey,
   part,
@@ -28,7 +30,12 @@ export function InlinePartSection({
   onDeletePart,
 }: InlinePartSectionProps) {
   const [expanded, setExpanded] = useState(false);
+  const [activeMedia, setActiveMedia] = useState<MediaTab>(null);
   const { setNodeRef } = useDroppable({ id: groupKey });
+
+  function toggleMedia(tab: NonNullable<MediaTab>) {
+    setActiveMedia((prev) => (prev === tab ? null : tab));
+  }
 
   function addInstruction() {
     onPartChange({ instructions: [...(part.instructions ?? []), ""] });
@@ -46,6 +53,12 @@ export function InlinePartSection({
 
   const hasMedia = part.passageText || part.imageUrl || part.audioUrl;
   const instrCount = (part.instructions ?? []).length;
+
+  const mediaTabs: { key: NonNullable<MediaTab>; label: string; icon: typeof FileText; hasContent: boolean }[] = [
+    { key: "passage", label: "Passage", icon: FileText, hasContent: !!part.passageText },
+    { key: "audio",   label: "Audio",   icon: Volume2,  hasContent: !!part.audioUrl   },
+    { key: "image",   label: "Image",   icon: Image,    hasContent: !!part.imageUrl   },
+  ];
 
   return (
     <div className="rounded-xl border border-[#7F1D1D]/30 overflow-hidden shadow-sm">
@@ -86,63 +99,92 @@ export function InlinePartSection({
       {/* ── Expandable panel ── */}
       {expanded && (
         <div className="border-b border-[#7F1D1D]/20 bg-red-50/60 dark:bg-red-950/10 px-4 py-4 space-y-4">
-          {/* Passage */}
+
+          {/* Media tab buttons */}
           <div>
-            <label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-              <FileText className="w-3.5 h-3.5" />
-              Reading Passage
-            </label>
-            <Textarea
-              className="text-sm font-mono min-h-[100px] resize-y"
-              placeholder="Paste reading passage here — shown to students on the left while answering…"
-              value={part.passageText ?? ""}
-              onChange={(e) => onPartChange({ passageText: e.target.value })}
-              onBlur={onPartBlur}
-            />
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+              Media for left panel
+            </p>
+            <div className="flex gap-2">
+              {mediaTabs.map(({ key, label, icon: Icon, hasContent }) => {
+                const isActive = activeMedia === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => toggleMedia(key)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold border transition-all",
+                      isActive
+                        ? "bg-[#7F1D1D] text-white border-[#7F1D1D]"
+                        : "bg-white dark:bg-card text-muted-foreground border-border hover:border-[#7F1D1D]/60 hover:text-[#7F1D1D]"
+                    )}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {label}
+                    {hasContent && !isActive && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 ml-0.5" title="Has content" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Image URL */}
-          <div>
-            <label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-              <Image className="w-3.5 h-3.5" />
-              Image URL
-            </label>
-            <Input
-              className="text-sm"
-              placeholder="https://example.com/image.png"
-              value={part.imageUrl ?? ""}
-              onChange={(e) => onPartChange({ imageUrl: e.target.value })}
-              onBlur={onPartBlur}
-            />
-            {part.imageUrl && (
-              <img
-                src={part.imageUrl}
-                alt="Part image preview"
-                className="mt-2 max-h-40 rounded border object-contain"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          {/* Passage content */}
+          {activeMedia === "passage" && (
+            <div>
+              <Textarea
+                className="text-sm font-mono min-h-[100px] resize-y"
+                placeholder="Paste reading passage here — shown to students on the left while answering…"
+                value={part.passageText ?? ""}
+                onChange={(e) => onPartChange({ passageText: e.target.value })}
+                onBlur={onPartBlur}
+                autoFocus
               />
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Audio URL */}
-          <div>
-            <label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-              <Volume2 className="w-3.5 h-3.5" />
-              Audio URL
-            </label>
-            <Input
-              className="text-sm"
-              placeholder="https://example.com/audio.mp3"
-              value={part.audioUrl ?? ""}
-              onChange={(e) => onPartChange({ audioUrl: e.target.value })}
-              onBlur={onPartBlur}
-            />
-            {part.audioUrl && (
-              <audio controls className="mt-2 w-full" key={part.audioUrl}>
-                <source src={part.audioUrl} />
-              </audio>
-            )}
-          </div>
+          {/* Image content */}
+          {activeMedia === "image" && (
+            <div className="space-y-2">
+              <Input
+                className="text-sm"
+                placeholder="https://example.com/image.png"
+                value={part.imageUrl ?? ""}
+                onChange={(e) => onPartChange({ imageUrl: e.target.value })}
+                onBlur={onPartBlur}
+                autoFocus
+              />
+              {part.imageUrl && (
+                <img
+                  src={part.imageUrl}
+                  alt="Part image preview"
+                  className="max-h-40 rounded border object-contain"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Audio content */}
+          {activeMedia === "audio" && (
+            <div className="space-y-2">
+              <Input
+                className="text-sm"
+                placeholder="https://example.com/audio.mp3"
+                value={part.audioUrl ?? ""}
+                onChange={(e) => onPartChange({ audioUrl: e.target.value })}
+                onBlur={onPartBlur}
+                autoFocus
+              />
+              {part.audioUrl && (
+                <audio controls className="w-full" key={part.audioUrl}>
+                  <source src={part.audioUrl} />
+                </audio>
+              )}
+            </div>
+          )}
 
           {/* Instructions */}
           <div>
