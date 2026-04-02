@@ -858,9 +858,12 @@ export default function StudentQuizTake() {
                       })}
                     </div>
 
-                    {/* Subtle divider between parts */}
+                    {/* Section break between parts */}
                     {tabIdx < allTabs.length - 1 && (
-                      <div className="border-t border-dashed border-border/60 pt-2" />
+                      <div className="my-6">
+                        <div className="h-px bg-border" />
+                        <div className="h-px bg-border/40 mt-0.5" />
+                      </div>
                     )}
                   </div>
                 );
