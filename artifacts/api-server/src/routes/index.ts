@@ -10,6 +10,7 @@ import quizzesRouter from "./quizzes";
 import assignmentsRouter from "./assignments";
 import storageRouter from "./storage";
 import chaptersRouter from "./chapters";
+import streamRouter from "./stream";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(studentRouter);
 router.use(quizzesRouter);
 router.use(assignmentsRouter);
 router.use(storageRouter);
+router.use(streamRouter);
 
 export default router;
