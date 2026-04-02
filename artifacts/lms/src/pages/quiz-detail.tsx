@@ -741,19 +741,6 @@ export default function QuizDetail() {
 
             <Separator />
 
-            {/* Question text */}
-            <div>
-              <Label>Question Label / Context <span className="text-muted-foreground text-xs">(optional heading shown above the question)</span></Label>
-              <Input
-                className="mt-1.5"
-                placeholder="e.g. Question 5 — Read the passage and answer..."
-                value={qText}
-                onChange={(e) => setQText(e.target.value)}
-                data-testid="input-question-text"
-              />
-            </div>
-
-            <Separator />
 
             {/* Type-specific editor */}
             {qType === "fill_blank" && (
