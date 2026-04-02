@@ -7,11 +7,13 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from "@/components/ui/dialog";
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle2, Clock, List } from "lucide-react";
 
 // ─────────────────────────────────────────────
 // Types
@@ -22,7 +24,6 @@ interface DropdownOpts  { stem: string; choices: string[]; correct: string }
 interface ChooseWordOpts { instruction: string; wordLimit: number; passageText?: string; imageUrl?: string; correct: string }
 interface MatchingOpts  { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[] }
 
-// answers keyed by questionId
 type AnswerMap = Record<number, string | string[] | Record<number, string>>;
 
 function isAnswered(qId: number, qType: QType, answers: AnswerMap): boolean {
@@ -58,99 +59,118 @@ function useTimer(limitMinutes?: number | null, onExpire?: () => void) {
     ref.current = setInterval(() => {
       setRemaining((s) => {
         if (s === null) return null;
-        if (s <= 1) {
-          clearInterval(ref.current!);
-          onExpire?.();
-          return 0;
-        }
+        if (s <= 1) { clearInterval(ref.current!); onExpire?.(); return 0; }
         return s - 1;
       });
     }, 1000);
     return () => clearInterval(ref.current!);
   }, [onExpire]);
 
-  const display = remaining === null
-    ? null
-    : `${String(Math.floor(remaining / 60)).padStart(2, "0")}:${String(remaining % 60).padStart(2, "0")}`;
-
+  const m = remaining === null ? null : Math.floor(remaining / 60);
+  const s = remaining === null ? null : remaining % 60;
+  const display = remaining === null ? null
+    : `${String(m).padStart(2, "0")} : ${String(s).padStart(2, "0")}`;
   const isWarning = remaining !== null && remaining < 300;
-
   return { display, isWarning };
 }
 
 // ─────────────────────────────────────────────
-// Question renderers (student-facing)
+// Question components — IELTS-styled
 // ─────────────────────────────────────────────
+function QNum({ num, answered }: { num: number | string; answered: boolean }) {
+  return (
+    <span className={cn(
+      "text-xs font-bold shrink-0 pt-0.5",
+      answered ? "text-primary" : "text-primary/60"
+    )}>
+      {num}
+    </span>
+  );
+}
+
 function FillBlankQuestion({
-  opts, qId, answers, setAnswers,
-}: { opts: FillBlankOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void }) {
+  opts, qId, answers, setAnswers, slotStart,
+}: { opts: FillBlankOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number }) {
   const current = (answers[qId] as string[] | undefined) ?? Array(opts.blanks.length).fill("");
   const update = (i: number, val: string) => {
     const next = [...current];
     next[i] = val;
     setAnswers({ ...answers, [qId]: next });
   };
-
-  // Replace ___ in sentence with numbered inputs
   const parts = opts.sentence.split("___");
+  const answered = current.some(Boolean);
   return (
-    <p className="text-sm leading-loose">
-      {parts.map((part, i) => (
-        <span key={i}>
-          {part}
-          {i < parts.length - 1 && (
-            <input
-              type="text"
-              className="inline-block border-b-2 border-primary mx-1 px-1 text-sm w-28 bg-transparent focus:outline-none focus:border-primary"
-              value={current[i] ?? ""}
-              onChange={(e) => update(i, e.target.value)}
-              placeholder={`(${i + 1})`}
-            />
-          )}
-        </span>
-      ))}
-    </p>
+    <div id={`q-${qId}`} className="flex items-start gap-2">
+      <QNum num={slotStart} answered={answered} />
+      <p className="text-sm leading-7 flex flex-wrap items-center gap-x-1">
+        {parts.map((part, i) => (
+          <span key={i}>
+            {part}
+            {i < parts.length - 1 && (
+              <input
+                type="text"
+                className="inline-block border-0 border-b border-border mx-1 px-1 text-sm w-32 bg-transparent focus:outline-none focus:border-primary"
+                placeholder="write answer"
+                value={current[i] ?? ""}
+                onChange={(e) => update(i, e.target.value)}
+              />
+            )}
+          </span>
+        ))}
+      </p>
+    </div>
   );
 }
 
 function DropdownQuestion({
-  opts, qId, answers, setAnswers,
-}: { opts: DropdownOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void }) {
+  opts, qId, answers, setAnswers, slotStart,
+}: { opts: DropdownOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number }) {
+  const answered = !!(answers[qId] as string)?.trim();
   return (
-    <div className="space-y-3">
-      {opts.stem && <p className="text-sm">{opts.stem}</p>}
-      <Select
-        value={(answers[qId] as string) ?? ""}
-        onValueChange={(val) => setAnswers({ ...answers, [qId]: val })}
-      >
-        <SelectTrigger className="w-full max-w-xs">
-          <SelectValue placeholder="Select your answer..." />
-        </SelectTrigger>
-        <SelectContent>
-          {opts.choices.filter(Boolean).map((c, i) => (
-            <SelectItem key={i} value={c}>{String.fromCharCode(65 + i)}. {c}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+    <div id={`q-${qId}`} className="flex items-start gap-2">
+      <QNum num={slotStart} answered={answered} />
+      <div className="flex-1 space-y-2">
+        {opts.stem && <p className="text-sm leading-relaxed">{opts.stem}</p>}
+        <Select
+          value={(answers[qId] as string) ?? ""}
+          onValueChange={(val) => setAnswers({ ...answers, [qId]: val })}
+        >
+          <SelectTrigger className="w-full max-w-xs h-8 text-xs">
+            <SelectValue placeholder="Select your answer..." />
+          </SelectTrigger>
+          <SelectContent>
+            {opts.choices.filter(Boolean).map((c, i) => (
+              <SelectItem key={i} value={c} className="text-sm">
+                {String.fromCharCode(65 + i)}. {c}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
     </div>
   );
 }
 
 function ChooseWordQuestion({
-  opts, qId, answers, setAnswers,
-}: { opts: ChooseWordOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void }) {
+  opts, qId, answers, setAnswers, slotStart,
+}: { opts: ChooseWordOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number }) {
+  const answered = !!(answers[qId] as string)?.trim();
   return (
-    <div className="space-y-3">
-      <p className="text-sm font-medium">{opts.instruction}</p>
-      {opts.imageUrl && (
-        <img src={opts.imageUrl} alt="Question visual" className="max-h-48 rounded-lg border object-contain" />
-      )}
-      <Input
-        className="max-w-xs"
-        placeholder={`Enter up to ${opts.wordLimit} word${opts.wordLimit !== 1 ? "s" : ""}...`}
-        value={(answers[qId] as string) ?? ""}
-        onChange={(e) => setAnswers({ ...answers, [qId]: e.target.value })}
-      />
+    <div id={`q-${qId}`} className="flex items-start gap-2">
+      <QNum num={slotStart} answered={answered} />
+      <div className="flex-1 space-y-2">
+        <p className="text-sm leading-relaxed">{opts.instruction}</p>
+        {opts.imageUrl && (
+          <img src={opts.imageUrl} alt="Question visual" className="max-h-40 rounded border object-contain" />
+        )}
+        <input
+          type="text"
+          className="border-0 border-b border-border px-1 text-sm w-48 bg-transparent focus:outline-none focus:border-primary"
+          placeholder={`Up to ${opts.wordLimit} word${opts.wordLimit !== 1 ? "s" : ""}...`}
+          value={(answers[qId] as string) ?? ""}
+          onChange={(e) => setAnswers({ ...answers, [qId]: e.target.value })}
+        />
+      </div>
     </div>
   );
 }
@@ -163,30 +183,30 @@ function MatchingQuestion({
     setAnswers({ ...answers, [qId]: { ...current, [leftIdx]: rightVal } });
   };
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-[32px_1fr_1fr] gap-2 text-xs font-semibold text-muted-foreground px-1 mb-2">
+    <div id={`q-${qId}`} className="space-y-2">
+      <div className="grid grid-cols-[24px_1fr_1fr] gap-2 text-xs font-semibold text-muted-foreground px-1 mb-1">
         <span />
         <span>Column A</span>
         <span>Column B</span>
       </div>
       {opts.leftItems.filter(Boolean).map((item, i) => {
-        const rowDone = matchingRowAnswered(answers, qId, i);
+        const rowAnswered = matchingRowAnswered(answers, qId, i);
         return (
-          <div key={i} className="grid grid-cols-[32px_1fr_1fr] gap-3 items-center">
+          <div key={i} className="grid grid-cols-[24px_1fr_1fr] gap-3 items-center">
             <span className={cn(
-              "text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0",
-              rowDone ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+              "text-xs font-bold shrink-0",
+              rowAnswered ? "text-primary" : "text-primary/60"
             )}>
               {startNum + i}
             </span>
-            <p className="text-sm px-3 py-2 bg-muted rounded-md">{item}</p>
+            <p className="text-sm px-3 py-2 bg-muted/60 rounded">{item}</p>
             <Select value={current[i] ?? ""} onValueChange={(val) => update(i, val)}>
-              <SelectTrigger>
+              <SelectTrigger className="h-8 text-xs">
                 <SelectValue placeholder="Match..." />
               </SelectTrigger>
               <SelectContent>
                 {opts.rightItems.filter(Boolean).map((r, j) => (
-                  <SelectItem key={j} value={r}>{r}</SelectItem>
+                  <SelectItem key={j} value={r} className="text-sm">{r}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -200,6 +220,12 @@ function MatchingQuestion({
 // ─────────────────────────────────────────────
 // Main page
 // ─────────────────────────────────────────────
+type QuizPartFull = {
+  name: string; from: number; to: number;
+  instructions?: string[];
+  passageText?: string; imageUrl?: string; audioUrl?: string;
+};
+
 export default function StudentQuizTake() {
   const [, params] = useRoute("/student/quizzes/:id");
   const quizId = Number(params?.id);
@@ -212,51 +238,124 @@ export default function StudentQuizTake() {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [submitOpen, setSubmitOpen] = useState(false);
   const [score, setScore] = useState<{ answered: number; total: number } | null>(null);
+  const [activePart, setActivePart] = useState(0);
+  const rightRef = useRef<HTMLDivElement>(null);
 
   const questions = ((quiz as { questions?: unknown[] })?.questions ?? []) as Array<{
     id: number; type: string; order: number; questionText: string; options: unknown;
   }>;
   const sortedQs = [...questions].sort((a, b) => a.order - b.order);
-  type QuizPartFull = { name: string; from: number; to: number; instructions?: string[]; passageText?: string; imageUrl?: string; audioUrl?: string };
   const quizParts = ((quiz as { parts?: QuizPartFull[] | null })?.parts ?? []) as QuizPartFull[];
-  // Only show parts that have at least one actual question within their range
   const activeParts = quizParts.filter((p) => sortedQs.some((_, i) => i + 1 >= p.from && i + 1 <= p.to));
-  // Parts that have media content for the left panel
-  const partsWithMedia = activeParts.filter((p) => p.passageText || p.imageUrl || p.audioUrl);
-  const hasLeftPanel = partsWithMedia.length > 0 || !!(quiz as { passageText?: string })?.passageText;
+
+  // Build tabs: each defined part + optional ungrouped tab
+  const maxTo = activeParts.length > 0 ? Math.max(...activeParts.map((p) => p.to)) : 0;
+  const ungroupedQs = sortedQs.slice(maxTo);
+
+  type Tab = {
+    label: string; rangeLabel: string;
+    from: number; to: number; // 1-based question indices
+    instructions?: string[];
+    passageText?: string; imageUrl?: string; audioUrl?: string;
+  };
+
+  const tabs: Tab[] = [
+    ...activeParts.map((p) => ({
+      label: p.name.toUpperCase(),
+      rangeLabel: `${p.from} to ${p.to} Questions`,
+      from: p.from, to: p.to,
+      instructions: p.instructions,
+      passageText: p.passageText,
+      imageUrl: p.imageUrl,
+      audioUrl: p.audioUrl,
+    })),
+    ...(ungroupedQs.length > 0 ? [{
+      label: "QUESTIONS",
+      rangeLabel: `${maxTo + 1} to ${sortedQs.length} Questions`,
+      from: maxTo + 1, to: sortedQs.length,
+      instructions: undefined, passageText: undefined, imageUrl: undefined, audioUrl: undefined,
+    }] : []),
+  ];
+
+  // Fallback: if no tabs/parts, one virtual tab covering all questions
+  const allTabs: Tab[] = tabs.length > 0 ? tabs : [{
+    label: "QUESTIONS", rangeLabel: `1 to ${sortedQs.length} Questions`,
+    from: 1, to: sortedQs.length,
+  }];
+
+  const clampedPart = Math.min(activePart, allTabs.length - 1);
+  const currentTab = allTabs[clampedPart] ?? allTabs[0];
+
+  // Questions visible in the right panel (current tab only)
+  const tabQs = sortedQs.filter((_, i) => {
+    const qNum = i + 1;
+    return qNum >= currentTab.from && qNum <= currentTab.to;
+  });
+
+  // Left panel: current tab media OR quiz-level passageText
+  const quizPassage = (quiz as { passageText?: string })?.passageText;
+  const tabPassage = currentTab.passageText;
+  const tabImage = currentTab.imageUrl;
+  const tabAudio = currentTab.audioUrl;
+  const hasLeftPanel = !!(tabPassage || tabImage || tabAudio || (activeParts.length === 0 && quizPassage));
+  const leftPassage = tabPassage || (activeParts.length === 0 ? quizPassage : undefined);
+
+  // Slot-aware numbering
+  const slotMap = (() => {
+    const map = new Map<number, { slotStart: number; slots: number }>();
+    let cursor = 0;
+    for (const q of sortedQs) {
+      const slots = questionSlots(q);
+      map.set(q.id, { slotStart: cursor, slots });
+      cursor += slots;
+    }
+    return map;
+  })();
+  const totalSlots = sortedQs.reduce((sum, q) => sum + questionSlots(q), 0);
+  const answeredIds = new Set(sortedQs.filter((q) => isAnswered(q.id, q.type as QType, answers)).map((q) => q.id));
+  const answeredSlots = sortedQs.reduce((sum, q) => {
+    if (q.type === "matching") {
+      const opts = q.options as MatchingOpts;
+      const rows = (opts.leftItems ?? []).filter(Boolean).length;
+      for (let i = 0; i < rows; i++) if (matchingRowAnswered(answers, q.id, i)) sum++;
+      return sum;
+    }
+    return sum + (answeredIds.has(q.id) ? 1 : 0);
+  }, 0);
 
   const handleExpire = useCallback(() => setSubmitOpen(true), []);
   const { display: timerDisplay, isWarning } = useTimer(quiz?.timeLimitMinutes, handleExpire);
 
   function handleSubmit() {
-    const total = sortedQs.reduce((sum, q) => sum + questionSlots(q), 0);
-    const answered = sortedQs.reduce((sum, q) => {
-      if (q.type === "matching") {
-        const opts = q.options as MatchingOpts;
-        const rows = (opts.leftItems ?? []).filter(Boolean).length;
-        for (let i = 0; i < rows; i++) {
-          if (matchingRowAnswered(answers, q.id, i)) sum++;
-        }
-        return sum;
-      }
-      return sum + (isAnswered(q.id, q.type as QType, answers) ? 1 : 0);
-    }, 0);
-    setScore({ answered, total });
+    setScore({ answered: answeredSlots, total: totalSlots });
     setSubmitted(true);
     setSubmitOpen(false);
     setReviewOpen(false);
   }
 
+  function scrollToQ(qId: number) {
+    const el = document.getElementById(`q-${qId}`);
+    if (el && rightRef.current) {
+      rightRef.current.scrollTop = el.offsetTop - rightRef.current.offsetTop - 16;
+    }
+  }
+
+  function switchTab(idx: number) {
+    setActivePart(idx);
+    setTimeout(() => rightRef.current?.scrollTo({ top: 0 }), 50);
+  }
+
+  // ── Loading ──
   if (isLoading) {
     return (
       <div className="flex flex-col h-screen">
-        <div className="h-14 border-b bg-card flex items-center px-6 gap-4">
-          <Skeleton className="h-5 w-48" />
-          <Skeleton className="h-5 w-24 ml-auto" />
+        <div className="h-12 bg-primary flex items-center px-6 gap-4">
+          <Skeleton className="h-4 w-48 bg-white/20" />
+          <Skeleton className="h-4 w-20 ml-auto bg-white/20" />
         </div>
         <div className="flex-1 flex">
-          <Skeleton className="w-1/2 h-full" />
-          <Skeleton className="w-1/2 h-full" />
+          <Skeleton className="w-1/2 h-full rounded-none" />
+          <Skeleton className="w-1/2 h-full rounded-none" />
         </div>
       </div>
     );
@@ -267,7 +366,9 @@ export default function StudentQuizTake() {
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <p className="text-lg font-semibold">Quiz not found</p>
-          <Button className="mt-4" onClick={() => setLocation("/student/quizzes")}>Back to Quizzes</Button>
+          <Button className="mt-4" onClick={() => setLocation("/student/quizzes")}>
+            Back to Quizzes
+          </Button>
         </div>
       </div>
     );
@@ -277,15 +378,13 @@ export default function StudentQuizTake() {
   if (submitted && score) {
     const pct = score.total > 0 ? Math.round((score.answered / score.total) * 100) : 0;
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-background gap-6 px-6">
-        <div className="w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
-          <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" />
-        </div>
+      <div className="h-screen flex flex-col items-center justify-center bg-background gap-6 px-6">
+        <CheckCircle2 className="w-16 h-16 text-green-500" />
         <div className="text-center">
           <h1 className="text-3xl font-bold">Quiz Submitted!</h1>
           <p className="text-muted-foreground mt-2">{quiz.title}</p>
         </div>
-        <div className="grid grid-cols-3 gap-8 text-center mt-2">
+        <div className="grid grid-cols-3 gap-8 text-center">
           <div>
             <p className="text-4xl font-bold text-primary">{score.answered}</p>
             <p className="text-sm text-muted-foreground mt-1">Answered</p>
@@ -299,522 +398,301 @@ export default function StudentQuizTake() {
             <p className="text-sm text-muted-foreground mt-1">Completion</p>
           </div>
         </div>
-        <Button className="mt-4" onClick={() => setLocation("/student/quizzes")}>
-          Back to Quizzes
+        <Button onClick={() => setLocation("/student/quizzes")}>
+          Return to Quizzes
         </Button>
       </div>
     );
   }
 
-  const answeredIds = new Set(sortedQs.filter((q) => isAnswered(q.id, q.type as QType, answers)).map((q) => q.id));
-
-  // Slot-aware numbering: each matching row counts as 1 slot
-  const slotMap = (() => {
-    const map = new Map<number, { slotStart: number; slots: number }>();
-    let cursor = 0;
-    for (const q of sortedQs) {
-      const slots = questionSlots(q);
-      map.set(q.id, { slotStart: cursor, slots });
-      cursor += slots;
-    }
-    return map;
-  })();
-  const totalSlots = sortedQs.reduce((sum, q) => sum + questionSlots(q), 0);
-  const answeredSlots = sortedQs.reduce((sum, q) => {
-    if (q.type === "matching") {
-      const opts = q.options as MatchingOpts;
-      const rows = (opts.leftItems ?? []).filter(Boolean).length;
-      for (let i = 0; i < rows; i++) {
-        if (matchingRowAnswered(answers, q.id, i)) sum++;
-      }
-      return sum;
-    }
-    return sum + (isAnswered(q.id, q.type as QType, answers) ? 1 : 0);
-  }, 0);
-  const unanswered = totalSlots - answeredSlots;
-
+  // ─────────────────────────────────────────────────
+  // Render
+  // ─────────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-background">
+    <div className="h-screen flex flex-col overflow-hidden bg-background">
 
-      {/* ── HEADER ── */}
-      <header className="h-14 border-b bg-card flex items-center px-6 gap-4 flex-shrink-0 z-10">
-        <div className="flex-1 min-w-0">
-          <h1 className="text-base font-bold truncate">{quiz.title}</h1>
-          {quiz.description && (
-            <p className="text-xs text-muted-foreground truncate hidden sm:block">{quiz.description}</p>
-          )}
-        </div>
-
+      {/* ── HEADER (IELTS-style: primary bg) ── */}
+      <header className="flex-shrink-0 h-12 bg-primary text-primary-foreground flex items-center px-4 gap-3 z-10">
+        <span className="font-semibold text-sm tracking-wide truncate flex-1">{quiz.title}</span>
         {timerDisplay && (
           <div className={cn(
-            "px-4 py-1.5 rounded-full text-sm font-mono font-bold border",
-            isWarning
-              ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800"
-              : "bg-muted text-foreground border-border"
+            "flex items-center gap-1.5 text-sm font-mono px-3 py-1 rounded shrink-0",
+            isWarning ? "bg-red-500/80 text-white" : "bg-black/20"
           )}>
-            {timerDisplay}
+            <Clock className="w-3.5 h-3.5" />
+            <span>{timerDisplay}</span>
           </div>
         )}
-
-        <Button variant="outline" size="sm" onClick={() => setReviewOpen(true)}>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 text-xs bg-transparent border-white/40 text-white hover:bg-white/10 hover:text-white shrink-0"
+          onClick={() => setReviewOpen(true)}
+        >
+          <List className="w-3.5 h-3.5 mr-1" />
           REVIEW
         </Button>
-        <Button size="sm" onClick={() => setSubmitOpen(true)}>
+        <Button
+          size="sm"
+          className="h-7 text-xs bg-white text-primary hover:bg-white/90 font-semibold shrink-0"
+          onClick={() => setSubmitOpen(true)}
+        >
           SUBMIT
         </Button>
       </header>
 
-      {/* ── BODY: passage + questions ── */}
-      <div className="flex flex-1 overflow-hidden">
+      {/* ── MAIN PANELS ── */}
+      <div className="flex-1 flex overflow-hidden">
 
-        {/* Left: Per-part passages / media */}
-        <div className={cn(
-          "border-r overflow-y-auto",
-          hasLeftPanel ? "w-1/2" : "w-0 hidden"
-        )}>
-          {partsWithMedia.length > 0 ? (
-            <div className="divide-y">
-              {partsWithMedia.map((part, pi) => (
-                <div key={pi} className="p-6">
-                  {partsWithMedia.length > 1 && (
-                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">
-                      {part.name} · Questions {part.from}–{part.to}
-                    </p>
+        {/* LEFT: Passage / Media */}
+        {hasLeftPanel && (
+          <div className="w-1/2 overflow-y-auto border-r bg-card">
+            <div className="p-6 max-w-2xl mx-auto">
+              {tabImage && (
+                <img src={tabImage} alt="Reading image" className="rounded-lg border mb-5 w-full object-contain max-h-72" />
+              )}
+              {tabAudio && (
+                <audio controls src={tabAudio} className="w-full mb-5" />
+              )}
+              {leftPassage && (
+                <>
+                  {currentTab.label !== "QUESTIONS" && currentTab.label && (
+                    <h2 className="text-base font-bold mb-4 text-foreground">{quiz.title}</h2>
                   )}
-                  {part.imageUrl && (
-                    <img
-                      src={part.imageUrl}
-                      alt={`${part.name} visual`}
-                      className="max-w-full rounded-lg border object-contain mb-4"
-                    />
-                  )}
-                  {part.audioUrl && (
-                    <audio controls src={part.audioUrl} className="w-full mb-4">
-                      Your browser does not support audio playback.
-                    </audio>
-                  )}
-                  {part.passageText && (
-                    <div className="text-sm leading-7 whitespace-pre-wrap text-foreground">
-                      {part.passageText}
-                    </div>
-                  )}
-                </div>
-              ))}
+                  <div className="text-sm leading-7 text-foreground whitespace-pre-wrap">
+                    {leftPassage}
+                  </div>
+                </>
+              )}
             </div>
-          ) : (
-            (quiz as { passageText?: string }).passageText && (
-              <div className="p-6 prose prose-sm dark:prose-invert max-w-none">
-                <h2 className="text-base font-bold mb-4">{quiz.title}</h2>
-                <div className="text-sm leading-7 whitespace-pre-wrap text-foreground">
-                  {(quiz as { passageText?: string }).passageText}
-                </div>
-              </div>
-            )
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Right: Questions */}
-        <div className={cn(
-          "overflow-y-auto",
-          hasLeftPanel ? "w-1/2" : "w-full"
-        )}>
+        {/* RIGHT: Questions */}
+        <div
+          className={cn("overflow-y-auto bg-muted/10", hasLeftPanel ? "w-1/2" : "w-full")}
+          ref={rightRef}
+        >
           {sortedQs.length === 0 ? (
             <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
               No questions in this quiz yet.
             </div>
           ) : (
-            <div className="p-6 space-y-6">
-              {(() => {
-                // Build a flat list of React nodes: part-instruction blocks + question cards
-                const nodes: React.ReactNode[] = [];
-                // Track which 1-based question indices start a new part
-                const partStartMap = new Map<number, typeof activeParts[number]>();
-                activeParts.forEach((p) => partStartMap.set(p.from, p));
+            <div className="p-6 space-y-8">
+              {/* Tab header with instructions */}
+              {(currentTab.instructions?.some(Boolean) || tabQs.length > 0) && (
+                <div className="space-y-3">
+                  {tabQs.length > 0 && (
+                    <h3 className="text-sm font-bold text-foreground">
+                      {currentTab.label !== "QUESTIONS"
+                        ? `${currentTab.label}: Questions ${currentTab.from}–${currentTab.to}`
+                        : `Questions ${currentTab.from}–${currentTab.to}`}
+                    </h3>
+                  )}
+                  {currentTab.instructions?.some(Boolean) && (
+                    <div className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed border-l-4 border-primary pl-3">
+                      {currentTab.instructions.filter(Boolean).join("\n")}
+                    </div>
+                  )}
+                </div>
+              )}
 
-                sortedQs.forEach((q, i) => {
-                  const slotInfo = slotMap.get(q.id)!;
-                  const slotStart = slotInfo.slotStart + 1;
-                  const slotEnd = slotInfo.slotStart + slotInfo.slots;
-                  // For part-header lookup, use 1-based question index (not slot index)
-                  const part = partStartMap.get(i + 1);
-
-                  // Insert part instruction header if this question starts a part
-                  if (part && (part.instructions ?? []).some(Boolean)) {
-                    nodes.push(
-                      <div
-                        key={`part-header-${i}`}
-                        id={`part-${i + 1}`}
-                        className="rounded-lg border-l-4 border-[#7F1D1D] bg-red-50 dark:bg-red-950/20 px-5 py-4"
-                      >
-                        <p className="text-sm font-bold text-[#7F1D1D] mb-3">
-                          {part.name}: Questions {part.from}–{part.to}
-                        </p>
-                        <ul className="space-y-1.5">
-                          {(part.instructions ?? []).filter(Boolean).map((instr, j) => (
-                            <li key={j} className="flex gap-2.5 text-sm text-foreground">
-                              <span className="mt-0.5 shrink-0 text-foreground">•</span>
-                              <span
-                                dangerouslySetInnerHTML={{
-                                  __html: instr.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>"),
-                                }}
-                              />
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    );
-                  }
-
+              {/* Questions for current tab */}
+              <div className="space-y-5">
+                {tabQs.map((q) => {
+                  const si = slotMap.get(q.id)!;
+                  const slotStart = si.slotStart + 1;
                   const opts = q.options as FillBlankOpts & DropdownOpts & ChooseWordOpts & MatchingOpts;
-                  const answered = answeredIds.has(q.id);
-                  const isMatching = q.type === "matching";
-                  const numLabel = isMatching && slotInfo.slots > 1
-                    ? `${slotStart}–${slotEnd}`
-                    : `${slotStart}`;
 
-                  nodes.push(
-                    <div
-                      key={q.id}
-                      id={`q-${q.id}`}
-                      className={cn(
-                        "p-4 rounded-lg border transition-colors",
-                        answered ? "border-primary/30 bg-primary/5" : "border-border"
+                  return (
+                    <div key={q.id}>
+                      {q.questionText && (
+                        <p className="text-xs text-muted-foreground mb-1 italic">{q.questionText}</p>
                       )}
-                    >
-                      <div className="flex items-start gap-3 mb-3">
-                        {/* For matching: show range badge; rows are numbered inside the component */}
-                        <span className={cn(
-                          "text-xs font-bold rounded-full flex items-center justify-center flex-shrink-0 mt-0.5",
-                          isMatching && slotInfo.slots > 1
-                            ? "px-2 h-6 rounded-lg min-w-[28px]"
-                            : "w-6 h-6",
-                          answered
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground"
-                        )}>
-                          {numLabel}
-                        </span>
-                        <div className="flex-1">
-                          {q.questionText && (
-                            <p className="text-sm font-medium text-muted-foreground mb-2">{q.questionText}</p>
-                          )}
-                          {q.type === "fill_blank" && (
-                            <FillBlankQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} />
-                          )}
-                          {q.type === "dropdown" && (
-                            <DropdownQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} />
-                          )}
-                          {q.type === "choose_word" && (
-                            <ChooseWordQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} />
-                          )}
-                          {q.type === "matching" && (
-                            <MatchingQuestion
-                              opts={opts}
-                              qId={q.id}
-                              answers={answers}
-                              setAnswers={setAnswers}
-                              startNum={slotStart}
-                            />
-                          )}
-                        </div>
-                      </div>
+                      {q.type === "fill_blank" && (
+                        <FillBlankQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
+                      )}
+                      {q.type === "dropdown" && (
+                        <DropdownQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
+                      )}
+                      {q.type === "choose_word" && (
+                        <ChooseWordQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
+                      )}
+                      {q.type === "matching" && (
+                        <MatchingQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} startNum={slotStart} />
+                      )}
                     </div>
                   );
-                });
-
-                return nodes;
-              })()}
+                })}
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* ── FOOTER: parts bar + question number grid ── */}
-      {sortedQs.length > 0 && (
-        <footer className="border-t bg-card flex-shrink-0">
-          {/* Parts bar */}
-          {activeParts.length > 0 && (
-            <div className="bg-[#7F1D1D] flex items-center gap-0 overflow-x-auto">
-              {activeParts.map((part, pi) => {
-                const isFirst = pi === 0;
+      {/* ── FOOTER ── */}
+      <footer className="flex-shrink-0 border-t bg-card">
+
+        {/* Part tabs */}
+        {allTabs.length > 1 && (
+          <div className="flex border-b">
+            {allTabs.map((tab, idx) => (
+              <button
+                key={idx}
+                onClick={() => switchTab(idx)}
+                className={cn(
+                  "flex-1 py-2 text-xs font-semibold tracking-wide transition-colors",
+                  clampedPart === idx
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {tab.label}: {tab.rangeLabel}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Slot-aware question number grid */}
+        <div className="flex items-center gap-1 px-4 py-2 flex-wrap">
+          {sortedQs.flatMap((q) => {
+            const si = slotMap.get(q.id)!;
+            const tabForQ = allTabs.find((t) => {
+              const qIdx = sortedQs.indexOf(q) + 1;
+              return qIdx >= t.from && qIdx <= t.to;
+            });
+            const qTabIdx = allTabs.indexOf(tabForQ!);
+            const isCurrentTab = qTabIdx === clampedPart;
+
+            if (q.type === "matching") {
+              const opts = q.options as MatchingOpts;
+              const rows = (opts.leftItems ?? []).filter(Boolean).length;
+              return Array.from({ length: rows }, (_, ri) => {
+                const done = matchingRowAnswered(answers, q.id, ri);
+                const slotNum = si.slotStart + ri + 1;
                 return (
                   <button
-                    key={pi}
-                    onClick={() => {
-                      // scroll to the first question in this part
-                      const firstQInPart = sortedQs[part.from - 1];
-                      if (firstQInPart) {
-                        document.getElementById(`q-${firstQInPart.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-                      }
-                    }}
+                    key={`${q.id}-${ri}`}
+                    onClick={() => { if (qTabIdx !== -1) switchTab(qTabIdx); setTimeout(() => scrollToQ(q.id), 60); }}
                     className={cn(
-                      "px-5 py-2 text-white text-xs font-bold tracking-wide whitespace-nowrap transition-all",
-                      "border-r border-white/20 hover:bg-white/10",
-                      isFirst && "border border-white rounded-full mx-3 my-1.5 px-4 border-r border-white/80"
+                      "w-7 h-7 text-xs rounded font-medium transition-all",
+                      done
+                        ? "bg-primary text-primary-foreground"
+                        : isCurrentTab
+                        ? "border border-primary text-primary"
+                        : "bg-muted text-muted-foreground"
                     )}
                   >
-                    {part.name.toUpperCase()}: {part.from} to {part.to} Questions
+                    {slotNum}
                   </button>
                 );
-              })}
-              <span className="ml-auto pr-4 text-white/70 text-xs shrink-0">
-                {answeredSlots}/{totalSlots} answered
-              </span>
-            </div>
-          )}
+              });
+            }
 
-          {/* Question number buttons — grouped by part when parts exist */}
-          <div className="px-4 py-3 overflow-x-auto">
-            {activeParts.length > 0 ? (
-              <div className="flex gap-4 flex-wrap">
-                {activeParts.map((part, pi) => {
-                  const partQs = sortedQs.slice(part.from - 1, part.to);
-                  return (
-                    <div key={pi} className="flex items-center gap-1.5 flex-wrap">
-                      {partQs.flatMap((q) => {
-                        const si = slotMap.get(q.id)!;
-                        if (q.type === "matching") {
-                          const opts = q.options as MatchingOpts;
-                          const rows = (opts.leftItems ?? []).filter(Boolean).length;
-                          return Array.from({ length: rows }, (_, ri) => {
-                            const done = matchingRowAnswered(answers, q.id, ri);
-                            const slotNum = si.slotStart + ri + 1;
-                            return (
-                              <button
-                                key={`${q.id}-${ri}`}
-                                className={cn(
-                                  "w-7 h-7 rounded text-xs font-bold border transition-colors",
-                                  done
-                                    ? "bg-primary text-primary-foreground border-primary"
-                                    : "bg-background text-muted-foreground border-border hover:border-primary/50"
-                                )}
-                                onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
-                              >
-                                {slotNum}
-                              </button>
-                            );
-                          });
-                        }
-                        const done = answeredIds.has(q.id);
-                        return [(
-                          <button
-                            key={q.id}
-                            className={cn(
-                              "w-7 h-7 rounded text-xs font-bold border transition-colors",
-                              done
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-background text-muted-foreground border-border hover:border-primary/50"
-                            )}
-                            onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
-                          >
-                            {si.slotStart + 1}
-                          </button>
-                        )];
-                      })}
-                      {pi < activeParts.length - 1 && (
-                        <div className="w-px h-5 bg-border mx-1" />
-                      )}
-                    </div>
-                  );
-                })}
-                {/* Ungrouped questions (beyond all parts) */}
-                {(() => {
-                  const maxTo = Math.max(...activeParts.map((p) => p.to));
-                  const extra = sortedQs.slice(maxTo);
-                  if (extra.length === 0) return null;
-                  return (
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <div className="w-px h-5 bg-border mx-1" />
-                      {extra.flatMap((q) => {
-                        const si = slotMap.get(q.id)!;
-                        if (q.type === "matching") {
-                          const opts = q.options as MatchingOpts;
-                          const rows = (opts.leftItems ?? []).filter(Boolean).length;
-                          return Array.from({ length: rows }, (_, ri) => {
-                            const done = matchingRowAnswered(answers, q.id, ri);
-                            return (
-                              <button
-                                key={`${q.id}-${ri}`}
-                                className={cn(
-                                  "w-7 h-7 rounded text-xs font-bold border transition-colors",
-                                  done
-                                    ? "bg-primary text-primary-foreground border-primary"
-                                    : "bg-background text-muted-foreground border-border hover:border-primary/50"
-                                )}
-                                onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
-                              >
-                                {si.slotStart + ri + 1}
-                              </button>
-                            );
-                          });
-                        }
-                        const done = answeredIds.has(q.id);
-                        return [(
-                          <button
-                            key={q.id}
-                            className={cn(
-                              "w-7 h-7 rounded text-xs font-bold border transition-colors",
-                              done
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-background text-muted-foreground border-border hover:border-primary/50"
-                            )}
-                            onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
-                          >
-                            {si.slotStart + 1}
-                          </button>
-                        )];
-                      })}
-                    </div>
-                  );
-                })()}
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-semibold text-muted-foreground mr-1 shrink-0">Questions:</span>
-                {sortedQs.flatMap((q) => {
-                  const si = slotMap.get(q.id)!;
-                  if (q.type === "matching") {
-                    const opts = q.options as MatchingOpts;
-                    const rows = (opts.leftItems ?? []).filter(Boolean).length;
-                    return Array.from({ length: rows }, (_, ri) => {
-                      const done = matchingRowAnswered(answers, q.id, ri);
-                      return (
-                        <button
-                          key={`${q.id}-${ri}`}
-                          className={cn(
-                            "w-7 h-7 rounded text-xs font-bold border transition-colors",
-                            done
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-background text-muted-foreground border-border hover:border-primary/50"
-                          )}
-                          onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
-                        >
-                          {si.slotStart + ri + 1}
-                        </button>
-                      );
-                    });
-                  }
-                  const done = answeredIds.has(q.id);
-                  return [(
-                    <button
-                      key={q.id}
-                      className={cn(
-                        "w-7 h-7 rounded text-xs font-bold border transition-colors",
-                        done
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background text-muted-foreground border-border hover:border-primary/50"
-                      )}
-                      onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
-                    >
-                      {si.slotStart + 1}
-                    </button>
-                  )];
-                })}
-                <span className="ml-auto text-xs text-muted-foreground shrink-0">
-                  {answeredSlots}/{totalSlots} answered
-                </span>
-              </div>
-            )}
-          </div>
-        </footer>
-      )}
+            const done = answeredIds.has(q.id);
+            return [(
+              <button
+                key={q.id}
+                onClick={() => { if (qTabIdx !== -1) switchTab(qTabIdx); setTimeout(() => scrollToQ(q.id), 60); }}
+                className={cn(
+                  "w-7 h-7 text-xs rounded font-medium transition-all",
+                  done
+                    ? "bg-primary text-primary-foreground"
+                    : isCurrentTab
+                    ? "border border-primary text-primary"
+                    : "bg-muted text-muted-foreground"
+                )}
+              >
+                {si.slotStart + 1}
+              </button>
+            )];
+          })}
+          <span className="ml-auto text-xs text-muted-foreground whitespace-nowrap">
+            {answeredSlots}/{totalSlots} answered
+          </span>
+        </div>
+      </footer>
 
       {/* ── REVIEW DIALOG ── */}
-      <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Review Your Answers</DialogTitle>
-            <DialogDescription>
-              {unanswered > 0
-                ? `You have ${unanswered} unanswered question${unanswered !== 1 ? "s" : ""}.`
-                : "All questions answered. Ready to submit!"}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-3">
-            <div className="flex flex-wrap gap-2">
-              {sortedQs.flatMap((q) => {
-                const si = slotMap.get(q.id)!;
-                if (q.type === "matching") {
-                  const opts = q.options as MatchingOpts;
-                  const rows = (opts.leftItems ?? []).filter(Boolean).length;
-                  return Array.from({ length: rows }, (_, ri) => {
-                    const done = matchingRowAnswered(answers, q.id, ri);
-                    return (
-                      <button
-                        key={`${q.id}-${ri}`}
-                        className={cn(
-                          "w-9 h-9 rounded-lg text-sm font-bold border transition-colors",
-                          done
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800"
-                        )}
-                        onClick={() => {
-                          setReviewOpen(false);
-                          setTimeout(() => {
-                            document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-                          }, 150);
-                        }}
-                      >
-                        {si.slotStart + ri + 1}
-                      </button>
-                    );
-                  });
-                }
-                const done = answeredIds.has(q.id);
-                return [(
-                  <button
-                    key={q.id}
-                    className={cn(
-                      "w-9 h-9 rounded-lg text-sm font-bold border transition-colors",
-                      done
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800"
-                    )}
-                    onClick={() => {
-                      setReviewOpen(false);
-                      setTimeout(() => {
-                        document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-                      }, 150);
-                    }}
-                  >
-                    {si.slotStart + 1}
-                  </button>
-                )];
-              })}
-            </div>
-            <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-sm bg-primary inline-block" /> Answered
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-sm bg-red-100 border border-red-200 inline-block dark:bg-red-950/30" /> Not answered
-              </span>
-            </div>
+      <AlertDialog open={reviewOpen} onOpenChange={setReviewOpen}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Question Review</AlertDialogTitle>
+            <AlertDialogDescription>
+              {answeredSlots} of {totalSlots} questions answered. Unanswered questions are highlighted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid grid-cols-5 gap-2 py-2 max-h-64 overflow-y-auto">
+            {sortedQs.flatMap((q) => {
+              const si = slotMap.get(q.id)!;
+              if (q.type === "matching") {
+                const opts = q.options as MatchingOpts;
+                const rows = (opts.leftItems ?? []).filter(Boolean).length;
+                return Array.from({ length: rows }, (_, ri) => {
+                  const done = matchingRowAnswered(answers, q.id, ri);
+                  return (
+                    <button
+                      key={`${q.id}-${ri}`}
+                      onClick={() => { setReviewOpen(false); setTimeout(() => scrollToQ(q.id), 150); }}
+                      className={cn(
+                        "h-9 flex items-center justify-center rounded text-sm font-semibold",
+                        done
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted border border-destructive/40 text-destructive"
+                      )}
+                    >
+                      {si.slotStart + ri + 1}
+                    </button>
+                  );
+                });
+              }
+              const done = answeredIds.has(q.id);
+              return [(
+                <button
+                  key={q.id}
+                  onClick={() => { setReviewOpen(false); setTimeout(() => scrollToQ(q.id), 150); }}
+                  className={cn(
+                    "h-9 flex items-center justify-center rounded text-sm font-semibold",
+                    done
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted border border-destructive/40 text-destructive"
+                  )}
+                >
+                  {si.slotStart + 1}
+                </button>
+              )];
+            })}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setReviewOpen(false)}>Continue</Button>
-            <Button onClick={() => { setReviewOpen(false); setSubmitOpen(true); }}>Submit Quiz</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continue Quiz</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setReviewOpen(false); setSubmitOpen(true); }}>
+              Submit Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      {/* ── SUBMIT CONFIRM DIALOG ── */}
-      <Dialog open={submitOpen} onOpenChange={setSubmitOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Submit Quiz?</DialogTitle>
-            <DialogDescription>
-              {unanswered > 0
-                ? `You still have ${unanswered} unanswered question${unanswered !== 1 ? "s" : ""}. Once submitted, you cannot make changes.`
-                : "All questions are answered. Are you sure you want to submit?"}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSubmitOpen(false)}>Go Back</Button>
-            <Button onClick={handleSubmit}>Yes, Submit</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* ── SUBMIT DIALOG ── */}
+      <AlertDialog open={submitOpen} onOpenChange={setSubmitOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Submit Quiz?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have answered {answeredSlots} of {totalSlots} questions.{" "}
+              {totalSlots - answeredSlots > 0 && (
+                <span className="text-destructive font-medium">
+                  {totalSlots - answeredSlots} question{totalSlots - answeredSlots !== 1 ? "s" : ""} are still unanswered.
+                </span>
+              )}{" "}
+              Once submitted, you cannot make changes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go Back</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSubmit}>Submit Quiz</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
