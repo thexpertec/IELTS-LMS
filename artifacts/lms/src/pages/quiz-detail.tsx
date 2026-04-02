@@ -68,7 +68,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  ArrowLeft, Plus, Trash2, Edit, ClipboardList, Timer, Eye, EyeOff, X, GripVertical,
+  ArrowLeft, Plus, Trash2, Edit, ClipboardList, Timer, Eye, EyeOff, X, GripVertical, ExternalLink,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────
@@ -1105,10 +1105,20 @@ export default function QuizDetail() {
             <h1 className="text-3xl font-bold tracking-tight">{quiz.title}</h1>
             {quiz.description && <p className="text-muted-foreground mt-1">{quiz.description}</p>}
           </div>
-          <Button variant="outline" onClick={openSettingsEdit} data-testid="btn-edit-settings">
-            <Edit className="w-4 h-4 mr-2" />
-            Edit Settings
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              onClick={() => window.open(`${import.meta.env.BASE_URL}student/quizzes/${quizId}`, "_blank")}
+              data-testid="btn-preview-quiz"
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Preview
+            </Button>
+            <Button variant="outline" onClick={openSettingsEdit} data-testid="btn-edit-settings">
+              <Edit className="w-4 h-4 mr-2" />
+              Edit Settings
+            </Button>
+          </div>
         </div>
       </div>
 
