@@ -14,14 +14,21 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 
+function stripHtml(html: string) {
+  return html.replace(/<[^>]*>/g, "").trim();
+}
+
 const formSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters."),
-  content: z.string().min(10, "Content must be at least 10 characters."),
+  content: z.string().refine(
+    (val) => stripHtml(val).length >= 10,
+    "Content must be at least 10 characters."
+  ),
   videoUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   durationMinutes: z.coerce.number().min(1, "Duration must be at least 1 minute.").optional().or(z.literal("")),
   order: z.coerce.number().min(1, "Order must be at least 1"),
@@ -112,15 +119,14 @@ export default function LessonNew() {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Lesson Content / Notes</FormLabel>
-                <FormControl>
-                  <Textarea 
-                    placeholder="Provide notes, reading material, or context for this lesson..." 
-                    className="min-h-[200px] font-mono text-sm"
-                    {...field} 
-                    data-testid="input-content"
-                  />
-                </FormControl>
-                <FormDescription>Supports basic text formatting.</FormDescription>
+                <RichTextEditor
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Provide notes, reading material, or context for this lesson…"
+                />
+                <FormDescription>
+                  Use the toolbar to apply headings, bold, lists, links, and more.
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}

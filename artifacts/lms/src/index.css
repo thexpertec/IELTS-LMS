@@ -185,3 +185,27 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+/* ── Tiptap rich text editor ── */
+.tiptap p.is-editor-empty:first-child::before {
+  color: hsl(var(--muted-foreground));
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.tiptap {
+  caret-color: hsl(var(--foreground));
+}
+
+.tiptap a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.tiptap hr {
+  border-color: hsl(var(--border));
+  margin: 1rem 0;
+}

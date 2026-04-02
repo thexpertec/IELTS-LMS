@@ -283,9 +283,10 @@ export default function CourseView() {
                   {isExpanded && (
                     <div className="border-t bg-muted/30 px-4 sm:px-5 py-4 space-y-3">
                       {lesson.content ? (
-                        <div className="prose prose-sm max-w-none">
-                          <p className="text-sm leading-relaxed">{lesson.content}</p>
-                        </div>
+                        <div
+                          className="prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed [&_a]:text-primary [&_a]:underline"
+                          dangerouslySetInnerHTML={{ __html: lesson.content }}
+                        />
                       ) : (
                         <p className="text-sm text-muted-foreground italic">No content available for this lesson yet.</p>
                       )}
