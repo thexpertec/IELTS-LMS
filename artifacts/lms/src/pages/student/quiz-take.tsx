@@ -432,15 +432,18 @@ export default function StudentQuizTake() {
                 activeParts.forEach((p) => partStartMap.set(p.from, p));
 
                 sortedQs.forEach((q, i) => {
-                  const oneBasedIdx = i + 1;
-                  const part = partStartMap.get(oneBasedIdx);
+                  const slotInfo = slotMap.get(q.id)!;
+                  const slotStart = slotInfo.slotStart + 1;
+                  const slotEnd = slotInfo.slotStart + slotInfo.slots;
+                  // For part-header lookup, use 1-based question index (not slot index)
+                  const part = partStartMap.get(i + 1);
 
                   // Insert part instruction header if this question starts a part
                   if (part && (part.instructions ?? []).some(Boolean)) {
                     nodes.push(
                       <div
                         key={`part-header-${i}`}
-                        id={`part-${oneBasedIdx}`}
+                        id={`part-${i + 1}`}
                         className="rounded-lg border-l-4 border-[#7F1D1D] bg-red-50 dark:bg-red-950/20 px-5 py-4"
                       >
                         <p className="text-sm font-bold text-[#7F1D1D] mb-3">
@@ -464,6 +467,11 @@ export default function StudentQuizTake() {
 
                   const opts = q.options as FillBlankOpts & DropdownOpts & ChooseWordOpts & MatchingOpts;
                   const answered = answeredIds.has(q.id);
+                  const isMatching = q.type === "matching";
+                  const numLabel = isMatching && slotInfo.slots > 1
+                    ? `${slotStart}–${slotEnd}`
+                    : `${slotStart}`;
+
                   nodes.push(
                     <div
                       key={q.id}
@@ -474,13 +482,17 @@ export default function StudentQuizTake() {
                       )}
                     >
                       <div className="flex items-start gap-3 mb-3">
+                        {/* For matching: show range badge; rows are numbered inside the component */}
                         <span className={cn(
-                          "text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5",
+                          "text-xs font-bold rounded-full flex items-center justify-center flex-shrink-0 mt-0.5",
+                          isMatching && slotInfo.slots > 1
+                            ? "px-2 h-6 rounded-lg min-w-[28px]"
+                            : "w-6 h-6",
                           answered
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted text-muted-foreground"
                         )}>
-                          {oneBasedIdx}
+                          {numLabel}
                         </span>
                         <div className="flex-1">
                           {q.questionText && (
@@ -496,7 +508,13 @@ export default function StudentQuizTake() {
                             <ChooseWordQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} />
                           )}
                           {q.type === "matching" && (
-                            <MatchingQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} />
+                            <MatchingQuestion
+                              opts={opts}
+                              qId={q.id}
+                              answers={answers}
+                              setAnswers={setAnswers}
+                              startNum={slotStart}
+                            />
                           )}
                         </div>
                       </div>
@@ -540,7 +558,7 @@ export default function StudentQuizTake() {
                 );
               })}
               <span className="ml-auto pr-4 text-white/70 text-xs shrink-0">
-                {answeredIds.size}/{sortedQs.length} answered
+                {answeredSlots}/{totalSlots} answered
               </span>
             </div>
           )}
@@ -552,11 +570,33 @@ export default function StudentQuizTake() {
                 {activeParts.map((part, pi) => {
                   const partQs = sortedQs.slice(part.from - 1, part.to);
                   return (
-                    <div key={pi} className="flex items-center gap-1.5">
-                      {partQs.map((q, qi) => {
-                        const globalIdx = part.from - 1 + qi;
+                    <div key={pi} className="flex items-center gap-1.5 flex-wrap">
+                      {partQs.flatMap((q) => {
+                        const si = slotMap.get(q.id)!;
+                        if (q.type === "matching") {
+                          const opts = q.options as MatchingOpts;
+                          const rows = (opts.leftItems ?? []).filter(Boolean).length;
+                          return Array.from({ length: rows }, (_, ri) => {
+                            const done = matchingRowAnswered(answers, q.id, ri);
+                            const slotNum = si.slotStart + ri + 1;
+                            return (
+                              <button
+                                key={`${q.id}-${ri}`}
+                                className={cn(
+                                  "w-7 h-7 rounded text-xs font-bold border transition-colors",
+                                  done
+                                    ? "bg-primary text-primary-foreground border-primary"
+                                    : "bg-background text-muted-foreground border-border hover:border-primary/50"
+                                )}
+                                onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                              >
+                                {slotNum}
+                              </button>
+                            );
+                          });
+                        }
                         const done = answeredIds.has(q.id);
-                        return (
+                        return [(
                           <button
                             key={q.id}
                             className={cn(
@@ -567,9 +607,9 @@ export default function StudentQuizTake() {
                             )}
                             onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
                           >
-                            {globalIdx + 1}
+                            {si.slotStart + 1}
                           </button>
-                        );
+                        )];
                       })}
                       {pi < activeParts.length - 1 && (
                         <div className="w-px h-5 bg-border mx-1" />
@@ -583,11 +623,33 @@ export default function StudentQuizTake() {
                   const extra = sortedQs.slice(maxTo);
                   if (extra.length === 0) return null;
                   return (
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <div className="w-px h-5 bg-border mx-1" />
-                      {extra.map((q, qi) => {
+                      {extra.flatMap((q) => {
+                        const si = slotMap.get(q.id)!;
+                        if (q.type === "matching") {
+                          const opts = q.options as MatchingOpts;
+                          const rows = (opts.leftItems ?? []).filter(Boolean).length;
+                          return Array.from({ length: rows }, (_, ri) => {
+                            const done = matchingRowAnswered(answers, q.id, ri);
+                            return (
+                              <button
+                                key={`${q.id}-${ri}`}
+                                className={cn(
+                                  "w-7 h-7 rounded text-xs font-bold border transition-colors",
+                                  done
+                                    ? "bg-primary text-primary-foreground border-primary"
+                                    : "bg-background text-muted-foreground border-border hover:border-primary/50"
+                                )}
+                                onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                              >
+                                {si.slotStart + ri + 1}
+                              </button>
+                            );
+                          });
+                        }
                         const done = answeredIds.has(q.id);
-                        return (
+                        return [(
                           <button
                             key={q.id}
                             className={cn(
@@ -598,9 +660,9 @@ export default function StudentQuizTake() {
                             )}
                             onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
                           >
-                            {maxTo + qi + 1}
+                            {si.slotStart + 1}
                           </button>
-                        );
+                        )];
                       })}
                     </div>
                   );
@@ -609,9 +671,31 @@ export default function StudentQuizTake() {
             ) : (
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-semibold text-muted-foreground mr-1 shrink-0">Questions:</span>
-                {sortedQs.map((q, i) => {
+                {sortedQs.flatMap((q) => {
+                  const si = slotMap.get(q.id)!;
+                  if (q.type === "matching") {
+                    const opts = q.options as MatchingOpts;
+                    const rows = (opts.leftItems ?? []).filter(Boolean).length;
+                    return Array.from({ length: rows }, (_, ri) => {
+                      const done = matchingRowAnswered(answers, q.id, ri);
+                      return (
+                        <button
+                          key={`${q.id}-${ri}`}
+                          className={cn(
+                            "w-7 h-7 rounded text-xs font-bold border transition-colors",
+                            done
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-background text-muted-foreground border-border hover:border-primary/50"
+                          )}
+                          onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                        >
+                          {si.slotStart + ri + 1}
+                        </button>
+                      );
+                    });
+                  }
                   const done = answeredIds.has(q.id);
-                  return (
+                  return [(
                     <button
                       key={q.id}
                       className={cn(
@@ -622,12 +706,12 @@ export default function StudentQuizTake() {
                       )}
                       onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
                     >
-                      {i + 1}
+                      {si.slotStart + 1}
                     </button>
-                  );
+                  )];
                 })}
                 <span className="ml-auto text-xs text-muted-foreground shrink-0">
-                  {answeredIds.size}/{sortedQs.length} answered
+                  {answeredSlots}/{totalSlots} answered
                 </span>
               </div>
             )}
@@ -648,9 +732,36 @@ export default function StudentQuizTake() {
           </DialogHeader>
           <div className="py-3">
             <div className="flex flex-wrap gap-2">
-              {sortedQs.map((q, i) => {
+              {sortedQs.flatMap((q) => {
+                const si = slotMap.get(q.id)!;
+                if (q.type === "matching") {
+                  const opts = q.options as MatchingOpts;
+                  const rows = (opts.leftItems ?? []).filter(Boolean).length;
+                  return Array.from({ length: rows }, (_, ri) => {
+                    const done = matchingRowAnswered(answers, q.id, ri);
+                    return (
+                      <button
+                        key={`${q.id}-${ri}`}
+                        className={cn(
+                          "w-9 h-9 rounded-lg text-sm font-bold border transition-colors",
+                          done
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800"
+                        )}
+                        onClick={() => {
+                          setReviewOpen(false);
+                          setTimeout(() => {
+                            document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                          }, 150);
+                        }}
+                      >
+                        {si.slotStart + ri + 1}
+                      </button>
+                    );
+                  });
+                }
                 const done = answeredIds.has(q.id);
-                return (
+                return [(
                   <button
                     key={q.id}
                     className={cn(
@@ -666,9 +777,9 @@ export default function StudentQuizTake() {
                       }, 150);
                     }}
                   >
-                    {i + 1}
+                    {si.slotStart + 1}
                   </button>
-                );
+                )];
               })}
             </div>
             <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
