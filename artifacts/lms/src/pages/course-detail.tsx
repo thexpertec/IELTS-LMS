@@ -164,11 +164,35 @@ export default function CourseDetail() {
         onValueChange={(v) => setLocation(`/courses/${id}?tab=${v}`)}
         className="w-full"
       >
-        <TabsList className="mb-6">
-          <TabsTrigger value="curriculum" data-testid="tab-curriculum">Curriculum</TabsTrigger>
-          <TabsTrigger value="grades" data-testid="tab-grades">Grades</TabsTrigger>
-          <TabsTrigger value="stream" data-testid="tab-stream">Stream</TabsTrigger>
-          <TabsTrigger value="settings" data-testid="tab-settings">Settings</TabsTrigger>
+        <TabsList className="h-auto w-full justify-start gap-0 rounded-none border-b bg-transparent p-0 mb-8">
+          <TabsTrigger
+            value="curriculum"
+            data-testid="tab-curriculum"
+            className="rounded-none border-b-2 border-transparent px-6 py-3 text-base font-semibold text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
+          >
+            Curriculum
+          </TabsTrigger>
+          <TabsTrigger
+            value="grades"
+            data-testid="tab-grades"
+            className="rounded-none border-b-2 border-transparent px-6 py-3 text-base font-semibold text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
+          >
+            Grades
+          </TabsTrigger>
+          <TabsTrigger
+            value="stream"
+            data-testid="tab-stream"
+            className="rounded-none border-b-2 border-transparent px-6 py-3 text-base font-semibold text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
+          >
+            Stream
+          </TabsTrigger>
+          <TabsTrigger
+            value="settings"
+            data-testid="tab-settings"
+            className="rounded-none border-b-2 border-transparent px-6 py-3 text-base font-semibold text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
+          >
+            Settings
+          </TabsTrigger>
         </TabsList>
 
         {/* ── Curriculum ── */}
