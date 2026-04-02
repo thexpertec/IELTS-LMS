@@ -4,7 +4,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, ChevronDown, ChevronRight, Image, Volume2, FileText } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, Image, Volume2, FileText, Save, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { QuizPart } from "./parts-editor";
 
@@ -31,7 +31,22 @@ export function InlinePartSection({
 }: InlinePartSectionProps) {
   const [expanded, setExpanded] = useState(false);
   const [activeMedia, setActiveMedia] = useState<MediaTab>(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
   const { setNodeRef } = useDroppable({ id: groupKey });
+
+  function handleChange(updates: Partial<QuizPart>) {
+    onPartChange(updates);
+    setIsDirty(true);
+    setJustSaved(false);
+  }
+
+  function handleSave() {
+    onPartBlur();
+    setIsDirty(false);
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 2000);
+  }
 
   function toggleMedia(tab: NonNullable<MediaTab>) {
     setActiveMedia((prev) => (prev === tab ? null : tab));
@@ -75,13 +90,15 @@ export function InlinePartSection({
         <Input
           className="h-8 bg-transparent text-white font-semibold border-0 shadow-none focus-visible:ring-white/30 focus-visible:ring-1 px-1 flex-1 min-w-0 placeholder:text-white/50"
           value={part.name}
-          onChange={(e) => onPartChange({ name: e.target.value })}
-          onBlur={onPartBlur}
+          onChange={(e) => handleChange({ name: e.target.value })}
           placeholder="Part name…"
         />
 
         <div className="flex items-center gap-2 shrink-0">
-          {hasMedia && <FileText className="w-3.5 h-3.5 text-white/60" aria-label="Has passage/media" />}
+          {isDirty && (
+            <span className="text-xs text-yellow-300 font-medium">Unsaved</span>
+          )}
+          {hasMedia && !isDirty && <FileText className="w-3.5 h-3.5 text-white/60" aria-label="Has passage/media" />}
           {instrCount > 0 && (
             <span className="text-xs text-white/70">{instrCount} instr.</span>
           )}
@@ -133,16 +150,13 @@ export function InlinePartSection({
 
           {/* Passage content */}
           {activeMedia === "passage" && (
-            <div>
-              <Textarea
-                className="text-sm font-mono min-h-[100px] resize-y"
-                placeholder="Paste reading passage here — shown to students on the left while answering…"
-                value={part.passageText ?? ""}
-                onChange={(e) => onPartChange({ passageText: e.target.value })}
-                onBlur={onPartBlur}
-                autoFocus
-              />
-            </div>
+            <Textarea
+              className="text-sm font-mono min-h-[100px] resize-y"
+              placeholder="Paste reading passage here — shown to students on the left while answering…"
+              value={part.passageText ?? ""}
+              onChange={(e) => handleChange({ passageText: e.target.value })}
+              autoFocus
+            />
           )}
 
           {/* Image content */}
@@ -152,8 +166,7 @@ export function InlinePartSection({
                 className="text-sm"
                 placeholder="https://example.com/image.png"
                 value={part.imageUrl ?? ""}
-                onChange={(e) => onPartChange({ imageUrl: e.target.value })}
-                onBlur={onPartBlur}
+                onChange={(e) => handleChange({ imageUrl: e.target.value })}
                 autoFocus
               />
               {part.imageUrl && (
@@ -174,8 +187,7 @@ export function InlinePartSection({
                 className="text-sm"
                 placeholder="https://example.com/audio.mp3"
                 value={part.audioUrl ?? ""}
-                onChange={(e) => onPartChange({ audioUrl: e.target.value })}
-                onBlur={onPartBlur}
+                onChange={(e) => handleChange({ audioUrl: e.target.value })}
                 autoFocus
               />
               {part.audioUrl && (
@@ -222,6 +234,27 @@ export function InlinePartSection({
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Save button */}
+          <div className="flex justify-end pt-1">
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleSave}
+              disabled={!isDirty && !justSaved}
+              className={cn(
+                "h-8 text-xs gap-1.5 transition-all",
+                justSaved && "bg-green-600 hover:bg-green-600 text-white",
+                isDirty && "bg-[#7F1D1D] hover:bg-[#7F1D1D]/90 text-white"
+              )}
+            >
+              {justSaved ? (
+                <><Check className="w-3.5 h-3.5" /> Saved</>
+              ) : (
+                <><Save className="w-3.5 h-3.5" /> Save Part</>
+              )}
+            </Button>
           </div>
         </div>
       )}
