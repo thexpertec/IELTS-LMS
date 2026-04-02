@@ -312,6 +312,22 @@ export default function StudentQuizTake() {
     return map;
   })();
   const totalSlots = sortedQs.reduce((sum, q) => sum + questionSlots(q), 0);
+
+  // Compute actual slot ranges per tab (matching rows count as multiple slots)
+  const tabSlotRanges = allTabs.map((tab) => {
+    const qs = sortedQs.filter((_, i) => {
+      const n = i + 1;
+      return n >= tab.from && n <= tab.to;
+    });
+    if (qs.length === 0) return { min: 1, max: 0 };
+    let min = Infinity, max = -Infinity;
+    for (const q of qs) {
+      const si = slotMap.get(q.id);
+      if (si) { min = Math.min(min, si.slotStart + 1); max = Math.max(max, si.slotStart + si.slots); }
+    }
+    return { min: min === Infinity ? 1 : min, max: max === -Infinity ? 0 : max };
+  });
+  const currentTabSlots = tabSlotRanges[clampedPart] ?? { min: currentTab.from, max: currentTab.to };
   const answeredIds = new Set(sortedQs.filter((q) => isAnswered(q.id, q.type as QType, answers)).map((q) => q.id));
   const answeredSlots = sortedQs.reduce((sum, q) => {
     if (q.type === "matching") {
@@ -485,8 +501,8 @@ export default function StudentQuizTake() {
                   {tabQs.length > 0 && (
                     <h3 className="text-sm font-bold text-foreground">
                       {currentTab.label !== "QUESTIONS"
-                        ? `${currentTab.label}: Questions ${currentTab.from}–${currentTab.to}`
-                        : `Questions ${currentTab.from}–${currentTab.to}`}
+                        ? `${currentTab.label}: Questions ${currentTabSlots.min}–${currentTabSlots.max}`
+                        : `Questions ${currentTabSlots.min}–${currentTabSlots.max}`}
                     </h3>
                   )}
                   {currentTab.instructions?.some(Boolean) && (
@@ -547,7 +563,7 @@ export default function StudentQuizTake() {
                     : "text-muted-foreground hover:bg-muted"
                 )}
               >
-                {tab.label}: {tab.rangeLabel}
+                {tab.label}: {tabSlotRanges[idx]?.min ?? tab.from} to {tabSlotRanges[idx]?.max ?? tab.to} Questions
               </button>
             ))}
           </div>
