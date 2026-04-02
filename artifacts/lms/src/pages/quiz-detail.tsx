@@ -620,12 +620,12 @@ export default function QuizDetail() {
 
       {/* ── Quiz Settings Dialog ── */}
       <Dialog open={editSettings} onOpenChange={setEditSettings}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
+        <DialogContent className="max-w-lg flex flex-col max-h-[85vh]">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Edit Quiz Settings</DialogTitle>
             <DialogDescription>Update the quiz title, description, and options.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-2 overflow-y-auto flex-1 pr-1">
             <div>
               <Label>Title</Label>
               <Input
@@ -697,7 +697,7 @@ export default function QuizDetail() {
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0 pt-2 border-t">
             <Button variant="outline" onClick={() => setEditSettings(false)}>Cancel</Button>
             <Button onClick={handleSaveSettings} disabled={updateQuiz.isPending} data-testid="btn-save-settings">
               {updateQuiz.isPending ? "Saving..." : "Save Changes"}
