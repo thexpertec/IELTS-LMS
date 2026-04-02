@@ -1,4 +1,4 @@
-import { useGetLesson, useUpdateLesson, getListLessonsQueryKey } from "@workspace/api-client-react";
+import { useGetLesson, useUpdateLesson, useListChapters, getListLessonsQueryKey } from "@workspace/api-client-react";
 import { useLocation, useParams } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -15,6 +15,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -33,6 +40,7 @@ const formSchema = z.object({
   videoUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   durationMinutes: z.coerce.number().min(1, "Duration must be at least 1 minute.").optional().or(z.literal("")),
   order: z.coerce.number().min(1, "Order must be at least 1"),
+  chapterId: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -46,6 +54,7 @@ export default function LessonEdit() {
   const queryClient = useQueryClient();
 
   const { data: lesson, isLoading, isError } = useGetLesson(courseId, lessonId);
+  const { data: chapters = [] } = useListChapters(courseId);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -55,6 +64,7 @@ export default function LessonEdit() {
       videoUrl: "",
       durationMinutes: "",
       order: 1,
+      chapterId: "none",
     },
   });
 
@@ -66,6 +76,7 @@ export default function LessonEdit() {
         videoUrl: lesson.videoUrl ?? "",
         durationMinutes: lesson.durationMinutes ?? "",
         order: lesson.order,
+        chapterId: lesson.chapterId != null ? String(lesson.chapterId) : "none",
       });
     }
   }, [lesson]);
@@ -93,6 +104,7 @@ export default function LessonEdit() {
         videoUrl: values.videoUrl || null,
         durationMinutes: values.durationMinutes ? Number(values.durationMinutes) : null,
         order: Number(values.order),
+        chapterId: values.chapterId && values.chapterId !== "none" ? Number(values.chapterId) : null,
       }
     });
   }
@@ -146,6 +158,32 @@ export default function LessonEdit() {
               </FormItem>
             )}
           />
+
+          {chapters.length > 0 && (
+            <FormField
+              control={form.control}
+              name="chapterId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Chapter</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value ?? "none"}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="No chapter" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">— No chapter —</SelectItem>
+                      {chapters.map((ch) => (
+                        <SelectItem key={ch.id} value={String(ch.id)}>{ch.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
           <FormField
             control={form.control}

@@ -6,15 +6,16 @@ import {
   useListQuizzes,
   useGetStudentAssignments,
   useSubmitAssignment,
+  useListChapters,
   getGetStudentCourseDetailQueryKey,
 } from "@workspace/api-client-react";
 import { useStudent } from "@/context/student-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
-  ArrowLeft, CheckCircle, Circle, Play, FileText, Video, BookOpen,
+  ArrowLeft, CheckCircle, Circle, Play, FileText, BookOpen,
   Clock, ClipboardList, Timer, ChevronDown, ChevronUp, Send,
-  CheckCheck, GraduationCap,
+  CheckCheck, GraduationCap, FolderOpen,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,11 +28,16 @@ import { format } from "date-fns";
 
 type Tab = "all" | "lessons" | "quizzes" | "assignments";
 
-function lessonIcon(type: string) {
-  if (type === "video") return Video;
-  if (type === "quiz") return FileText;
-  return BookOpen;
-}
+type StudentLesson = {
+  id: number;
+  title: string;
+  content?: string;
+  duration: number;
+  type: string;
+  chapterId?: number | null;
+  chapterTitle?: string | null;
+  isCompleted: boolean;
+};
 
 export default function CourseView() {
   const [, params] = useRoute("/student/courses/:id");
@@ -51,6 +57,9 @@ export default function CourseView() {
     { email },
     { query: { enabled: !!email && !!courseId } }
   );
+  const { data: chapters = [] } = useListChapters(courseId, {
+    query: { enabled: !!courseId }
+  });
   const { data: allQuizzes } = useListQuizzes(
     { courseId },
     { query: { enabled: !!courseId } }
@@ -121,14 +130,111 @@ export default function CourseView() {
     );
   }
 
-  const completedCount = course.lessons.filter((l) => l.isCompleted).length;
+  const lessons = course.lessons as unknown as StudentLesson[];
+  const completedCount = lessons.filter((l) => l.isCompleted).length;
 
   const tabs: { id: Tab; label: string; count: number }[] = [
-    { id: "all",         label: "All Content",  count: course.lessons.length + quizzes.length + assignments.length },
-    { id: "lessons",     label: "Lessons",      count: course.lessons.length },
+    { id: "all",         label: "All Content",  count: lessons.length + quizzes.length + assignments.length },
+    { id: "lessons",     label: "Lessons",      count: lessons.length },
     { id: "quizzes",     label: "Quizzes",      count: quizzes.length },
     { id: "assignments", label: "Assignment",   count: assignments.length },
   ];
+
+  const sortedChapters = [...chapters].sort((a, b) => a.order - b.order);
+  const chapterIds = new Set(chapters.map((c) => c.id));
+  const hasChapters = sortedChapters.length > 0;
+  const unassignedLessons = lessons.filter((l) => !l.chapterId || !chapterIds.has(l.chapterId));
+
+  function renderLesson(lesson: StudentLesson, idx: number) {
+    const isExpanded = expandedLesson === lesson.id;
+    return (
+      <div
+        key={lesson.id}
+        className={cn(
+          "bg-card rounded-xl border shadow-sm overflow-hidden transition-all",
+          lesson.isCompleted && "border-green-500/30 bg-green-50/40 dark:bg-green-950/10"
+        )}
+      >
+        <div className="p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Lesson {idx + 1}
+                </span>
+                {lesson.isCompleted && (
+                  <Badge className="text-[10px] h-4 px-1.5 bg-green-500/10 text-green-600 border-green-500/30 hover:bg-green-500/10" variant="outline">
+                    <CheckCheck className="w-2.5 h-2.5 mr-0.5" />Completed
+                  </Badge>
+                )}
+              </div>
+              <h3 className="text-base font-bold">{lesson.title}</h3>
+              {lesson.duration > 0 && (
+                <div className="flex items-center gap-1 mt-2">
+                  <Clock className="w-3 h-3 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">{lesson.duration} min</span>
+                </div>
+              )}
+            </div>
+            <Button
+              size="sm"
+              variant={lesson.isCompleted ? "outline" : "default"}
+              className={cn(
+                "shrink-0 gap-1.5 text-xs h-8",
+                lesson.isCompleted && "text-green-600 border-green-500/50 hover:bg-green-50"
+              )}
+              onClick={() => handleToggleLesson(lesson.id, lesson.isCompleted)}
+            >
+              {lesson.isCompleted ? (
+                <><Circle className="w-3 h-3" />Mark as Unread</>
+              ) : (
+                <><CheckCircle className="w-3 h-3" />Mark as Read</>
+              )}
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2 mt-4">
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs h-8"
+              onClick={() => setExpandedLesson(isExpanded ? null : lesson.id)}
+            >
+              <Play className="w-3 h-3" />
+              Start Lesson
+              {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </Button>
+          </div>
+        </div>
+
+        {isExpanded && (
+          <div className="border-t bg-muted/30 px-4 sm:px-5 py-4 space-y-3">
+            {lesson.content ? (
+              <div
+                className="prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed [&_a]:text-primary [&_a]:underline"
+                dangerouslySetInnerHTML={{ __html: lesson.content }}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground italic">No content available for this lesson yet.</p>
+            )}
+            {!lesson.isCompleted && (
+              <>
+                <Separator />
+                <Button
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => handleToggleLesson(lesson.id, false)}
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  Mark as Complete
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -172,7 +278,7 @@ export default function CourseView() {
               <span className="font-bold text-primary">{course.progressPercent}%</span>
             </div>
             <Progress value={course.progressPercent} className="h-3 rounded-full" />
-            <p className="text-xs text-muted-foreground">{completedCount} of {course.lessons.length} lessons completed</p>
+            <p className="text-xs text-muted-foreground">{completedCount} of {lessons.length} lessons completed</p>
           </div>
 
           {/* Tabs */}
@@ -207,107 +313,46 @@ export default function CourseView() {
       <div className="max-w-4xl mx-auto px-4 sm:px-8 py-6 space-y-4">
 
         {/* ─── LESSONS ─── */}
-        {(activeTab === "all" || activeTab === "lessons") && course.lessons.length > 0 && (
-          <section className="space-y-3">
+        {(activeTab === "all" || activeTab === "lessons") && lessons.length > 0 && (
+          <section className="space-y-4">
             {activeTab === "all" && (
-              <h2 className="text-base font-semibold text-muted-foreground uppercase tracking-wide text-xs">Lessons</h2>
+              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Lessons</h2>
             )}
-            {course.lessons.map((lesson, idx) => {
-              const Icon = lessonIcon(lesson.type);
-              const isExpanded = expandedLesson === lesson.id;
-              return (
-                <div
-                  key={lesson.id}
-                  className={cn(
-                    "bg-card rounded-xl border shadow-sm overflow-hidden transition-all",
-                    lesson.isCompleted && "border-green-500/30 bg-green-50/40 dark:bg-green-950/10"
-                  )}
-                >
-                  <div className="p-4 sm:p-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Lesson {idx + 1}</span>
-                          {lesson.isCompleted && (
-                            <Badge className="text-[10px] h-4 px-1.5 bg-green-500/10 text-green-600 border-green-500/30 hover:bg-green-500/10" variant="outline">
-                              <CheckCheck className="w-2.5 h-2.5 mr-0.5" />Completed
-                            </Badge>
-                          )}
-                        </div>
-                        <h3 className="text-base font-bold">{lesson.title}</h3>
-                        {lesson.description && (
-                          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{lesson.description}</p>
-                        )}
-                        {lesson.duration > 0 && (
-                          <div className="flex items-center gap-1 mt-2">
-                            <Clock className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground">{lesson.duration} min</span>
-                            <span className="text-xs text-muted-foreground mx-1">·</span>
-                            <Icon className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground capitalize">{lesson.type}</span>
-                          </div>
-                        )}
-                      </div>
-                      <Button
-                        size="sm"
-                        variant={lesson.isCompleted ? "outline" : "default"}
-                        className={cn(
-                          "shrink-0 gap-1.5 text-xs h-8",
-                          lesson.isCompleted && "text-green-600 border-green-500/50 hover:bg-green-50"
-                        )}
-                        onClick={() => handleToggleLesson(lesson.id, lesson.isCompleted)}
-                      >
-                        {lesson.isCompleted ? (
-                          <><Circle className="w-3 h-3" />Mark as Unread</>
-                        ) : (
-                          <><CheckCircle className="w-3 h-3" />Mark as Read</>
-                        )}
-                      </Button>
-                    </div>
 
-                    <div className="flex items-center gap-2 mt-4">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1.5 text-xs h-8"
-                        onClick={() => setExpandedLesson(isExpanded ? null : lesson.id)}
-                      >
-                        <Play className="w-3 h-3" />
-                        Start Lesson
-                        {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                      </Button>
+            {hasChapters ? (
+              <div className="space-y-4">
+                {sortedChapters.map((chapter) => {
+                  const chapterLessons = lessons.filter((l) => l.chapterId === chapter.id);
+                  if (chapterLessons.length === 0) return null;
+                  return (
+                    <div key={chapter.id} className="space-y-2">
+                      <div className="flex items-center gap-2 px-1">
+                        <FolderOpen className="w-4 h-4 text-primary/70 shrink-0" />
+                        <h3 className="text-sm font-bold">{chapter.title}</h3>
+                        <span className="text-xs text-muted-foreground">
+                          {chapterLessons.filter((l) => l.isCompleted).length}/{chapterLessons.length} done
+                        </span>
+                      </div>
+                      <div className="space-y-2 pl-3 border-l-2 border-primary/20 ml-2">
+                        {chapterLessons.map((l, i) => renderLesson(l, i))}
+                      </div>
+                    </div>
+                  );
+                })}
+                {unassignedLessons.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">Other Lessons</h3>
+                    <div className="space-y-2">
+                      {unassignedLessons.map((l, i) => renderLesson(l, i))}
                     </div>
                   </div>
-
-                  {/* Expanded lesson content */}
-                  {isExpanded && (
-                    <div className="border-t bg-muted/30 px-4 sm:px-5 py-4 space-y-3">
-                      {lesson.content ? (
-                        <div
-                          className="prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed [&_a]:text-primary [&_a]:underline"
-                          dangerouslySetInnerHTML={{ __html: lesson.content }}
-                        />
-                      ) : (
-                        <p className="text-sm text-muted-foreground italic">No content available for this lesson yet.</p>
-                      )}
-                      {!lesson.isCompleted && (
-                        <>
-                          <Separator />
-                          <Button
-                            size="sm"
-                            className="gap-1.5 text-xs"
-                            onClick={() => handleToggleLesson(lesson.id, false)}
-                          >
-                            <CheckCircle className="w-3.5 h-3.5" />
-                            Mark as Complete
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {lessons.map((lesson, idx) => renderLesson(lesson, idx))}
+              </div>
+            )}
           </section>
         )}
 
@@ -462,7 +507,7 @@ export default function CourseView() {
         )}
 
         {/* ─── Empty state for All Content ─── */}
-        {activeTab === "all" && course.lessons.length === 0 && quizzes.length === 0 && assignments.length === 0 && (
+        {activeTab === "all" && lessons.length === 0 && quizzes.length === 0 && assignments.length === 0 && (
           <div className="bg-card border rounded-xl p-12 text-center">
             <BookOpen className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
             <p className="text-muted-foreground">No content available for this course yet.</p>

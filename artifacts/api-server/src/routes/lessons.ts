@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
-import { db, lessonsTable } from "@workspace/db";
+import { db, lessonsTable, chaptersTable } from "@workspace/db";
 import {
   ListLessonsResponse,
   ListLessonsParams,
@@ -16,19 +16,39 @@ import {
 
 const router: IRouter = Router();
 
+async function lessonWithChapter(courseId: number, lessonId?: number) {
+  const rows = await db
+    .select({
+      id: lessonsTable.id,
+      courseId: lessonsTable.courseId,
+      chapterId: lessonsTable.chapterId,
+      chapterTitle: chaptersTable.title,
+      title: lessonsTable.title,
+      content: lessonsTable.content,
+      videoUrl: lessonsTable.videoUrl,
+      durationMinutes: lessonsTable.durationMinutes,
+      order: lessonsTable.order,
+      createdAt: lessonsTable.createdAt,
+      updatedAt: lessonsTable.updatedAt,
+    })
+    .from(lessonsTable)
+    .leftJoin(chaptersTable, eq(lessonsTable.chapterId, chaptersTable.id))
+    .where(
+      lessonId !== undefined
+        ? and(eq(lessonsTable.courseId, courseId), eq(lessonsTable.id, lessonId))
+        : eq(lessonsTable.courseId, courseId)
+    )
+    .orderBy(lessonsTable.order);
+  return rows.map((r) => ({ ...r, chapterTitle: r.chapterTitle ?? null }));
+}
+
 router.get("/courses/:courseId/lessons", async (req, res): Promise<void> => {
   const params = ListLessonsParams.safeParse({ courseId: req.params.courseId });
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
-
-  const lessons = await db
-    .select()
-    .from(lessonsTable)
-    .where(eq(lessonsTable.courseId, params.data.courseId))
-    .orderBy(lessonsTable.order);
-
+  const lessons = await lessonWithChapter(params.data.courseId);
   res.json(ListLessonsResponse.parse(lessons));
 });
 
@@ -50,7 +70,8 @@ router.post("/courses/:courseId/lessons", async (req, res): Promise<void> => {
     .values({ ...parsed.data, courseId: params.data.courseId })
     .returning();
 
-  res.status(201).json(GetLessonResponse.parse(lesson));
+  const rows = await lessonWithChapter(params.data.courseId, lesson.id);
+  res.status(201).json(GetLessonResponse.parse(rows[0]));
 });
 
 router.get("/courses/:courseId/lessons/:id", async (req, res): Promise<void> => {
@@ -60,17 +81,12 @@ router.get("/courses/:courseId/lessons/:id", async (req, res): Promise<void> => 
     return;
   }
 
-  const [lesson] = await db
-    .select()
-    .from(lessonsTable)
-    .where(and(eq(lessonsTable.id, params.data.id), eq(lessonsTable.courseId, params.data.courseId)));
-
-  if (!lesson) {
+  const rows = await lessonWithChapter(params.data.courseId, params.data.id);
+  if (!rows.length) {
     res.status(404).json({ error: "Lesson not found" });
     return;
   }
-
-  res.json(GetLessonResponse.parse(lesson));
+  res.json(GetLessonResponse.parse(rows[0]));
 });
 
 router.patch("/courses/:courseId/lessons/:id", async (req, res): Promise<void> => {
@@ -97,7 +113,8 @@ router.patch("/courses/:courseId/lessons/:id", async (req, res): Promise<void> =
     return;
   }
 
-  res.json(UpdateLessonResponse.parse(lesson));
+  const rows = await lessonWithChapter(params.data.courseId, lesson.id);
+  res.json(UpdateLessonResponse.parse(rows[0]));
 });
 
 router.delete("/courses/:courseId/lessons/:id", async (req, res): Promise<void> => {

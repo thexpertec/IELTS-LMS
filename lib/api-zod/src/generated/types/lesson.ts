@@ -9,6 +9,10 @@
 export interface Lesson {
   id: number;
   courseId: number;
+  /** @nullable */
+  chapterId: number | null;
+  /** @nullable */
+  chapterTitle: string | null;
   title: string;
   content: string;
   /** @nullable */

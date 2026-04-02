@@ -1,4 +1,4 @@
-import { useCreateLesson, getListLessonsQueryKey } from "@workspace/api-client-react";
+import { useCreateLesson, useListChapters, getListLessonsQueryKey } from "@workspace/api-client-react";
 import { useLocation, useParams } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -14,6 +14,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -32,6 +39,7 @@ const formSchema = z.object({
   videoUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   durationMinutes: z.coerce.number().min(1, "Duration must be at least 1 minute.").optional().or(z.literal("")),
   order: z.coerce.number().min(1, "Order must be at least 1"),
+  chapterId: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -43,6 +51,8 @@ export default function LessonNew() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const { data: chapters = [] } = useListChapters(courseId);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -51,6 +61,7 @@ export default function LessonNew() {
       videoUrl: "",
       durationMinutes: "",
       order: 1,
+      chapterId: "none",
     },
   });
 
@@ -76,6 +87,7 @@ export default function LessonNew() {
         videoUrl: values.videoUrl || null,
         durationMinutes: values.durationMinutes ? Number(values.durationMinutes) : null,
         order: Number(values.order),
+        chapterId: values.chapterId && values.chapterId !== "none" ? Number(values.chapterId) : null,
       }
     });
   }
@@ -112,6 +124,32 @@ export default function LessonNew() {
               </FormItem>
             )}
           />
+
+          {chapters.length > 0 && (
+            <FormField
+              control={form.control}
+              name="chapterId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Chapter</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value ?? "none"}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-chapter">
+                        <SelectValue placeholder="No chapter" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">— No chapter —</SelectItem>
+                      {chapters.map((ch) => (
+                        <SelectItem key={ch.id} value={String(ch.id)}>{ch.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
           <FormField
             control={form.control}

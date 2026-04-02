@@ -14,4 +14,6 @@ export interface UpdateLessonBody {
   /** @nullable */
   durationMinutes?: number | null;
   order?: number;
+  /** @nullable */
+  chapterId?: number | null;
 }

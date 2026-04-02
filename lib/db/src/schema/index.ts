@@ -1,4 +1,5 @@
 export * from "./courses";
+export * from "./chapters";
 export * from "./lessons";
 export * from "./enrollments";
 export * from "./lesson_progress";

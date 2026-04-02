@@ -4,6 +4,7 @@ import {
   db,
   coursesTable,
   lessonsTable,
+  chaptersTable,
   enrollmentsTable,
   lessonProgressTable,
   studentProfilesTable,
@@ -275,9 +276,19 @@ router.get("/student/courses/:courseId", async (req, res): Promise<void> => {
     return;
   }
 
-  const lessons = await db
-    .select()
+  const lessonRows = await db
+    .select({
+      id: lessonsTable.id,
+      title: lessonsTable.title,
+      content: lessonsTable.content,
+      videoUrl: lessonsTable.videoUrl,
+      durationMinutes: lessonsTable.durationMinutes,
+      order: lessonsTable.order,
+      chapterId: lessonsTable.chapterId,
+      chapterTitle: chaptersTable.title,
+    })
     .from(lessonsTable)
+    .leftJoin(chaptersTable, eq(lessonsTable.chapterId, chaptersTable.id))
     .where(eq(lessonsTable.courseId, courseId))
     .orderBy(lessonsTable.order);
 
@@ -297,14 +308,14 @@ router.get("/student/courses/:courseId", async (req, res): Promise<void> => {
     enrollmentId: enrollment.id,
     status: enrollment.status,
     progressPercent: enrollment.progressPercent,
-    lessons: lessons.map((l) => ({
+    lessons: lessonRows.map((l) => ({
       id: l.id,
       title: l.title,
-      description: l.description ?? "",
       content: l.content,
       duration: l.durationMinutes ?? 0,
-      orderIndex: l.orderIndex,
-      type: l.type ?? "lecture",
+      type: "lecture",
+      chapterId: l.chapterId ?? null,
+      chapterTitle: l.chapterTitle ?? null,
       isCompleted: progressMap.get(l.id) ?? false,
     })),
   });

@@ -158,6 +158,104 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /courses/{courseId}/chapters:
+    get:
+      operationId: listChapters
+      tags: [chapters]
+      summary: List chapters for a course
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of chapters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Chapter"
+    post:
+      operationId: createChapter
+      tags: [chapters]
+      summary: Create a chapter in a course
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChapterBody"
+      responses:
+        "201":
+          description: Created chapter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Chapter"
+
+  /courses/{courseId}/chapters/{chapterId}:
+    put:
+      operationId: updateChapter
+      tags: [chapters]
+      summary: Update a chapter
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: chapterId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChapterBody"
+      responses:
+        "200":
+          description: Updated chapter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Chapter"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteChapter
+      tags: [chapters]
+      summary: Delete a chapter
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: chapterId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
   /courses/{courseId}/lessons:
     get:
       operationId: listLessons
@@ -1243,6 +1341,38 @@ components:
         isPublished:
           type: boolean
 
+    Chapter:
+      type: object
+      properties:
+        id:
+          type: integer
+        courseId:
+          type: integer
+        title:
+          type: string
+        order:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - courseId
+        - title
+        - order
+        - createdAt
+
+    CreateChapterBody:
+      type: object
+      properties:
+        title:
+          type: string
+        order:
+          type: integer
+      required:
+        - title
+        - order
+
     Lesson:
       type: object
       properties:
@@ -1250,6 +1380,10 @@ components:
           type: integer
         courseId:
           type: integer
+        chapterId:
+          type: ["integer", "null"]
+        chapterTitle:
+          type: ["string", "null"]
         title:
           type: string
         content:
@@ -1269,6 +1403,8 @@ components:
       required:
         - id
         - courseId
+        - chapterId
+        - chapterTitle
         - title
         - content
         - videoUrl
@@ -1290,6 +1426,8 @@ components:
           type: ["integer", "null"]
         order:
           type: integer
+        chapterId:
+          type: ["integer", "null"]
       required:
         - title
         - content
@@ -1308,6 +1446,8 @@ components:
           type: ["integer", "null"]
         order:
           type: integer
+        chapterId:
+          type: ["integer", "null"]
 
     Enrollment:
       type: object

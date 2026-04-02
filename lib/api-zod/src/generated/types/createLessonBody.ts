@@ -14,4 +14,6 @@ export interface CreateLessonBody {
   /** @nullable */
   durationMinutes?: number | null;
   order: number;
+  /** @nullable */
+  chapterId?: number | null;
 }

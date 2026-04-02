@@ -2,10 +2,12 @@ import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { coursesTable } from "./courses";
+import { chaptersTable } from "./chapters";
 
 export const lessonsTable = pgTable("lessons", {
   id: serial("id").primaryKey(),
   courseId: integer("course_id").notNull().references(() => coursesTable.id, { onDelete: "cascade" }),
+  chapterId: integer("chapter_id").references(() => chaptersTable.id, { onDelete: "set null" }),
   title: text("title").notNull(),
   content: text("content").notNull().default(""),
   videoUrl: text("video_url"),

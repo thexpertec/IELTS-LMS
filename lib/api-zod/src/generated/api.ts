@@ -113,6 +113,63 @@ export const DeleteCourseParams = zod.object({
 });
 
 /**
+ * @summary List chapters for a course
+ */
+export const ListChaptersParams = zod.object({
+  courseId: zod.coerce.number(),
+});
+
+export const ListChaptersResponseItem = zod.object({
+  id: zod.number(),
+  courseId: zod.number(),
+  title: zod.string(),
+  order: zod.number(),
+  createdAt: zod.coerce.date(),
+});
+export const ListChaptersResponse = zod.array(ListChaptersResponseItem);
+
+/**
+ * @summary Create a chapter in a course
+ */
+export const CreateChapterParams = zod.object({
+  courseId: zod.coerce.number(),
+});
+
+export const CreateChapterBody = zod.object({
+  title: zod.string(),
+  order: zod.number(),
+});
+
+/**
+ * @summary Update a chapter
+ */
+export const UpdateChapterParams = zod.object({
+  courseId: zod.coerce.number(),
+  chapterId: zod.coerce.number(),
+});
+
+export const UpdateChapterBody = zod.object({
+  title: zod.string(),
+  order: zod.number(),
+});
+
+export const UpdateChapterResponse = zod.object({
+  id: zod.number(),
+  courseId: zod.number(),
+  title: zod.string(),
+  order: zod.number(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a chapter
+ */
+export const DeleteChapterParams = zod.object({
+  courseId: zod.coerce.number(),
+  chapterId: zod.coerce.number(),
+});
+
+/**
  * @summary List lessons for a course
  */
 export const ListLessonsParams = zod.object({
@@ -122,6 +179,8 @@ export const ListLessonsParams = zod.object({
 export const ListLessonsResponseItem = zod.object({
   id: zod.number(),
   courseId: zod.number(),
+  chapterId: zod.number().nullable(),
+  chapterTitle: zod.string().nullable(),
   title: zod.string(),
   content: zod.string(),
   videoUrl: zod.string().nullable(),
@@ -145,6 +204,7 @@ export const CreateLessonBody = zod.object({
   videoUrl: zod.string().nullish(),
   durationMinutes: zod.number().nullish(),
   order: zod.number(),
+  chapterId: zod.number().nullish(),
 });
 
 /**
@@ -158,6 +218,8 @@ export const GetLessonParams = zod.object({
 export const GetLessonResponse = zod.object({
   id: zod.number(),
   courseId: zod.number(),
+  chapterId: zod.number().nullable(),
+  chapterTitle: zod.string().nullable(),
   title: zod.string(),
   content: zod.string(),
   videoUrl: zod.string().nullable(),
@@ -181,11 +243,14 @@ export const UpdateLessonBody = zod.object({
   videoUrl: zod.string().nullish(),
   durationMinutes: zod.number().nullish(),
   order: zod.number().optional(),
+  chapterId: zod.number().nullish(),
 });
 
 export const UpdateLessonResponse = zod.object({
   id: zod.number(),
   courseId: zod.number(),
+  chapterId: zod.number().nullable(),
+  chapterTitle: zod.string().nullable(),
   title: zod.string(),
   content: zod.string(),
   videoUrl: zod.string().nullable(),

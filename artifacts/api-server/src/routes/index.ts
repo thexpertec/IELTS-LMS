@@ -9,11 +9,13 @@ import studentRouter from "./student";
 import quizzesRouter from "./quizzes";
 import assignmentsRouter from "./assignments";
 import storageRouter from "./storage";
+import chaptersRouter from "./chapters";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(coursesRouter);
+router.use(chaptersRouter);
 router.use(lessonsRouter);
 router.use(enrollmentsRouter);
 router.use(progressRouter);

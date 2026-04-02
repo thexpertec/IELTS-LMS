@@ -111,7 +111,13 @@ Full-stack LMS (Learning Management System) React + Vite frontend. Contains both
 
 **Admin area** (routes `/`, `/courses`, `/enrollments`, `/students`):
 - Dashboard with stats and charts
-- Course and lesson management (CRUD)
+- Course and lesson management (CRUD) with **Chapters** feature:
+  - Chapters are ordered groups of lessons within a course
+  - Admin can add/rename/delete chapters; lessons can be assigned to a chapter
+  - Course detail page shows lessons grouped by chapter (collapsible sections)
+  - Unassigned lessons appear in an "Unassigned Lessons" section
+  - DB: `chapters` table (id, courseId, title, order, createdAt); `lessons.chapterId` nullable FK
+  - API routes: `GET/POST /api/courses/:id/chapters`, `PUT/DELETE /api/courses/:id/chapters/:chapterId`
 - Enrollment management
 - Student directory with "View Enrollments" quick link
 

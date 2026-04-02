@@ -23,10 +23,12 @@ import type {
   AdminSubmission,
   Assignment,
   AssignmentSubmission,
+  Chapter,
   CompleteLessonBody,
   Course,
   CourseStats,
   CreateAssignmentBody,
+  CreateChapterBody,
   CreateCourseBody,
   CreateEnrollmentBody,
   CreateLessonBody,
@@ -595,6 +597,353 @@ export const useDeleteCourse = <
   TContext
 > => {
   return useMutation(getDeleteCourseMutationOptions(options));
+};
+
+/**
+ * @summary List chapters for a course
+ */
+export const getListChaptersUrl = (courseId: number) => {
+  return `/api/courses/${courseId}/chapters`;
+};
+
+export const listChapters = async (
+  courseId: number,
+  options?: RequestInit,
+): Promise<Chapter[]> => {
+  return customFetch<Chapter[]>(getListChaptersUrl(courseId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListChaptersQueryKey = (courseId: number) => {
+  return [`/api/courses/${courseId}/chapters`] as const;
+};
+
+export const getListChaptersQueryOptions = <
+  TData = Awaited<ReturnType<typeof listChapters>>,
+  TError = ErrorType<unknown>,
+>(
+  courseId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listChapters>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListChaptersQueryKey(courseId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listChapters>>> = ({
+    signal,
+  }) => listChapters(courseId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!courseId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listChapters>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListChaptersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listChapters>>
+>;
+export type ListChaptersQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List chapters for a course
+ */
+
+export function useListChapters<
+  TData = Awaited<ReturnType<typeof listChapters>>,
+  TError = ErrorType<unknown>,
+>(
+  courseId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listChapters>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListChaptersQueryOptions(courseId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a chapter in a course
+ */
+export const getCreateChapterUrl = (courseId: number) => {
+  return `/api/courses/${courseId}/chapters`;
+};
+
+export const createChapter = async (
+  courseId: number,
+  createChapterBody: CreateChapterBody,
+  options?: RequestInit,
+): Promise<Chapter> => {
+  return customFetch<Chapter>(getCreateChapterUrl(courseId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createChapterBody),
+  });
+};
+
+export const getCreateChapterMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createChapter>>,
+    TError,
+    { courseId: number; data: BodyType<CreateChapterBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createChapter>>,
+  TError,
+  { courseId: number; data: BodyType<CreateChapterBody> },
+  TContext
+> => {
+  const mutationKey = ["createChapter"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createChapter>>,
+    { courseId: number; data: BodyType<CreateChapterBody> }
+  > = (props) => {
+    const { courseId, data } = props ?? {};
+
+    return createChapter(courseId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateChapterMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createChapter>>
+>;
+export type CreateChapterMutationBody = BodyType<CreateChapterBody>;
+export type CreateChapterMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a chapter in a course
+ */
+export const useCreateChapter = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createChapter>>,
+    TError,
+    { courseId: number; data: BodyType<CreateChapterBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createChapter>>,
+  TError,
+  { courseId: number; data: BodyType<CreateChapterBody> },
+  TContext
+> => {
+  return useMutation(getCreateChapterMutationOptions(options));
+};
+
+/**
+ * @summary Update a chapter
+ */
+export const getUpdateChapterUrl = (courseId: number, chapterId: number) => {
+  return `/api/courses/${courseId}/chapters/${chapterId}`;
+};
+
+export const updateChapter = async (
+  courseId: number,
+  chapterId: number,
+  createChapterBody: CreateChapterBody,
+  options?: RequestInit,
+): Promise<Chapter> => {
+  return customFetch<Chapter>(getUpdateChapterUrl(courseId, chapterId), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createChapterBody),
+  });
+};
+
+export const getUpdateChapterMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateChapter>>,
+    TError,
+    { courseId: number; chapterId: number; data: BodyType<CreateChapterBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateChapter>>,
+  TError,
+  { courseId: number; chapterId: number; data: BodyType<CreateChapterBody> },
+  TContext
+> => {
+  const mutationKey = ["updateChapter"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateChapter>>,
+    { courseId: number; chapterId: number; data: BodyType<CreateChapterBody> }
+  > = (props) => {
+    const { courseId, chapterId, data } = props ?? {};
+
+    return updateChapter(courseId, chapterId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateChapterMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateChapter>>
+>;
+export type UpdateChapterMutationBody = BodyType<CreateChapterBody>;
+export type UpdateChapterMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Update a chapter
+ */
+export const useUpdateChapter = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateChapter>>,
+    TError,
+    { courseId: number; chapterId: number; data: BodyType<CreateChapterBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateChapter>>,
+  TError,
+  { courseId: number; chapterId: number; data: BodyType<CreateChapterBody> },
+  TContext
+> => {
+  return useMutation(getUpdateChapterMutationOptions(options));
+};
+
+/**
+ * @summary Delete a chapter
+ */
+export const getDeleteChapterUrl = (courseId: number, chapterId: number) => {
+  return `/api/courses/${courseId}/chapters/${chapterId}`;
+};
+
+export const deleteChapter = async (
+  courseId: number,
+  chapterId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteChapterUrl(courseId, chapterId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteChapterMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteChapter>>,
+    TError,
+    { courseId: number; chapterId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteChapter>>,
+  TError,
+  { courseId: number; chapterId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteChapter"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteChapter>>,
+    { courseId: number; chapterId: number }
+  > = (props) => {
+    const { courseId, chapterId } = props ?? {};
+
+    return deleteChapter(courseId, chapterId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteChapterMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteChapter>>
+>;
+
+export type DeleteChapterMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a chapter
+ */
+export const useDeleteChapter = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteChapter>>,
+    TError,
+    { courseId: number; chapterId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteChapter>>,
+  TError,
+  { courseId: number; chapterId: number },
+  TContext
+> => {
+  return useMutation(getDeleteChapterMutationOptions(options));
 };
 
 /**

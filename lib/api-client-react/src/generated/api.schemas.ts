@@ -81,9 +81,26 @@ export interface UpdateCourseBody {
   isPublished?: boolean;
 }
 
+export interface Chapter {
+  id: number;
+  courseId: number;
+  title: string;
+  order: number;
+  createdAt: string;
+}
+
+export interface CreateChapterBody {
+  title: string;
+  order: number;
+}
+
 export interface Lesson {
   id: number;
   courseId: number;
+  /** @nullable */
+  chapterId: number | null;
+  /** @nullable */
+  chapterTitle: string | null;
   title: string;
   content: string;
   /** @nullable */
@@ -103,6 +120,8 @@ export interface CreateLessonBody {
   /** @nullable */
   durationMinutes?: number | null;
   order: number;
+  /** @nullable */
+  chapterId?: number | null;
 }
 
 export interface UpdateLessonBody {
@@ -113,6 +132,8 @@ export interface UpdateLessonBody {
   /** @nullable */
   durationMinutes?: number | null;
   order?: number;
+  /** @nullable */
+  chapterId?: number | null;
 }
 
 export type EnrollmentStatus =
