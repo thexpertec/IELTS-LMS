@@ -15,4 +15,5 @@ export const QuizQuestionType = {
   choose_word: "choose_word",
   matching: "matching",
   short_answer: "short_answer",
+  true_false_ng: "true_false_ng",
 } as const;

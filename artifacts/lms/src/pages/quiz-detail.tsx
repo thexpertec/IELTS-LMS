@@ -72,16 +72,17 @@ import {
 } from "lucide-react";
 
 // ─────────────────────────────────────────────
-// Types for the five question formats
+// Types for the six question formats
 // ─────────────────────────────────────────────
-type QType = "fill_blank" | "dropdown" | "choose_word" | "matching" | "short_answer";
+type QType = "fill_blank" | "dropdown" | "choose_word" | "matching" | "short_answer" | "true_false_ng";
 
-interface FillBlankOpts   { sentence: string; blanks: string[] }
-interface DropdownOpts    { stem: string; choices: string[]; correct: string }
-interface ChooseWordOpts  { instruction: string; wordLimit: number; passageText?: string; imageUrl?: string; correct: string }
-interface MatchingOpts    { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[] }
-interface ShortAnswerOpts { prompt: string; correct?: string; wordLimit?: number }
-type QOptions = FillBlankOpts | DropdownOpts | ChooseWordOpts | MatchingOpts | ShortAnswerOpts;
+interface FillBlankOpts    { sentence: string; blanks: string[] }
+interface DropdownOpts     { stem: string; choices: string[]; correct: string }
+interface ChooseWordOpts   { instruction: string; wordLimit: number; passageText?: string; imageUrl?: string; correct: string }
+interface MatchingOpts     { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[] }
+interface ShortAnswerOpts  { prompt: string; correct?: string; wordLimit?: number }
+interface TrueFalseNgOpts  { statement: string; correct: "TRUE" | "FALSE" | "NOT GIVEN" | "" }
+type QOptions = FillBlankOpts | DropdownOpts | ChooseWordOpts | MatchingOpts | ShortAnswerOpts | TrueFalseNgOpts;
 
 const Q_TYPE_LABELS: Record<QType, string> = {
   fill_blank:    "Fill in the Blanks",
@@ -89,14 +90,16 @@ const Q_TYPE_LABELS: Record<QType, string> = {
   choose_word:   "Choose One Word",
   matching:      "Column Matching",
   short_answer:  "Short Answer",
+  true_false_ng: "True / False / Not Given",
 };
 
 const Q_TYPE_COLORS: Record<QType, string> = {
-  fill_blank:   "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-  dropdown:     "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
-  choose_word:  "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
-  matching:     "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
-  short_answer: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300",
+  fill_blank:    "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+  dropdown:      "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
+  choose_word:   "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+  matching:      "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
+  short_answer:  "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300",
+  true_false_ng: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
 };
 
 // ─────────────────────────────────────────────
@@ -104,11 +107,12 @@ const Q_TYPE_COLORS: Record<QType, string> = {
 // ─────────────────────────────────────────────
 function defaultOptions(type: QType): QOptions {
   switch (type) {
-    case "fill_blank":   return { sentence: "", blanks: [""] };
-    case "dropdown":     return { stem: "", choices: ["", "", ""], correct: "" };
-    case "choose_word":  return { instruction: "Choose ONE WORD from the passage below.", wordLimit: 1, passageText: "", imageUrl: "", correct: "" };
-    case "matching":     return { leftItems: ["", ""], rightItems: ["", ""], pairs: [] };
-    case "short_answer": return { prompt: "", correct: "", wordLimit: undefined };
+    case "fill_blank":    return { sentence: "", blanks: [""] };
+    case "dropdown":      return { stem: "", choices: ["", "", ""], correct: "" };
+    case "choose_word":   return { instruction: "Choose ONE WORD from the passage below.", wordLimit: 1, passageText: "", imageUrl: "", correct: "" };
+    case "matching":      return { leftItems: ["", ""], rightItems: ["", ""], pairs: [] };
+    case "short_answer":  return { prompt: "", correct: "", wordLimit: undefined };
+    case "true_false_ng": return { statement: "", correct: "" };
   }
 }
 
@@ -325,6 +329,42 @@ function MatchingEditor({ opts, onChange }: { opts: MatchingOpts; onChange: (o: 
   );
 }
 
+function TrueFalseNgEditor({ opts, onChange }: { opts: TrueFalseNgOpts; onChange: (o: TrueFalseNgOpts) => void }) {
+  const options = ["TRUE", "FALSE", "NOT GIVEN"] as const;
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>Statement</Label>
+        <Textarea
+          className="mt-1.5 min-h-[80px]"
+          placeholder="e.g. Methods for predicting the Earth's population have recently changed."
+          value={opts.statement}
+          onChange={(e) => onChange({ ...opts, statement: e.target.value })}
+        />
+      </div>
+      <div>
+        <Label>Correct Answer</Label>
+        <div className="flex gap-2 mt-1.5">
+          {options.map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => onChange({ ...opts, correct: opt })}
+              className={`px-4 py-1.5 rounded border text-xs font-semibold tracking-wide transition-colors ${
+                opts.correct === opt
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-border text-muted-foreground hover:border-primary hover:text-primary"
+              }`}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ShortAnswerEditor({ opts, onChange }: { opts: ShortAnswerOpts; onChange: (o: ShortAnswerOpts) => void }) {
   return (
     <div className="space-y-4">
@@ -384,6 +424,10 @@ function QuestionSummary({ type, options }: { type: QType; options: QOptions }) 
   if (type === "short_answer") {
     const o = options as ShortAnswerOpts;
     return <p className="text-xs text-muted-foreground truncate">{o.prompt || "—"}{o.wordLimit ? ` · up to ${o.wordLimit} word${o.wordLimit !== 1 ? "s" : ""}` : ""}</p>;
+  }
+  if (type === "true_false_ng") {
+    const o = options as TrueFalseNgOpts;
+    return <p className="text-xs text-muted-foreground truncate">{o.statement || "—"}{o.correct ? ` · ✓ ${o.correct}` : ""}</p>;
   }
   return null;
 }
@@ -1106,6 +1150,9 @@ export default function QuizDetail() {
             )}
             {qType === "short_answer" && (
               <ShortAnswerEditor opts={qOptions as ShortAnswerOpts} onChange={(o) => setQOptions(o)} />
+            )}
+            {qType === "true_false_ng" && (
+              <TrueFalseNgEditor opts={qOptions as TrueFalseNgOpts} onChange={(o) => setQOptions(o)} />
             )}
           </div>
 

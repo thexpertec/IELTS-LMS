@@ -17,12 +17,13 @@ import { CheckCircle2, Clock, List } from "lucide-react";
 // ─────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────
-type QType = "fill_blank" | "dropdown" | "choose_word" | "matching" | "short_answer";
-interface FillBlankOpts   { sentence: string; blanks: string[] }
-interface DropdownOpts    { stem: string; choices: string[]; correct: string }
-interface ChooseWordOpts  { instruction: string; wordLimit: number; passageText?: string; imageUrl?: string; correct: string }
-interface MatchingOpts    { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[] }
-interface ShortAnswerOpts { prompt: string; correct?: string; wordLimit?: number }
+type QType = "fill_blank" | "dropdown" | "choose_word" | "matching" | "short_answer" | "true_false_ng";
+interface FillBlankOpts    { sentence: string; blanks: string[] }
+interface DropdownOpts     { stem: string; choices: string[]; correct: string }
+interface ChooseWordOpts   { instruction: string; wordLimit: number; passageText?: string; imageUrl?: string; correct: string }
+interface MatchingOpts     { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[] }
+interface ShortAnswerOpts  { prompt: string; correct?: string; wordLimit?: number }
+interface TrueFalseNgOpts  { statement: string; correct: "TRUE" | "FALSE" | "NOT GIVEN" | "" }
 
 type AnswerMap = Record<number, string | string[] | Record<number, string>>;
 
@@ -213,6 +214,37 @@ function MatchingQuestion({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function TrueFalseNgQuestion({
+  opts, qId, answers, setAnswers, slotStart,
+}: { opts: TrueFalseNgOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number }) {
+  const choices = ["TRUE", "FALSE", "NOT GIVEN"] as const;
+  const selected = (answers[qId] as string) ?? "";
+  return (
+    <div id={`q-${qId}`} className="flex items-start gap-2">
+      <QNum num={slotStart} answered={!!selected} />
+      <div className="flex-1 space-y-2.5">
+        <p className="text-sm leading-relaxed">{opts.statement}</p>
+        <div className="flex flex-wrap gap-2">
+          {choices.map((choice) => (
+            <button
+              key={choice}
+              type="button"
+              onClick={() => setAnswers({ ...answers, [qId]: selected === choice ? "" : choice })}
+              className={`px-4 py-1.5 rounded border text-xs font-bold tracking-wider transition-colors ${
+                selected === choice
+                  ? "bg-[#2563EB] text-white border-[#2563EB]"
+                  : "border-[#c7cfe0] text-[#3b5285] hover:border-[#2563EB] hover:text-[#2563EB] bg-white dark:bg-transparent dark:border-border dark:text-muted-foreground dark:hover:border-primary dark:hover:text-primary"
+              }`}
+            >
+              {choice}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -588,6 +620,9 @@ export default function StudentQuizTake() {
                             )}
                             {q.type === "short_answer" && (
                               <ShortAnswerQuestion opts={opts as ShortAnswerOpts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
+                            )}
+                            {q.type === "true_false_ng" && (
+                              <TrueFalseNgQuestion opts={opts as TrueFalseNgOpts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
                             )}
                           </div>
                         );

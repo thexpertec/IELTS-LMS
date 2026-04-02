@@ -1637,7 +1637,7 @@ components:
           type: integer
         type:
           type: string
-          enum: [fill_blank, dropdown, choose_word, matching, short_answer]
+          enum: [fill_blank, dropdown, choose_word, matching, short_answer, true_false_ng]
         order:
           type: integer
         questionText:
@@ -1747,7 +1747,7 @@ components:
       properties:
         type:
           type: string
-          enum: [fill_blank, dropdown, choose_word, matching, short_answer]
+          enum: [fill_blank, dropdown, choose_word, matching, short_answer, true_false_ng]
         order:
           type: integer
         questionText:
