@@ -854,6 +854,133 @@ export const DeleteQuizQuestionParams = zod.object({
 });
 
 /**
+ * @summary List all assignments
+ */
+export const ListAssignmentsQueryParams = zod.object({
+  courseId: zod.coerce.number().optional(),
+});
+
+export const ListAssignmentsResponseItem = zod.object({
+  id: zod.number(),
+  courseId: zod.number(),
+  courseTitle: zod.string().nullish(),
+  title: zod.string(),
+  description: zod.string(),
+  type: zod.enum(["assignment", "quiz"]),
+  dueDate: zod.coerce.date(),
+  maxScore: zod.number(),
+  submissionCount: zod.number(),
+  createdAt: zod.coerce.date(),
+});
+export const ListAssignmentsResponse = zod.array(ListAssignmentsResponseItem);
+
+/**
+ * @summary Create a new assignment
+ */
+export const CreateAssignmentBody = zod.object({
+  courseId: zod.number(),
+  title: zod.string(),
+  description: zod.string().optional(),
+  type: zod.enum(["assignment", "quiz"]).optional(),
+  dueDate: zod.coerce.date(),
+  maxScore: zod.number().optional(),
+});
+
+/**
+ * @summary Get assignment detail with submissions
+ */
+export const GetAssignmentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetAssignmentResponse = zod.object({
+  id: zod.number(),
+  courseId: zod.number(),
+  courseTitle: zod.string().nullish(),
+  title: zod.string(),
+  description: zod.string(),
+  type: zod.enum(["assignment", "quiz"]),
+  dueDate: zod.coerce.date(),
+  maxScore: zod.number(),
+  submissionCount: zod.number(),
+  createdAt: zod.coerce.date(),
+  submissions: zod.array(
+    zod.object({
+      id: zod.number(),
+      assignmentId: zod.number(),
+      enrollmentId: zod.number(),
+      studentEmail: zod.string(),
+      studentName: zod.string().nullish(),
+      content: zod.string(),
+      score: zod.number().nullish(),
+      feedback: zod.string().nullish(),
+      submittedAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Update an assignment
+ */
+export const UpdateAssignmentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateAssignmentBody = zod.object({
+  courseId: zod.number().optional(),
+  title: zod.string().optional(),
+  description: zod.string().optional(),
+  type: zod.enum(["assignment", "quiz"]).optional(),
+  dueDate: zod.coerce.date().optional(),
+  maxScore: zod.number().optional(),
+});
+
+export const UpdateAssignmentResponse = zod.object({
+  id: zod.number(),
+  courseId: zod.number(),
+  courseTitle: zod.string().nullish(),
+  title: zod.string(),
+  description: zod.string(),
+  type: zod.enum(["assignment", "quiz"]),
+  dueDate: zod.coerce.date(),
+  maxScore: zod.number(),
+  submissionCount: zod.number(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete an assignment
+ */
+export const DeleteAssignmentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Mark a submission with a score and feedback
+ */
+export const MarkSubmissionParams = zod.object({
+  id: zod.coerce.number(),
+  subId: zod.coerce.number(),
+});
+
+export const MarkSubmissionBody = zod.object({
+  score: zod.number().nullish(),
+  feedback: zod.string().nullish(),
+});
+
+export const MarkSubmissionResponse = zod.object({
+  id: zod.number(),
+  assignmentId: zod.number(),
+  enrollmentId: zod.number(),
+  studentEmail: zod.string(),
+  studentName: zod.string().nullish(),
+  content: zod.string(),
+  score: zod.number().nullish(),
+  feedback: zod.string().nullish(),
+  submittedAt: zod.coerce.date(),
+});
+
+/**
  * @summary Request a presigned URL for file upload
  */
 

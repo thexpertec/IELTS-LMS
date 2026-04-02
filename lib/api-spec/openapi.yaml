@@ -21,6 +21,8 @@ tags:
     description: Dashboard stats and activity
   - name: student-portal
     description: Student-facing portal endpoints
+  - name: assignments
+    description: Assignment management
   - name: quizzes
     description: Quiz management
   - name: Storage
@@ -954,6 +956,129 @@ paths:
         "204":
           description: Deleted
 
+  /assignments:
+    get:
+      operationId: listAssignments
+      tags: [assignments]
+      summary: List all assignments
+      parameters:
+        - name: courseId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of assignments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminAssignment"
+    post:
+      operationId: createAssignment
+      tags: [assignments]
+      summary: Create a new assignment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAssignmentBody"
+      responses:
+        "201":
+          description: Created assignment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAssignment"
+
+  /assignments/{id}:
+    get:
+      operationId: getAssignment
+      tags: [assignments]
+      summary: Get assignment detail with submissions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Assignment detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAssignmentDetail"
+    put:
+      operationId: updateAssignment
+      tags: [assignments]
+      summary: Update an assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAssignmentBody"
+      responses:
+        "200":
+          description: Updated assignment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAssignment"
+    delete:
+      operationId: deleteAssignment
+      tags: [assignments]
+      summary: Delete an assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /assignments/{id}/submissions/{subId}:
+    patch:
+      operationId: markSubmission
+      tags: [assignments]
+      summary: Mark a submission with a score and feedback
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: subId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarkSubmissionBody"
+      responses:
+        "200":
+          description: Marked submission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSubmission"
+
   /storage/uploads/request-url:
     post:
       tags: [Storage]
@@ -1498,6 +1623,170 @@ components:
         - type
         - isRead
         - createdAt
+
+    AdminAssignment:
+      type: object
+      properties:
+        id:
+          type: integer
+        courseId:
+          type: integer
+        courseTitle:
+          type: string
+          nullable: true
+        title:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+          enum: [assignment, quiz]
+        dueDate:
+          type: string
+          format: date-time
+        maxScore:
+          type: integer
+        submissionCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - courseId
+        - title
+        - description
+        - type
+        - dueDate
+        - maxScore
+        - submissionCount
+        - createdAt
+
+    AdminSubmission:
+      type: object
+      properties:
+        id:
+          type: integer
+        assignmentId:
+          type: integer
+        enrollmentId:
+          type: integer
+        studentEmail:
+          type: string
+        studentName:
+          type: string
+          nullable: true
+        content:
+          type: string
+        score:
+          type: integer
+          nullable: true
+        feedback:
+          type: string
+          nullable: true
+        submittedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - assignmentId
+        - enrollmentId
+        - studentEmail
+        - content
+        - submittedAt
+
+    AdminAssignmentDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        courseId:
+          type: integer
+        courseTitle:
+          type: string
+          nullable: true
+        title:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+          enum: [assignment, quiz]
+        dueDate:
+          type: string
+          format: date-time
+        maxScore:
+          type: integer
+        submissionCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        submissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminSubmission"
+      required:
+        - id
+        - courseId
+        - title
+        - description
+        - type
+        - dueDate
+        - maxScore
+        - submissionCount
+        - createdAt
+        - submissions
+
+    CreateAssignmentBody:
+      type: object
+      properties:
+        courseId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+          enum: [assignment, quiz]
+        dueDate:
+          type: string
+          format: date-time
+        maxScore:
+          type: integer
+      required:
+        - courseId
+        - title
+        - dueDate
+
+    UpdateAssignmentBody:
+      type: object
+      properties:
+        courseId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+          enum: [assignment, quiz]
+        dueDate:
+          type: string
+          format: date-time
+        maxScore:
+          type: integer
+
+    MarkSubmissionBody:
+      type: object
+      properties:
+        score:
+          type: integer
+          nullable: true
+        feedback:
+          type: string
+          nullable: true
 
     Assignment:
       type: object

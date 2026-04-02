@@ -21,6 +21,9 @@ import Students from "@/pages/students";
 import Quizzes from "@/pages/quizzes";
 import QuizNew from "@/pages/quiz-new";
 import QuizDetail from "@/pages/quiz-detail";
+import AdminAssignments from "@/pages/assignments";
+import AssignmentNew from "@/pages/assignment-new";
+import AssignmentDetail from "@/pages/assignment-detail";
 import NotFound from "@/pages/not-found";
 
 // Student quiz pages
@@ -103,6 +106,9 @@ function Router() {
             <Route path="/quizzes" component={Quizzes} />
             <Route path="/quizzes/new" component={QuizNew} />
             <Route path="/quizzes/:id" component={QuizDetail} />
+            <Route path="/assignments" component={AdminAssignments} />
+            <Route path="/assignments/new" component={AssignmentNew} />
+            <Route path="/assignments/:id" component={AssignmentDetail} />
             <Route component={NotFound} />
           </Switch>
         </SidebarLayout>

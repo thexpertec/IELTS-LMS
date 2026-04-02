@@ -283,6 +283,100 @@ export interface Notification {
   createdAt: string;
 }
 
+export type AdminAssignmentType =
+  (typeof AdminAssignmentType)[keyof typeof AdminAssignmentType];
+
+export const AdminAssignmentType = {
+  assignment: "assignment",
+  quiz: "quiz",
+} as const;
+
+export interface AdminAssignment {
+  id: number;
+  courseId: number;
+  courseTitle?: string | null;
+  title: string;
+  description: string;
+  type: AdminAssignmentType;
+  dueDate: string;
+  maxScore: number;
+  submissionCount: number;
+  createdAt: string;
+}
+
+export interface AdminSubmission {
+  id: number;
+  assignmentId: number;
+  enrollmentId: number;
+  studentEmail: string;
+  studentName?: string | null;
+  content: string;
+  score?: number | null;
+  feedback?: string | null;
+  submittedAt: string;
+}
+
+export type AdminAssignmentDetailType =
+  (typeof AdminAssignmentDetailType)[keyof typeof AdminAssignmentDetailType];
+
+export const AdminAssignmentDetailType = {
+  assignment: "assignment",
+  quiz: "quiz",
+} as const;
+
+export interface AdminAssignmentDetail {
+  id: number;
+  courseId: number;
+  courseTitle?: string | null;
+  title: string;
+  description: string;
+  type: AdminAssignmentDetailType;
+  dueDate: string;
+  maxScore: number;
+  submissionCount: number;
+  createdAt: string;
+  submissions: AdminSubmission[];
+}
+
+export type CreateAssignmentBodyType =
+  (typeof CreateAssignmentBodyType)[keyof typeof CreateAssignmentBodyType];
+
+export const CreateAssignmentBodyType = {
+  assignment: "assignment",
+  quiz: "quiz",
+} as const;
+
+export interface CreateAssignmentBody {
+  courseId: number;
+  title: string;
+  description?: string;
+  type?: CreateAssignmentBodyType;
+  dueDate: string;
+  maxScore?: number;
+}
+
+export type UpdateAssignmentBodyType =
+  (typeof UpdateAssignmentBodyType)[keyof typeof UpdateAssignmentBodyType];
+
+export const UpdateAssignmentBodyType = {
+  assignment: "assignment",
+  quiz: "quiz",
+} as const;
+
+export interface UpdateAssignmentBody {
+  courseId?: number;
+  title?: string;
+  description?: string;
+  type?: UpdateAssignmentBodyType;
+  dueDate?: string;
+  maxScore?: number;
+}
+
+export interface MarkSubmissionBody {
+  score?: number | null;
+  feedback?: string | null;
+}
+
 export type AssignmentType =
   (typeof AssignmentType)[keyof typeof AssignmentType];
 
@@ -531,5 +625,9 @@ export type ListDiscussionsParams = {
 };
 
 export type ListQuizzesParams = {
+  courseId?: number;
+};
+
+export type ListAssignmentsParams = {
   courseId?: number;
 };

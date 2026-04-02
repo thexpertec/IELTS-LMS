@@ -7,6 +7,7 @@ import progressRouter from "./progress";
 import dashboardRouter from "./dashboard";
 import studentRouter from "./student";
 import quizzesRouter from "./quizzes";
+import assignmentsRouter from "./assignments";
 import storageRouter from "./storage";
 
 const router: IRouter = Router();
@@ -19,6 +20,7 @@ router.use(progressRouter);
 router.use(dashboardRouter);
 router.use(studentRouter);
 router.use(quizzesRouter);
+router.use(assignmentsRouter);
 router.use(storageRouter);
 
 export default router;

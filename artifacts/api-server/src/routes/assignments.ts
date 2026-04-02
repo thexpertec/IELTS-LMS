@@ -1,0 +1,138 @@
+import { Router, type IRouter } from "express";
+import { eq, desc, count } from "drizzle-orm";
+import { db, assignmentsTable, assignmentSubmissionsTable, coursesTable, enrollmentsTable } from "@workspace/db";
+
+const router: IRouter = Router();
+
+router.get("/assignments", async (req, res): Promise<void> => {
+  const courseId = req.query.courseId ? Number(req.query.courseId) : undefined;
+
+  const rows = await db
+    .select({
+      id: assignmentsTable.id,
+      courseId: assignmentsTable.courseId,
+      title: assignmentsTable.title,
+      description: assignmentsTable.description,
+      type: assignmentsTable.type,
+      dueDate: assignmentsTable.dueDate,
+      maxScore: assignmentsTable.maxScore,
+      createdAt: assignmentsTable.createdAt,
+      courseTitle: coursesTable.title,
+      submissionCount: count(assignmentSubmissionsTable.id),
+    })
+    .from(assignmentsTable)
+    .leftJoin(coursesTable, eq(assignmentsTable.courseId, coursesTable.id))
+    .leftJoin(assignmentSubmissionsTable, eq(assignmentSubmissionsTable.assignmentId, assignmentsTable.id))
+    .where(courseId ? eq(assignmentsTable.courseId, courseId) : undefined)
+    .groupBy(assignmentsTable.id, coursesTable.title)
+    .orderBy(desc(assignmentsTable.createdAt));
+
+  res.json(rows);
+});
+
+router.post("/assignments", async (req, res): Promise<void> => {
+  const { courseId, title, description, type, dueDate, maxScore } = req.body;
+  if (!courseId || !title || !dueDate) {
+    res.status(400).json({ error: "courseId, title, and dueDate are required" });
+    return;
+  }
+
+  const [row] = await db.insert(assignmentsTable).values({
+    courseId: Number(courseId),
+    title,
+    description: description ?? "",
+    type: type ?? "assignment",
+    dueDate: new Date(dueDate),
+    maxScore: maxScore ? Number(maxScore) : 100,
+  }).returning();
+
+  res.status(201).json({ ...row, courseTitle: null, submissionCount: 0 });
+});
+
+router.get("/assignments/:id", async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [row] = await db
+    .select({
+      id: assignmentsTable.id,
+      courseId: assignmentsTable.courseId,
+      title: assignmentsTable.title,
+      description: assignmentsTable.description,
+      type: assignmentsTable.type,
+      dueDate: assignmentsTable.dueDate,
+      maxScore: assignmentsTable.maxScore,
+      createdAt: assignmentsTable.createdAt,
+      courseTitle: coursesTable.title,
+    })
+    .from(assignmentsTable)
+    .leftJoin(coursesTable, eq(assignmentsTable.courseId, coursesTable.id))
+    .where(eq(assignmentsTable.id, id));
+
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
+
+  const submissions = await db
+    .select({
+      id: assignmentSubmissionsTable.id,
+      assignmentId: assignmentSubmissionsTable.assignmentId,
+      enrollmentId: assignmentSubmissionsTable.enrollmentId,
+      studentEmail: assignmentSubmissionsTable.studentEmail,
+      content: assignmentSubmissionsTable.content,
+      score: assignmentSubmissionsTable.score,
+      feedback: assignmentSubmissionsTable.feedback,
+      submittedAt: assignmentSubmissionsTable.submittedAt,
+      studentName: enrollmentsTable.studentName,
+    })
+    .from(assignmentSubmissionsTable)
+    .leftJoin(enrollmentsTable, eq(assignmentSubmissionsTable.enrollmentId, enrollmentsTable.id))
+    .where(eq(assignmentSubmissionsTable.assignmentId, id))
+    .orderBy(desc(assignmentSubmissionsTable.submittedAt));
+
+  res.json({ ...row, submissions, submissionCount: submissions.length });
+});
+
+router.put("/assignments/:id", async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const { title, description, type, dueDate, maxScore, courseId } = req.body;
+  const update: Record<string, unknown> = {};
+  if (title !== undefined) update.title = title;
+  if (description !== undefined) update.description = description;
+  if (type !== undefined) update.type = type;
+  if (dueDate !== undefined) update.dueDate = new Date(dueDate);
+  if (maxScore !== undefined) update.maxScore = Number(maxScore);
+  if (courseId !== undefined) update.courseId = Number(courseId);
+
+  const [row] = await db.update(assignmentsTable).set(update).where(eq(assignmentsTable.id, id)).returning();
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
+  res.json(row);
+});
+
+router.delete("/assignments/:id", async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+  await db.delete(assignmentsTable).where(eq(assignmentsTable.id, id));
+  res.status(204).send();
+});
+
+router.patch("/assignments/:id/submissions/:subId", async (req, res): Promise<void> => {
+  const subId = Number(req.params.subId);
+  if (!subId) { res.status(400).json({ error: "Invalid subId" }); return; }
+
+  const { score, feedback } = req.body;
+  const update: Record<string, unknown> = {};
+  if (score !== undefined) update.score = Number(score);
+  if (feedback !== undefined) update.feedback = feedback;
+
+  const [row] = await db
+    .update(assignmentSubmissionsTable)
+    .set(update)
+    .where(eq(assignmentSubmissionsTable.id, subId))
+    .returning();
+
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
+  res.json(row);
+});
+
+export default router;
