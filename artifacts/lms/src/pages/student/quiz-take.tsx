@@ -297,8 +297,8 @@ export default function StudentQuizTake() {
   const tabPassage = currentTab.passageText;
   const tabImage = currentTab.imageUrl;
   const tabAudio = currentTab.audioUrl;
-  const hasLeftPanel = !!(tabPassage || tabImage || tabAudio || (activeParts.length === 0 && quizPassage));
-  const leftPassage = tabPassage || (activeParts.length === 0 ? quizPassage : undefined);
+  const hasLeftPanel = !!(tabPassage || tabImage || tabAudio || quizPassage);
+  const leftPassage = tabPassage || quizPassage;
 
   // Slot-aware numbering
   const slotMap = (() => {
