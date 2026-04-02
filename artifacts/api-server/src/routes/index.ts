@@ -5,6 +5,7 @@ import lessonsRouter from "./lessons";
 import enrollmentsRouter from "./enrollments";
 import progressRouter from "./progress";
 import dashboardRouter from "./dashboard";
+import studentRouter from "./student";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(lessonsRouter);
 router.use(enrollmentsRouter);
 router.use(progressRouter);
 router.use(dashboardRouter);
+router.use(studentRouter);
 
 export default router;

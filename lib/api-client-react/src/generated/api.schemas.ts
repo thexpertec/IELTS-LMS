@@ -209,6 +209,151 @@ export interface CourseStats {
   completionRate: number;
 }
 
+export interface StudentProfile {
+  email: string;
+  displayName: string;
+  bio?: string;
+  avatarUrl?: string;
+  createdAt: string;
+}
+
+export type StudentEnrollmentStatus =
+  (typeof StudentEnrollmentStatus)[keyof typeof StudentEnrollmentStatus];
+
+export const StudentEnrollmentStatus = {
+  active: "active",
+  completed: "completed",
+  dropped: "dropped",
+} as const;
+
+export interface StudentEnrollment {
+  id: number;
+  courseId: number;
+  courseTitle: string;
+  courseDescription: string;
+  courseCategory: string;
+  instructor: string;
+  status: StudentEnrollmentStatus;
+  progressPercent: number;
+  completedLessons: number;
+  totalLessons: number;
+  enrolledAt: string;
+}
+
+export interface StudentLesson {
+  id: number;
+  title: string;
+  description: string;
+  content: string;
+  duration: number;
+  orderIndex: number;
+  type: string;
+  isCompleted: boolean;
+}
+
+export interface StudentCourseDetail {
+  id: number;
+  title: string;
+  description: string;
+  category: string;
+  instructor: string;
+  enrollmentId: number;
+  status: string;
+  progressPercent: number;
+  lessons: StudentLesson[];
+}
+
+export type NotificationType =
+  (typeof NotificationType)[keyof typeof NotificationType];
+
+export const NotificationType = {
+  info: "info",
+  success: "success",
+  warning: "warning",
+  announcement: "announcement",
+} as const;
+
+export interface Notification {
+  id: number;
+  studentEmail: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export type AssignmentType =
+  (typeof AssignmentType)[keyof typeof AssignmentType];
+
+export const AssignmentType = {
+  assignment: "assignment",
+  quiz: "quiz",
+} as const;
+
+export interface AssignmentSubmission {
+  id: number;
+  assignmentId: number;
+  content: string;
+  score?: number;
+  feedback?: string;
+  submittedAt: string;
+}
+
+export interface Assignment {
+  id: number;
+  courseId: number;
+  courseTitle: string;
+  title: string;
+  description: string;
+  type: AssignmentType;
+  dueDate: string;
+  maxScore: number;
+  submission?: AssignmentSubmission;
+}
+
+export interface Discussion {
+  id: number;
+  courseId: number;
+  lessonId?: number;
+  studentEmail: string;
+  studentName: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface UpdateStudentProfileBody {
+  email?: string;
+  displayName?: string;
+  bio?: string;
+  avatarUrl?: string;
+}
+
+export interface StudentEnrollBody {
+  email: string;
+  displayName: string;
+  courseId: number;
+}
+
+export interface CompleteLessonBody {
+  enrollmentId: number;
+  completed: boolean;
+}
+
+export interface SubmitAssignmentBody {
+  email: string;
+  enrollmentId: number;
+  content: string;
+}
+
+export interface PostDiscussionBody {
+  courseId: number;
+  lessonId?: number;
+  studentEmail: string;
+  studentName: string;
+  content: string;
+}
+
 export type ListCoursesParams = {
   category?: string;
   search?: string;
@@ -225,4 +370,40 @@ export type ListProgressParams = {
 
 export type GetRecentActivityParams = {
   limit?: number;
+};
+
+export type GetStudentProfileParams = {
+  email: string;
+};
+
+export type GetStudentEnrollmentsParams = {
+  email: string;
+};
+
+export type GetAvailableCoursesParams = {
+  email: string;
+};
+
+export type GetStudentCourseDetailParams = {
+  email: string;
+};
+
+export type GetStudentNotificationsParams = {
+  email: string;
+};
+
+export type MarkAllNotificationsReadBody = {
+  email: string;
+};
+
+export type MarkAllNotificationsRead200 = {
+  count: number;
+};
+
+export type GetStudentAssignmentsParams = {
+  email: string;
+};
+
+export type ListDiscussionsParams = {
+  courseId: number;
 };

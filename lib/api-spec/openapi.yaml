@@ -19,6 +19,8 @@ tags:
     description: Progress tracking
   - name: dashboard
     description: Dashboard stats and activity
+  - name: student-portal
+    description: Student-facing portal endpoints
 paths:
   /healthz:
     get:
@@ -467,6 +469,315 @@ paths:
                 items:
                   $ref: "#/components/schemas/CourseStats"
 
+  /student/profile:
+    get:
+      operationId: getStudentProfile
+      tags: [student-portal]
+      summary: Get or create student profile by email
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Student profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProfile"
+    patch:
+      operationId: updateStudentProfile
+      tags: [student-portal]
+      summary: Update student profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStudentProfileBody"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProfile"
+
+  /student/my-enrollments:
+    get:
+      operationId: getStudentEnrollments
+      tags: [student-portal]
+      summary: Get all enrollments for a student with course details and progress
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Student enrollments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StudentEnrollment"
+
+  /student/available-courses:
+    get:
+      operationId: getAvailableCourses
+      tags: [student-portal]
+      summary: Get courses the student has not enrolled in
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Available courses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Course"
+
+  /student/enroll:
+    post:
+      operationId: studentEnroll
+      tags: [student-portal]
+      summary: Enroll a student in a course
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentEnrollBody"
+      responses:
+        "201":
+          description: Enrollment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentEnrollment"
+        "409":
+          description: Already enrolled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /student/courses/{courseId}:
+    get:
+      operationId: getStudentCourseDetail
+      tags: [student-portal]
+      summary: Get course detail with lessons and progress for a student
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Course detail with student progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentCourseDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /student/lessons/{lessonId}/complete:
+    post:
+      operationId: studentCompleteLesson
+      tags: [student-portal]
+      summary: Mark a lesson as complete or incomplete
+      parameters:
+        - name: lessonId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteLessonBody"
+      responses:
+        "200":
+          description: Progress updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LessonProgress"
+
+  /student/notifications:
+    get:
+      operationId: getStudentNotifications
+      tags: [student-portal]
+      summary: Get notifications for a student
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Notifications list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+
+  /student/notifications/{id}/read:
+    patch:
+      operationId: markNotificationRead
+      tags: [student-portal]
+      summary: Mark a notification as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Notification updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+
+  /student/notifications/read-all:
+    patch:
+      operationId: markAllNotificationsRead
+      tags: [student-portal]
+      summary: Mark all notifications as read for a student
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+              required: [email]
+      responses:
+        "200":
+          description: All marked read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                required: [count]
+
+  /student/assignments:
+    get:
+      operationId: getStudentAssignments
+      tags: [student-portal]
+      summary: Get assignments for all enrolled courses of a student
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Assignments list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Assignment"
+
+  /student/assignments/{id}/submit:
+    post:
+      operationId: submitAssignment
+      tags: [student-portal]
+      summary: Submit an assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitAssignmentBody"
+      responses:
+        "200":
+          description: Submission saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssignmentSubmission"
+
+  /student/discussions:
+    get:
+      operationId: listDiscussions
+      tags: [student-portal]
+      summary: Get discussions for a course
+      parameters:
+        - name: courseId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Discussions list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Discussion"
+    post:
+      operationId: postDiscussion
+      tags: [student-portal]
+      summary: Post a discussion message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostDiscussionBody"
+      responses:
+        "201":
+          description: Discussion posted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Discussion"
+
 components:
   schemas:
     HealthStatus:
@@ -804,3 +1115,304 @@ components:
         - enrollmentCount
         - completionCount
         - completionRate
+
+    StudentProfile:
+      type: object
+      properties:
+        email:
+          type: string
+        displayName:
+          type: string
+        bio:
+          type: string
+        avatarUrl:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - email
+        - displayName
+        - createdAt
+
+    StudentEnrollment:
+      type: object
+      properties:
+        id:
+          type: integer
+        courseId:
+          type: integer
+        courseTitle:
+          type: string
+        courseDescription:
+          type: string
+        courseCategory:
+          type: string
+        instructor:
+          type: string
+        status:
+          type: string
+          enum: [active, completed, dropped]
+        progressPercent:
+          type: integer
+        completedLessons:
+          type: integer
+        totalLessons:
+          type: integer
+        enrolledAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - courseId
+        - courseTitle
+        - courseDescription
+        - courseCategory
+        - instructor
+        - status
+        - progressPercent
+        - completedLessons
+        - totalLessons
+        - enrolledAt
+
+    StudentLesson:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        content:
+          type: string
+        duration:
+          type: integer
+        orderIndex:
+          type: integer
+        type:
+          type: string
+        isCompleted:
+          type: boolean
+      required:
+        - id
+        - title
+        - description
+        - content
+        - duration
+        - orderIndex
+        - type
+        - isCompleted
+
+    StudentCourseDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        instructor:
+          type: string
+        enrollmentId:
+          type: integer
+        status:
+          type: string
+        progressPercent:
+          type: integer
+        lessons:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudentLesson"
+      required:
+        - id
+        - title
+        - description
+        - category
+        - instructor
+        - enrollmentId
+        - status
+        - progressPercent
+        - lessons
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+        studentEmail:
+          type: string
+        title:
+          type: string
+        message:
+          type: string
+        type:
+          type: string
+          enum: [info, success, warning, announcement]
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - studentEmail
+        - title
+        - message
+        - type
+        - isRead
+        - createdAt
+
+    Assignment:
+      type: object
+      properties:
+        id:
+          type: integer
+        courseId:
+          type: integer
+        courseTitle:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+          enum: [assignment, quiz]
+        dueDate:
+          type: string
+          format: date-time
+        maxScore:
+          type: integer
+        submission:
+          $ref: "#/components/schemas/AssignmentSubmission"
+      required:
+        - id
+        - courseId
+        - courseTitle
+        - title
+        - description
+        - type
+        - dueDate
+        - maxScore
+
+    AssignmentSubmission:
+      type: object
+      properties:
+        id:
+          type: integer
+        assignmentId:
+          type: integer
+        content:
+          type: string
+        score:
+          type: integer
+        feedback:
+          type: string
+        submittedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - assignmentId
+        - content
+        - submittedAt
+
+    Discussion:
+      type: object
+      properties:
+        id:
+          type: integer
+        courseId:
+          type: integer
+        lessonId:
+          type: integer
+        studentEmail:
+          type: string
+        studentName:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - courseId
+        - studentEmail
+        - studentName
+        - content
+        - createdAt
+
+    UpdateStudentProfileBody:
+      type: object
+      properties:
+        email:
+          type: string
+        displayName:
+          type: string
+        bio:
+          type: string
+        avatarUrl:
+          type: string
+
+    StudentEnrollBody:
+      type: object
+      properties:
+        email:
+          type: string
+        displayName:
+          type: string
+        courseId:
+          type: integer
+      required:
+        - email
+        - displayName
+        - courseId
+
+    CompleteLessonBody:
+      type: object
+      properties:
+        enrollmentId:
+          type: integer
+        completed:
+          type: boolean
+      required:
+        - enrollmentId
+        - completed
+
+    SubmitAssignmentBody:
+      type: object
+      properties:
+        email:
+          type: string
+        enrollmentId:
+          type: integer
+        content:
+          type: string
+      required:
+        - email
+        - enrollmentId
+        - content
+
+    PostDiscussionBody:
+      type: object
+      properties:
+        courseId:
+          type: integer
+        lessonId:
+          type: integer
+        studentEmail:
+          type: string
+        studentName:
+          type: string
+        content:
+          type: string
+      required:
+        - courseId
+        - studentEmail
+        - studentName
+        - content

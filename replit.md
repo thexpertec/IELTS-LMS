@@ -91,6 +91,28 @@ Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used b
 
 Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
 
+### `artifacts/lms` (`@workspace/lms`)
+
+Full-stack LMS (Learning Management System) React + Vite frontend. Contains both the admin dashboard and the student portal.
+
+**Admin area** (routes `/`, `/courses`, `/enrollments`, `/students`):
+- Dashboard with stats and charts
+- Course and lesson management (CRUD)
+- Enrollment management
+- Student directory with "View Enrollments" quick link
+
+**Student Portal** (routes `/student`, `/student/*`):
+- Login page at `/student` — email-based, no password (localStorage session)
+- Dashboard at `/student/dashboard` — enrolled courses, upcoming deadlines, notifications
+- My Courses at `/student/courses` — enrolled courses with progress + browse & enroll
+- Course View at `/student/courses/:id` — lesson list with check-to-complete, discussion board
+- Assignments at `/student/assignments` — pending/submitted assignments & quizzes
+- Notifications at `/student/notifications` — mark read/mark all read
+- Profile at `/student/profile` — edit name/bio, view academic history
+
+Context: `src/context/student-context.tsx` — manages localStorage session
+Layouts: `src/components/layout/sidebar-layout.tsx` (admin), `src/components/layout/student-layout.tsx` (student)
+
 ### `scripts` (`@workspace/scripts`)
 
 Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.

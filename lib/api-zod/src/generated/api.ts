@@ -359,3 +359,277 @@ export const GetCourseStatsResponseItem = zod.object({
   completionRate: zod.number(),
 });
 export const GetCourseStatsResponse = zod.array(GetCourseStatsResponseItem);
+
+/**
+ * @summary Get or create student profile by email
+ */
+export const GetStudentProfileQueryParams = zod.object({
+  email: zod.coerce.string(),
+});
+
+export const GetStudentProfileResponse = zod.object({
+  email: zod.string(),
+  displayName: zod.string(),
+  bio: zod.string().optional(),
+  avatarUrl: zod.string().optional(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update student profile
+ */
+export const UpdateStudentProfileBody = zod.object({
+  email: zod.string().optional(),
+  displayName: zod.string().optional(),
+  bio: zod.string().optional(),
+  avatarUrl: zod.string().optional(),
+});
+
+export const UpdateStudentProfileResponse = zod.object({
+  email: zod.string(),
+  displayName: zod.string(),
+  bio: zod.string().optional(),
+  avatarUrl: zod.string().optional(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Get all enrollments for a student with course details and progress
+ */
+export const GetStudentEnrollmentsQueryParams = zod.object({
+  email: zod.coerce.string(),
+});
+
+export const GetStudentEnrollmentsResponseItem = zod.object({
+  id: zod.number(),
+  courseId: zod.number(),
+  courseTitle: zod.string(),
+  courseDescription: zod.string(),
+  courseCategory: zod.string(),
+  instructor: zod.string(),
+  status: zod.enum(["active", "completed", "dropped"]),
+  progressPercent: zod.number(),
+  completedLessons: zod.number(),
+  totalLessons: zod.number(),
+  enrolledAt: zod.coerce.date(),
+});
+export const GetStudentEnrollmentsResponse = zod.array(
+  GetStudentEnrollmentsResponseItem,
+);
+
+/**
+ * @summary Get courses the student has not enrolled in
+ */
+export const GetAvailableCoursesQueryParams = zod.object({
+  email: zod.coerce.string(),
+});
+
+export const GetAvailableCoursesResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  description: zod.string(),
+  category: zod.string(),
+  instructor: zod.string(),
+  level: zod.enum(["beginner", "intermediate", "advanced"]),
+  imageUrl: zod.string().nullable(),
+  durationHours: zod.number().nullable(),
+  isPublished: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const GetAvailableCoursesResponse = zod.array(
+  GetAvailableCoursesResponseItem,
+);
+
+/**
+ * @summary Enroll a student in a course
+ */
+export const StudentEnrollBody = zod.object({
+  email: zod.string(),
+  displayName: zod.string(),
+  courseId: zod.number(),
+});
+
+/**
+ * @summary Get course detail with lessons and progress for a student
+ */
+export const GetStudentCourseDetailParams = zod.object({
+  courseId: zod.coerce.number(),
+});
+
+export const GetStudentCourseDetailQueryParams = zod.object({
+  email: zod.coerce.string(),
+});
+
+export const GetStudentCourseDetailResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  description: zod.string(),
+  category: zod.string(),
+  instructor: zod.string(),
+  enrollmentId: zod.number(),
+  status: zod.string(),
+  progressPercent: zod.number(),
+  lessons: zod.array(
+    zod.object({
+      id: zod.number(),
+      title: zod.string(),
+      description: zod.string(),
+      content: zod.string(),
+      duration: zod.number(),
+      orderIndex: zod.number(),
+      type: zod.string(),
+      isCompleted: zod.boolean(),
+    }),
+  ),
+});
+
+/**
+ * @summary Mark a lesson as complete or incomplete
+ */
+export const StudentCompleteLessonParams = zod.object({
+  lessonId: zod.coerce.number(),
+});
+
+export const StudentCompleteLessonBody = zod.object({
+  enrollmentId: zod.number(),
+  completed: zod.boolean(),
+});
+
+export const StudentCompleteLessonResponse = zod.object({
+  id: zod.number(),
+  enrollmentId: zod.number(),
+  lessonId: zod.number(),
+  completed: zod.boolean(),
+  completedAt: zod.coerce.date().nullable(),
+});
+
+/**
+ * @summary Get notifications for a student
+ */
+export const GetStudentNotificationsQueryParams = zod.object({
+  email: zod.coerce.string(),
+});
+
+export const GetStudentNotificationsResponseItem = zod.object({
+  id: zod.number(),
+  studentEmail: zod.string(),
+  title: zod.string(),
+  message: zod.string(),
+  type: zod.enum(["info", "success", "warning", "announcement"]),
+  isRead: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+export const GetStudentNotificationsResponse = zod.array(
+  GetStudentNotificationsResponseItem,
+);
+
+/**
+ * @summary Mark a notification as read
+ */
+export const MarkNotificationReadParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const MarkNotificationReadResponse = zod.object({
+  id: zod.number(),
+  studentEmail: zod.string(),
+  title: zod.string(),
+  message: zod.string(),
+  type: zod.enum(["info", "success", "warning", "announcement"]),
+  isRead: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Mark all notifications as read for a student
+ */
+export const MarkAllNotificationsReadBody = zod.object({
+  email: zod.string(),
+});
+
+export const MarkAllNotificationsReadResponse = zod.object({
+  count: zod.number(),
+});
+
+/**
+ * @summary Get assignments for all enrolled courses of a student
+ */
+export const GetStudentAssignmentsQueryParams = zod.object({
+  email: zod.coerce.string(),
+});
+
+export const GetStudentAssignmentsResponseItem = zod.object({
+  id: zod.number(),
+  courseId: zod.number(),
+  courseTitle: zod.string(),
+  title: zod.string(),
+  description: zod.string(),
+  type: zod.enum(["assignment", "quiz"]),
+  dueDate: zod.coerce.date(),
+  maxScore: zod.number(),
+  submission: zod
+    .object({
+      id: zod.number(),
+      assignmentId: zod.number(),
+      content: zod.string(),
+      score: zod.number().optional(),
+      feedback: zod.string().optional(),
+      submittedAt: zod.coerce.date(),
+    })
+    .optional(),
+});
+export const GetStudentAssignmentsResponse = zod.array(
+  GetStudentAssignmentsResponseItem,
+);
+
+/**
+ * @summary Submit an assignment
+ */
+export const SubmitAssignmentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SubmitAssignmentBody = zod.object({
+  email: zod.string(),
+  enrollmentId: zod.number(),
+  content: zod.string(),
+});
+
+export const SubmitAssignmentResponse = zod.object({
+  id: zod.number(),
+  assignmentId: zod.number(),
+  content: zod.string(),
+  score: zod.number().optional(),
+  feedback: zod.string().optional(),
+  submittedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Get discussions for a course
+ */
+export const ListDiscussionsQueryParams = zod.object({
+  courseId: zod.coerce.number(),
+});
+
+export const ListDiscussionsResponseItem = zod.object({
+  id: zod.number(),
+  courseId: zod.number(),
+  lessonId: zod.number().optional(),
+  studentEmail: zod.string(),
+  studentName: zod.string(),
+  content: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+export const ListDiscussionsResponse = zod.array(ListDiscussionsResponseItem);
+
+/**
+ * @summary Post a discussion message
+ */
+export const PostDiscussionBody = zod.object({
+  courseId: zod.number(),
+  lessonId: zod.number().optional(),
+  studentEmail: zod.string(),
+  studentName: zod.string(),
+  content: zod.string(),
+});
