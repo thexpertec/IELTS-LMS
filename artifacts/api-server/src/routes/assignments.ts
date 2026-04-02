@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, count } from "drizzle-orm";
+import { eq, desc, count, and } from "drizzle-orm";
 import { db, assignmentsTable, assignmentSubmissionsTable, coursesTable, enrollmentsTable } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -114,6 +114,53 @@ router.delete("/assignments/:id", async (req, res): Promise<void> => {
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(assignmentsTable).where(eq(assignmentsTable.id, id));
   res.status(204).send();
+});
+
+router.put("/assignments/:id/grade", async (req, res): Promise<void> => {
+  const assignmentId = Number(req.params.id);
+  if (!assignmentId) { res.status(400).json({ error: "Invalid assignment id" }); return; }
+
+  const { enrollmentId, studentEmail, score, feedback } = req.body;
+  if (!enrollmentId || !studentEmail) {
+    res.status(400).json({ error: "enrollmentId and studentEmail are required" });
+    return;
+  }
+
+  const existing = await db
+    .select({ id: assignmentSubmissionsTable.id })
+    .from(assignmentSubmissionsTable)
+    .where(
+      and(
+        eq(assignmentSubmissionsTable.assignmentId, assignmentId),
+        eq(assignmentSubmissionsTable.enrollmentId, Number(enrollmentId))
+      )
+    )
+    .limit(1);
+
+  if (existing.length > 0) {
+    const update: Record<string, unknown> = {};
+    if (score !== undefined) update.score = score === null ? null : Number(score);
+    if (feedback !== undefined) update.feedback = feedback;
+    const [row] = await db
+      .update(assignmentSubmissionsTable)
+      .set(update)
+      .where(eq(assignmentSubmissionsTable.id, existing[0].id))
+      .returning();
+    res.json(row);
+  } else {
+    const [row] = await db
+      .insert(assignmentSubmissionsTable)
+      .values({
+        assignmentId,
+        enrollmentId: Number(enrollmentId),
+        studentEmail,
+        content: "",
+        score: score !== undefined && score !== null ? Number(score) : null,
+        feedback: feedback ?? null,
+      })
+      .returning();
+    res.json(row);
+  }
 });
 
 router.patch("/assignments/:id/submissions/:subId", async (req, res): Promise<void> => {

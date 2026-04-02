@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { GradesTab } from "@/components/course-grades-tab";
 
 type Lesson = {
   id: number;
@@ -444,9 +445,14 @@ export default function CourseDetail() {
         )}
       </div>
 
-      <Tabs defaultValue="curriculum" className="w-full">
+      <Tabs
+        value={new URLSearchParams(window.location.search).get("tab") ?? "curriculum"}
+        onValueChange={(v) => setLocation(`/courses/${id}?tab=${v}`)}
+        className="w-full"
+      >
         <TabsList className="mb-6">
           <TabsTrigger value="curriculum" data-testid="tab-curriculum">Curriculum</TabsTrigger>
+          <TabsTrigger value="grades" data-testid="tab-grades">Grades</TabsTrigger>
           <TabsTrigger value="settings" data-testid="tab-settings">Settings</TabsTrigger>
         </TabsList>
         
@@ -601,6 +607,16 @@ export default function CourseDetail() {
           )}
         </TabsContent>
         
+        <TabsContent value="grades" className="space-y-4">
+          <div>
+            <h2 className="text-xl font-semibold">Gradebook</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              View and enter grades for all students across every assignment.
+            </p>
+          </div>
+          <GradesTab courseId={id} />
+        </TabsContent>
+
         <TabsContent value="settings">
           <Card>
             <CardHeader>
