@@ -12,6 +12,8 @@ import {
   assignmentSubmissionsTable,
   notificationsTable,
   discussionsTable,
+  quizzesTable,
+  quizAttemptsTable,
 } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -634,6 +636,59 @@ router.post("/student/discussions", async (req, res): Promise<void> => {
     content: discussion.content,
     createdAt: discussion.createdAt.toISOString(),
   });
+});
+
+// ── Student: Quiz attempts for a course ───────────────────────────────────
+router.get("/student/quiz-attempts", async (req, res): Promise<void> => {
+  const { email, courseId } = req.query as { email?: string; courseId?: string };
+  if (!email || !courseId) {
+    res.status(400).json({ error: "email and courseId query params required" });
+    return;
+  }
+
+  const enrollment = await db
+    .select({ id: enrollmentsTable.id })
+    .from(enrollmentsTable)
+    .where(and(
+      eq(enrollmentsTable.studentEmail, email),
+      eq(enrollmentsTable.courseId, Number(courseId))
+    ))
+    .limit(1);
+
+  if (!enrollment.length) { res.json([]); return; }
+  const enrollmentId = enrollment[0].id;
+
+  const quizzes = await db
+    .select({ id: quizzesTable.id, title: quizzesTable.title, timeLimitMinutes: quizzesTable.timeLimitMinutes })
+    .from(quizzesTable)
+    .where(eq(quizzesTable.courseId, Number(courseId)));
+
+  const attempts = await db
+    .select()
+    .from(quizAttemptsTable)
+    .where(eq(quizAttemptsTable.enrollmentId, enrollmentId));
+
+  const attemptMap = new Map(attempts.map((a) => [a.quizId, a]));
+
+  const result = quizzes.map((q) => {
+    const attempt = attemptMap.get(q.id) ?? null;
+    return {
+      quizId: q.id,
+      quizTitle: q.title,
+      timeLimitMinutes: q.timeLimitMinutes,
+      attempt: attempt
+        ? {
+            id: attempt.id,
+            score: attempt.score,
+            maxScore: attempt.maxScore,
+            feedback: attempt.feedback,
+            submittedAt: attempt.submittedAt?.toISOString() ?? null,
+          }
+        : null,
+    };
+  });
+
+  res.json(result);
 });
 
 export default router;
