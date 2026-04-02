@@ -72,37 +72,40 @@ import {
 } from "lucide-react";
 
 // ─────────────────────────────────────────────
-// Types for the seven question formats
+// Types for the eight question formats
 // ─────────────────────────────────────────────
-type QType = "fill_blank" | "dropdown" | "choose_word" | "matching" | "short_answer" | "true_false_ng" | "multi_select";
+type QType = "fill_blank" | "fill_blank_dropdown" | "dropdown" | "choose_word" | "matching" | "short_answer" | "true_false_ng" | "multi_select";
 
-interface FillBlankOpts    { sentence: string; blanks: string[] }
-interface DropdownOpts     { stem: string; choices: string[]; correct: string }
-interface ChooseWordOpts   { instruction: string; wordLimit: number; passageText?: string; imageUrl?: string; correct: string }
-interface MatchingOpts     { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[] }
-interface ShortAnswerOpts  { prompt: string; correct?: string; wordLimit?: number }
-interface TrueFalseNgOpts  { statement: string; correct: "TRUE" | "FALSE" | "NOT GIVEN" | "" }
-interface MultiSelectOpts  { instruction: string; options: string[]; maxSelect: number; correct: number[] }
-type QOptions = FillBlankOpts | DropdownOpts | ChooseWordOpts | MatchingOpts | ShortAnswerOpts | TrueFalseNgOpts | MultiSelectOpts;
+interface FillBlankOpts          { sentence: string; blanks: string[] }
+interface FillBlankDropdownOpts  { instruction: string; sentences: string[]; choices: string[]; correct: string[] }
+interface DropdownOpts           { stem: string; choices: string[]; correct: string }
+interface ChooseWordOpts         { instruction: string; wordLimit: number; passageText?: string; imageUrl?: string; correct: string }
+interface MatchingOpts           { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[] }
+interface ShortAnswerOpts        { prompt: string; correct?: string; wordLimit?: number }
+interface TrueFalseNgOpts        { statement: string; correct: "TRUE" | "FALSE" | "NOT GIVEN" | "" }
+interface MultiSelectOpts        { instruction: string; options: string[]; maxSelect: number; correct: number[] }
+type QOptions = FillBlankOpts | FillBlankDropdownOpts | DropdownOpts | ChooseWordOpts | MatchingOpts | ShortAnswerOpts | TrueFalseNgOpts | MultiSelectOpts;
 
 const Q_TYPE_LABELS: Record<QType, string> = {
-  fill_blank:    "Fill in the Blanks",
-  dropdown:      "Dropdown Options",
-  choose_word:   "Choose One Word",
-  matching:      "Column Matching",
-  short_answer:  "Short Answer",
-  true_false_ng: "True / False / Not Given",
-  multi_select:  "Multiple Selection",
+  fill_blank:          "Fill Blanks — Text Input",
+  fill_blank_dropdown: "Fill Blanks — Dropdown",
+  dropdown:            "Dropdown Options",
+  choose_word:         "Choose One Word",
+  matching:            "Column Matching",
+  short_answer:        "Short Answer",
+  true_false_ng:       "True / False / Not Given",
+  multi_select:        "Multiple Selection",
 };
 
 const Q_TYPE_COLORS: Record<QType, string> = {
-  fill_blank:    "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-  dropdown:      "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
-  choose_word:   "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
-  matching:      "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
-  short_answer:  "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300",
-  true_false_ng: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
-  multi_select:  "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
+  fill_blank:          "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+  fill_blank_dropdown: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300",
+  dropdown:            "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
+  choose_word:         "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+  matching:            "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
+  short_answer:        "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300",
+  true_false_ng:       "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
+  multi_select:        "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
 };
 
 // ─────────────────────────────────────────────
@@ -110,13 +113,14 @@ const Q_TYPE_COLORS: Record<QType, string> = {
 // ─────────────────────────────────────────────
 function defaultOptions(type: QType): QOptions {
   switch (type) {
-    case "fill_blank":    return { sentence: "", blanks: [""] };
-    case "dropdown":      return { stem: "", choices: ["", "", ""], correct: "" };
-    case "choose_word":   return { instruction: "Choose ONE WORD from the passage below.", wordLimit: 1, passageText: "", imageUrl: "", correct: "" };
-    case "matching":      return { leftItems: ["", ""], rightItems: ["", ""], pairs: [] };
-    case "short_answer":  return { prompt: "", correct: "", wordLimit: undefined };
-    case "true_false_ng": return { statement: "", correct: "" };
-    case "multi_select":  return { instruction: "", options: ["", "", "", ""], maxSelect: 2, correct: [] };
+    case "fill_blank":          return { sentence: "", blanks: [""] };
+    case "fill_blank_dropdown": return { instruction: "", sentences: ["", ""], choices: ["A", "B", "C"], correct: ["", ""] };
+    case "dropdown":            return { stem: "", choices: ["", "", ""], correct: "" };
+    case "choose_word":         return { instruction: "Choose ONE WORD from the passage below.", wordLimit: 1, passageText: "", imageUrl: "", correct: "" };
+    case "matching":            return { leftItems: ["", ""], rightItems: ["", ""], pairs: [] };
+    case "short_answer":        return { prompt: "", correct: "", wordLimit: undefined };
+    case "true_false_ng":       return { statement: "", correct: "" };
+    case "multi_select":        return { instruction: "", options: ["", "", "", ""], maxSelect: 2, correct: [] };
   }
 }
 
@@ -164,6 +168,107 @@ function FillBlankEditor({ opts, onChange }: { opts: FillBlankOpts; onChange: (o
           <Button variant="outline" size="sm" onClick={addBlank} type="button">
             <Plus className="w-3.5 h-3.5 mr-1" /> Add Blank
           </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FillBlankDropdownEditor({ opts, onChange }: { opts: FillBlankDropdownOpts; onChange: (o: FillBlankDropdownOpts) => void }) {
+  const setSentence = (i: number, val: string) => {
+    const next = [...opts.sentences]; next[i] = val; onChange({ ...opts, sentences: next });
+  };
+  const setCorrect = (i: number, val: string) => {
+    const next = [...opts.correct]; next[i] = val; onChange({ ...opts, correct: next });
+  };
+  const addSentence = () => onChange({ ...opts, sentences: [...opts.sentences, ""], correct: [...opts.correct, ""] });
+  const removeSentence = (i: number) => onChange({
+    ...opts,
+    sentences: opts.sentences.filter((_, idx) => idx !== i),
+    correct: opts.correct.filter((_, idx) => idx !== i),
+  });
+  const setChoice = (i: number, val: string) => {
+    const next = [...opts.choices]; next[i] = val; onChange({ ...opts, choices: next });
+  };
+  const addChoice = () => onChange({ ...opts, choices: [...opts.choices, ""] });
+  const removeChoice = (i: number) => onChange({ ...opts, choices: opts.choices.filter((_, idx) => idx !== i) });
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <Label>Instruction Text <span className="text-muted-foreground text-xs">(optional)</span></Label>
+        <Textarea
+          className="mt-1.5 min-h-[70px]"
+          placeholder="e.g. Look at the following statements and match each with the correct person A–C."
+          value={opts.instruction}
+          onChange={(e) => onChange({ ...opts, instruction: e.target.value })}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Shared Dropdown Choices</Label>
+        <p className="text-xs text-muted-foreground">These options appear in every dropdown for this question.</p>
+        <div className="space-y-1.5 mt-1">
+          {opts.choices.map((choice, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Input
+                className="h-8 text-sm"
+                placeholder={`Choice ${i + 1}`}
+                value={choice}
+                onChange={(e) => setChoice(i, e.target.value)}
+              />
+              {opts.choices.length > 2 && (
+                <Button type="button" size="icon" variant="ghost" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => removeChoice(i)}>
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          ))}
+          <Button type="button" size="sm" variant="outline" onClick={addChoice} className="h-7 text-xs gap-1 mt-1">
+            <Plus className="h-3 w-3" /> Add Choice
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label>Sentences <span className="text-muted-foreground text-xs ml-1">(one per question slot)</span></Label>
+          <Button type="button" size="sm" variant="outline" onClick={addSentence} className="h-7 text-xs gap-1">
+            <Plus className="h-3 w-3" /> Add
+          </Button>
+        </div>
+        <div className="space-y-3 mt-1">
+          {opts.sentences.map((sent, i) => (
+            <div key={i} className="border border-border rounded-md p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-muted-foreground w-5">{i + 1}</span>
+                <Input
+                  className="flex-1 h-8 text-sm"
+                  placeholder="Sentence text (dropdown appears at end)"
+                  value={sent}
+                  onChange={(e) => setSentence(i, e.target.value)}
+                />
+                {opts.sentences.length > 1 && (
+                  <Button type="button" size="icon" variant="ghost" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => removeSentence(i)}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+              <div className="flex items-center gap-2 pl-7">
+                <Label className="text-xs shrink-0">Correct Answer</Label>
+                <select
+                  className="border border-border rounded px-2 py-1 text-sm bg-transparent focus:outline-none focus:border-primary"
+                  value={opts.correct[i] ?? ""}
+                  onChange={(e) => setCorrect(i, e.target.value)}
+                >
+                  <option value="">— select —</option>
+                  {opts.choices.filter(Boolean).map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -514,6 +619,10 @@ function QuestionSummary({ type, options }: { type: QType; options: QOptions }) 
   if (type === "true_false_ng") {
     const o = options as TrueFalseNgOpts;
     return <p className="text-xs text-muted-foreground truncate">{o.statement || "—"}{o.correct ? ` · ✓ ${o.correct}` : ""}</p>;
+  }
+  if (type === "fill_blank_dropdown") {
+    const o = options as FillBlankDropdownOpts;
+    return <p className="text-xs text-muted-foreground truncate">{o.sentences.filter(Boolean).length} sentences · choices: {o.choices.filter(Boolean).join(", ") || "—"}</p>;
   }
   if (type === "multi_select") {
     const o = options as MultiSelectOpts;
@@ -1229,6 +1338,9 @@ export default function QuizDetail() {
             {/* Type-specific editor */}
             {qType === "fill_blank" && (
               <FillBlankEditor opts={qOptions as FillBlankOpts} onChange={(o) => setQOptions(o)} />
+            )}
+            {qType === "fill_blank_dropdown" && (
+              <FillBlankDropdownEditor opts={qOptions as FillBlankDropdownOpts} onChange={(o) => setQOptions(o)} />
             )}
             {qType === "dropdown" && (
               <DropdownEditor opts={qOptions as DropdownOpts} onChange={(o) => setQOptions(o)} />

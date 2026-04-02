@@ -17,14 +17,15 @@ import { CheckCircle2, Clock, List } from "lucide-react";
 // ─────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────
-type QType = "fill_blank" | "dropdown" | "choose_word" | "matching" | "short_answer" | "true_false_ng" | "multi_select";
-interface FillBlankOpts    { sentence: string; blanks: string[] }
-interface DropdownOpts     { stem: string; choices: string[]; correct: string }
-interface ChooseWordOpts   { instruction: string; wordLimit: number; passageText?: string; imageUrl?: string; correct: string }
-interface MatchingOpts     { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[] }
-interface ShortAnswerOpts  { prompt: string; correct?: string; wordLimit?: number }
-interface TrueFalseNgOpts  { statement: string; correct: "TRUE" | "FALSE" | "NOT GIVEN" | "" }
-interface MultiSelectOpts  { instruction: string; options: string[]; maxSelect: number; correct: number[] }
+type QType = "fill_blank" | "fill_blank_dropdown" | "dropdown" | "choose_word" | "matching" | "short_answer" | "true_false_ng" | "multi_select";
+interface FillBlankOpts         { sentence: string; blanks: string[] }
+interface FillBlankDropdownOpts { instruction: string; sentences: string[]; choices: string[]; correct: string[] }
+interface DropdownOpts          { stem: string; choices: string[]; correct: string }
+interface ChooseWordOpts        { instruction: string; wordLimit: number; passageText?: string; imageUrl?: string; correct: string }
+interface MatchingOpts          { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[] }
+interface ShortAnswerOpts       { prompt: string; correct?: string; wordLimit?: number }
+interface TrueFalseNgOpts       { statement: string; correct: "TRUE" | "FALSE" | "NOT GIVEN" | "" }
+interface MultiSelectOpts       { instruction: string; options: string[]; maxSelect: number; correct: number[] }
 
 type AnswerMap = Record<number, string | string[] | Record<number, string>>;
 
@@ -33,6 +34,7 @@ function isAnswered(qId: number, qType: QType, answers: AnswerMap): boolean {
   if (ans === undefined || ans === null) return false;
   if (qType === "fill_blank") return Array.isArray(ans) && (ans as string[]).some(Boolean);
   if (qType === "matching") return Object.keys(ans as Record<number, string>).length > 0;
+  if (qType === "fill_blank_dropdown") return Object.keys(ans as Record<number, string>).length > 0;
   if (qType === "multi_select") return Array.isArray(ans) && (ans as number[]).length > 0;
   return typeof ans === "string" && ans.trim() !== "";
 }
@@ -45,6 +47,10 @@ function questionSlots(q: { type: string; options: unknown }): number {
   if (q.type === "multi_select") {
     const opts = q.options as MultiSelectOpts;
     return Math.max(1, opts.maxSelect ?? 1);
+  }
+  if (q.type === "fill_blank_dropdown") {
+    const opts = q.options as FillBlankDropdownOpts;
+    return Math.max(1, (opts.sentences ?? []).filter(Boolean).length);
   }
   return 1;
 }
@@ -125,6 +131,61 @@ function FillBlankQuestion({
           </span>
         ))}
       </p>
+    </div>
+  );
+}
+
+function FillBlankDropdownQuestion({
+  opts, qId, answers, setAnswers, slotStart,
+}: { opts: FillBlankDropdownOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number }) {
+  const current = (answers[qId] as Record<number, string> | undefined) ?? {};
+  const sentences = opts.sentences.filter(Boolean);
+  const slotEnd = slotStart + sentences.length - 1;
+  const rangeLabel = sentences.length > 1 ? `Questions ${slotStart}–${slotEnd}` : `Question ${slotStart}`;
+  const setVal = (i: number, val: string) => setAnswers({ ...answers, [qId]: { ...current, [i]: val } });
+  return (
+    <div id={`q-${qId}`} className="space-y-3">
+      <p className="text-[15px] font-bold text-[#2d6a2d] dark:text-green-400">{rangeLabel}</p>
+      {opts.instruction && (
+        <div className="text-sm leading-relaxed space-y-0.5">
+          {opts.instruction.split("\n").map((line, li) => (
+            <p key={li}>{line}</p>
+          ))}
+        </div>
+      )}
+      <div className="space-y-3 mt-1">
+        {sentences.map((sentence, i) => {
+          const slotNum = slotStart + i;
+          const val = current[i] ?? "";
+          return (
+            <div key={i} className="flex items-center flex-wrap gap-x-2 gap-y-1 text-sm leading-relaxed">
+              <span className="font-medium text-muted-foreground w-6 shrink-0">{slotNum}</span>
+              <span className="flex-1 min-w-0">{sentence}</span>
+              <span className={cn(
+                "inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold shrink-0 select-none",
+                val ? "bg-[#2563EB] text-white" : "bg-[#2563EB]/20 text-[#2563EB] dark:text-blue-300"
+              )}>
+                {slotNum}
+              </span>
+              <select
+                className={cn(
+                  "border-2 rounded-full px-3 py-0.5 text-sm bg-white dark:bg-transparent focus:outline-none transition-colors",
+                  val
+                    ? "border-[#2563EB] text-[#2563EB] dark:border-blue-400 dark:text-blue-300"
+                    : "border-[#c7cfe0] text-muted-foreground dark:border-border"
+                )}
+                value={val}
+                onChange={(e) => setVal(i, e.target.value)}
+              >
+                <option value=""> </option>
+                {opts.choices.filter(Boolean).map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -466,6 +527,13 @@ export default function StudentQuizTake() {
       for (let i = 0; i < slots; i++) if (i < selected.length) sum++;
       return sum;
     }
+    if (q.type === "fill_blank_dropdown") {
+      const opts = q.options as FillBlankDropdownOpts;
+      const current = (answers[q.id] as Record<number, string> | undefined) ?? {};
+      const rows = (opts.sentences ?? []).filter(Boolean).length;
+      for (let i = 0; i < rows; i++) if (current[i]) sum++;
+      return sum;
+    }
     return sum + (answeredIds.has(q.id) ? 1 : 0);
   }, 0);
 
@@ -794,6 +862,31 @@ export default function StudentQuizTake() {
                 return (
                   <button
                     key={`${q.id}-ms-${ri}`}
+                    onClick={() => scrollToQ(q.id)}
+                    className={cn(
+                      "w-7 h-7 text-xs rounded font-medium transition-all",
+                      done
+                        ? "bg-primary text-primary-foreground"
+                        : isCurrentTab
+                        ? "border border-primary text-primary"
+                        : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {slotNum}
+                  </button>
+                );
+              });
+            }
+            if (q.type === "fill_blank_dropdown") {
+              const opts = q.options as FillBlankDropdownOpts;
+              const current = (answers[q.id] as Record<number, string> | undefined) ?? {};
+              const rows = (opts.sentences ?? []).filter(Boolean).length;
+              return Array.from({ length: rows }, (_, ri) => {
+                const done = !!current[ri];
+                const slotNum = si.slotStart + ri + 1;
+                return (
+                  <button
+                    key={`${q.id}-fbd-${ri}`}
                     onClick={() => scrollToQ(q.id)}
                     className={cn(
                       "w-7 h-7 text-xs rounded font-medium transition-all",

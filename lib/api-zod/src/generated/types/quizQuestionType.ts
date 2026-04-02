@@ -11,6 +11,7 @@ export type QuizQuestionType =
 
 export const QuizQuestionType = {
   fill_blank: "fill_blank",
+  fill_blank_dropdown: "fill_blank_dropdown",
   dropdown: "dropdown",
   choose_word: "choose_word",
   matching: "matching",
