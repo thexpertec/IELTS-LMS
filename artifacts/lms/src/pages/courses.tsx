@@ -51,7 +51,7 @@ export default function Courses() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6 sm:space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Courses</h1>

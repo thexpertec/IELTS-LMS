@@ -35,7 +35,7 @@ export default function Quizzes() {
   });
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6 sm:space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Quizzes</h1>
@@ -101,7 +101,7 @@ export default function Quizzes() {
                   </div>
                 </div>
                 <CardContent className="px-0 pb-0 pt-3">
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-x-3 gap-y-1.5 flex-wrap text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <ClipboardList className="w-3.5 h-3.5" />
                       {quiz.questionCount} question{quiz.questionCount !== 1 ? "s" : ""}

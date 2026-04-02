@@ -61,7 +61,7 @@ export default function Students() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6 sm:space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Student Directory</h1>
         <p className="text-muted-foreground mt-1">Overview of all unique learners across the platform.</p>

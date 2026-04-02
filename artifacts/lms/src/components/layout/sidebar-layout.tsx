@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, BookOpen, Users, UserPlus, Moon, Sun, GraduationCap, ClipboardList } from "lucide-react";
+import { LayoutDashboard, BookOpen, Users, UserPlus, Moon, Sun, GraduationCap, ClipboardList, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ interface SidebarLayoutProps {
 export function SidebarLayout({ children }: SidebarLayoutProps) {
   const [location] = useLocation();
   const { theme, setTheme } = useTheme();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -20,76 +22,114 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     { name: "Students", href: "/students", icon: Users },
   ];
 
+  const SidebarContent = () => (
+    <>
+      <div className="h-16 flex items-center px-6 border-b shrink-0">
+        <div className="flex items-center gap-2 font-bold text-lg tracking-tight">
+          <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
+            <BookOpen className="w-4 h-4 text-primary-foreground" />
+          </div>
+          LMS Admin
+        </div>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+        {navigation.map((item) => {
+          const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              data-testid={`nav-${item.name.toLowerCase()}`}
+              onClick={() => setMobileOpen(false)}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              )}
+            >
+              <item.icon className="w-4 h-4" />
+              {item.name}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="p-4 border-t space-y-1 shrink-0">
+        <Link
+          href="/student"
+          onClick={() => setMobileOpen(false)}
+          className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+          data-testid="nav-student-portal"
+        >
+          <GraduationCap className="w-4 h-4" />
+          Student Portal
+        </Link>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start gap-3 text-muted-foreground"
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          data-testid="btn-toggle-theme"
+        >
+          {theme === "dark" ? (
+            <><Sun className="w-4 h-4" />Light Mode</>
+          ) : (
+            <><Moon className="w-4 h-4" />Dark Mode</>
+          )}
+        </Button>
+      </div>
+    </>
+  );
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* Sidebar */}
-      <aside className="w-64 flex-shrink-0 border-r bg-card flex flex-col">
-        <div className="h-16 flex items-center px-6 border-b">
-          <div className="flex items-center gap-2 font-bold text-lg tracking-tight">
-            <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
-              <BookOpen className="w-4 h-4 text-primary-foreground" />
+
+      {/* ── Desktop sidebar (always visible on lg+) ── */}
+      <aside className="hidden lg:flex w-64 flex-shrink-0 border-r bg-card flex-col">
+        <SidebarContent />
+      </aside>
+
+      {/* ── Mobile overlay ── */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* ── Mobile sidebar drawer ── */}
+      <aside className={cn(
+        "fixed top-0 left-0 z-50 h-full w-64 bg-card border-r flex flex-col transition-transform duration-200 lg:hidden",
+        mobileOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <SidebarContent />
+      </aside>
+
+      {/* ── Main content ── */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Mobile top bar */}
+        <div className="lg:hidden flex items-center gap-3 h-14 px-4 border-b bg-card shrink-0">
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            aria-label="Open menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-2 font-bold text-base tracking-tight">
+            <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
+              <BookOpen className="w-3.5 h-3.5 text-primary-foreground" />
             </div>
             LMS Admin
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-          {navigation.map((item) => {
-            const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                data-testid={`nav-${item.name.toLowerCase()}`}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                <item.icon className="w-4 h-4" />
-                {item.name}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="p-4 border-t space-y-1">
-          <Link
-            href="/student"
-            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-            data-testid="nav-student-portal"
-          >
-            <GraduationCap className="w-4 h-4" />
-            Student Portal
-          </Link>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start gap-3 text-muted-foreground"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            data-testid="btn-toggle-theme"
-          >
-            {theme === "dark" ? (
-              <>
-                <Sun className="w-4 h-4" />
-                Light Mode
-              </>
-            ) : (
-              <>
-                <Moon className="w-4 h-4" />
-                Dark Mode
-              </>
-            )}
-          </Button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
-        {children}
-      </main>
+        <main className="flex-1 overflow-y-auto">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

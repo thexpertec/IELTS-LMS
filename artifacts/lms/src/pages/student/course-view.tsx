@@ -94,7 +94,7 @@ export default function CourseView() {
 
   if (isLoading) {
     return (
-      <div className="p-8 max-w-4xl mx-auto space-y-6">
+      <div className="p-4 sm:p-8 max-w-4xl mx-auto space-y-6">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-64 w-full" />
@@ -104,7 +104,7 @@ export default function CourseView() {
 
   if (!course) {
     return (
-      <div className="p-8 max-w-4xl mx-auto text-center">
+      <div className="p-4 sm:p-8 max-w-4xl mx-auto text-center">
         <p className="text-muted-foreground">Course not found or you are not enrolled.</p>
         <Link href="/student/courses">
           <Button className="mt-4" variant="outline">Go to My Courses</Button>
@@ -116,7 +116,7 @@ export default function CourseView() {
   const completedCount = course.lessons.filter((l) => l.isCompleted).length;
 
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-8">
+    <div className="p-4 sm:p-8 max-w-5xl mx-auto space-y-6 sm:space-y-8">
       <div className="flex items-center gap-3">
         <Link href="/student/courses">
           <Button variant="ghost" size="sm" className="gap-2">

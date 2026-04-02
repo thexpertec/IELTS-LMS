@@ -763,7 +763,7 @@ export default function QuizDetail() {
 
   if (isLoading) {
     return (
-      <div className="p-8 max-w-4xl mx-auto space-y-4">
+      <div className="p-4 sm:p-8 max-w-4xl mx-auto space-y-4">
         <Skeleton className="h-8 w-1/3" />
         <Skeleton className="h-4 w-1/2" />
         <Skeleton className="h-40 w-full rounded-lg" />
@@ -773,7 +773,7 @@ export default function QuizDetail() {
 
   if (!quiz) {
     return (
-      <div className="p-8 max-w-4xl mx-auto">
+      <div className="p-4 sm:p-8 max-w-4xl mx-auto">
         <p className="text-muted-foreground">Quiz not found.</p>
         <Button variant="ghost" className="mt-4" onClick={() => setLocation("/quizzes")}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to Quizzes
@@ -784,7 +784,7 @@ export default function QuizDetail() {
 
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-8">
+    <div className="p-4 sm:p-8 max-w-4xl mx-auto space-y-6 sm:space-y-8">
       {/* Header */}
       <div>
         <Button

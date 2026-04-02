@@ -68,7 +68,7 @@ export default function StudentDashboard() {
   const completedItems = enrollments?.filter((e) => e.status === "completed").length ?? 0;
 
   return (
-    <div className="space-y-8 p-8 max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6 sm:space-y-8 p-4 sm:p-8 max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
 
       {/* Header */}
       <div>

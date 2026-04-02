@@ -173,7 +173,7 @@ export default function Assignments() {
 
   if (isLoading) {
     return (
-      <div className="p-8 max-w-4xl mx-auto space-y-4">
+      <div className="p-4 sm:p-8 max-w-4xl mx-auto space-y-4">
         <Skeleton className="h-8 w-48" />
         {[1, 2, 3].map((i) => (
           <Card key={i}><CardContent className="p-4"><Skeleton className="h-16 w-full" /></CardContent></Card>
@@ -183,7 +183,7 @@ export default function Assignments() {
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-8">
+    <div className="p-4 sm:p-8 max-w-4xl mx-auto space-y-6 sm:space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Assignments & Quizzes</h1>
         <p className="text-muted-foreground mt-1">Complete your pending work and review past submissions.</p>

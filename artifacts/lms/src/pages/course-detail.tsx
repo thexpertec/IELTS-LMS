@@ -80,7 +80,7 @@ export default function CourseDetail() {
 
   if (courseLoading) {
     return (
-      <div className="p-8 max-w-5xl mx-auto space-y-8">
+      <div className="p-4 sm:p-8 max-w-5xl mx-auto space-y-6 sm:space-y-8">
         <Skeleton className="h-8 w-32" />
         <div className="space-y-4">
           <Skeleton className="h-12 w-3/4" />
@@ -93,7 +93,7 @@ export default function CourseDetail() {
 
   if (!course) {
     return (
-      <div className="p-8 max-w-5xl mx-auto text-center py-24">
+      <div className="p-4 sm:p-8 max-w-5xl mx-auto text-center py-24">
         <AlertCircle className="mx-auto h-12 w-12 text-destructive mb-4" />
         <h2 className="text-2xl font-bold">Course Not Found</h2>
         <p className="text-muted-foreground mt-2 mb-6">The course you're looking for doesn't exist or has been deleted.</p>
@@ -103,7 +103,7 @@ export default function CourseDetail() {
   }
 
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-8">
+    <div className="p-4 sm:p-8 max-w-5xl mx-auto space-y-6 sm:space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <Button 
