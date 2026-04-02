@@ -6,10 +6,17 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export interface QuizPart {
+  name: string;
+  from: number;
+  to: number;
+}
+
 export interface CreateQuizBody {
   title: string;
   description?: string;
   passageText?: string;
+  parts?: QuizPart[];
   courseId?: number;
   timeLimitMinutes?: number;
   isPublished?: boolean;

@@ -658,10 +658,13 @@ export const ListQuizzesResponse = zod.array(ListQuizzesResponseItem);
 /**
  * @summary Create a new quiz
  */
+const QuizPartSchema = zod.object({ name: zod.string(), from: zod.number(), to: zod.number() });
+
 export const CreateQuizBody = zod.object({
   title: zod.string(),
   description: zod.string().optional(),
   passageText: zod.string().optional(),
+  parts: zod.array(QuizPartSchema).optional(),
   courseId: zod.number().optional(),
   timeLimitMinutes: zod.number().optional(),
   isPublished: zod.boolean().optional(),
@@ -679,6 +682,7 @@ export const GetQuizResponse = zod.object({
   title: zod.string(),
   description: zod.string(),
   passageText: zod.string().nullish(),
+  parts: zod.array(QuizPartSchema).nullish(),
   courseId: zod.number().nullish(),
   timeLimitMinutes: zod.number().nullish(),
   isPublished: zod.boolean(),
@@ -711,6 +715,7 @@ export const UpdateQuizBody = zod.object({
   title: zod.string(),
   description: zod.string().optional(),
   passageText: zod.string().optional(),
+  parts: zod.array(QuizPartSchema).optional(),
   courseId: zod.number().optional(),
   timeLimitMinutes: zod.number().optional(),
   isPublished: zod.boolean().optional(),
@@ -721,6 +726,7 @@ export const UpdateQuizResponse = zod.object({
   title: zod.string(),
   description: zod.string(),
   passageText: zod.string().nullish(),
+  parts: zod.array(QuizPartSchema).nullish(),
   courseId: zod.number().nullish(),
   timeLimitMinutes: zod.number().nullish(),
   isPublished: zod.boolean(),

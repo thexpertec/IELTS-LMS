@@ -16,6 +16,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
+import { useState } from "react";
+import { PartsEditor, type QuizPart } from "@/components/quiz/parts-editor";
 
 const formSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters."),
@@ -32,6 +34,7 @@ export default function QuizNew() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [parts, setParts] = useState<QuizPart[]>([]);
   const { data: courses } = useListCourses({});
 
   const form = useForm<FormValues>({
@@ -63,6 +66,7 @@ export default function QuizNew() {
         title: values.title,
         description: values.description || "",
         passageText: values.passageText || undefined,
+        parts: parts.length > 0 ? parts : undefined,
         courseId: values.courseId && values.courseId !== "none" ? Number(values.courseId) : undefined,
         timeLimitMinutes: values.timeLimitMinutes ? Number(values.timeLimitMinutes) : undefined,
         isPublished: values.isPublished,
@@ -142,6 +146,10 @@ export default function QuizNew() {
                 </FormItem>
               )}
             />
+
+            <div className="md:col-span-2">
+              <PartsEditor value={parts} onChange={setParts} />
+            </div>
 
             <FormField
               control={form.control}

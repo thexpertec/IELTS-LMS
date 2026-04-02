@@ -194,6 +194,7 @@ export default function StudentQuizTake() {
     id: number; type: string; order: number; questionText: string; options: unknown;
   }>;
   const sortedQs = [...questions].sort((a, b) => a.order - b.order);
+  const quizParts = ((quiz as { parts?: Array<{ name: string; from: number; to: number }> | null })?.parts ?? []) as Array<{ name: string; from: number; to: number }>;
 
   const handleExpire = useCallback(() => setSubmitOpen(true), []);
   const { display: timerDisplay, isWarning } = useTimer(quiz?.timeLimitMinutes, handleExpire);
@@ -375,33 +376,126 @@ export default function StudentQuizTake() {
         </div>
       </div>
 
-      {/* ── FOOTER: question number grid ── */}
+      {/* ── FOOTER: parts bar + question number grid ── */}
       {sortedQs.length > 0 && (
-        <footer className="border-t bg-card px-4 py-3 flex-shrink-0">
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-xs font-semibold text-muted-foreground mr-1 shrink-0">Questions:</span>
-            {sortedQs.map((q, i) => {
-              const done = answeredIds.has(q.id);
-              return (
-                <button
-                  key={q.id}
-                  className={cn(
-                    "w-7 h-7 rounded text-xs font-bold border transition-colors",
-                    done
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background text-muted-foreground border-border hover:border-primary/50"
-                  )}
-                  onClick={() => {
-                    document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-                  }}
-                >
-                  {i + 1}
-                </button>
-              );
-            })}
-            <span className="ml-auto text-xs text-muted-foreground shrink-0">
-              {answeredIds.size}/{sortedQs.length} answered
-            </span>
+        <footer className="border-t bg-card flex-shrink-0">
+          {/* Parts bar */}
+          {quizParts.length > 0 && (
+            <div className="bg-[#7F1D1D] flex items-center gap-0 overflow-x-auto">
+              {quizParts.map((part, pi) => {
+                const isFirst = pi === 0;
+                return (
+                  <button
+                    key={pi}
+                    onClick={() => {
+                      // scroll to the first question in this part
+                      const firstQInPart = sortedQs[part.from - 1];
+                      if (firstQInPart) {
+                        document.getElementById(`q-${firstQInPart.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      }
+                    }}
+                    className={cn(
+                      "px-5 py-2 text-white text-xs font-bold tracking-wide whitespace-nowrap transition-all",
+                      "border-r border-white/20 hover:bg-white/10",
+                      isFirst && "border border-white rounded-full mx-3 my-1.5 px-4 border-r border-white/80"
+                    )}
+                  >
+                    {part.name.toUpperCase()}: {part.from} to {part.to} Questions
+                  </button>
+                );
+              })}
+              <span className="ml-auto pr-4 text-white/70 text-xs shrink-0">
+                {answeredIds.size}/{sortedQs.length} answered
+              </span>
+            </div>
+          )}
+
+          {/* Question number buttons — grouped by part when parts exist */}
+          <div className="px-4 py-3 overflow-x-auto">
+            {quizParts.length > 0 ? (
+              <div className="flex gap-4 flex-wrap">
+                {quizParts.map((part, pi) => {
+                  const partQs = sortedQs.slice(part.from - 1, part.to);
+                  return (
+                    <div key={pi} className="flex items-center gap-1.5">
+                      {partQs.map((q, qi) => {
+                        const globalIdx = part.from - 1 + qi;
+                        const done = answeredIds.has(q.id);
+                        return (
+                          <button
+                            key={q.id}
+                            className={cn(
+                              "w-7 h-7 rounded text-xs font-bold border transition-colors",
+                              done
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background text-muted-foreground border-border hover:border-primary/50"
+                            )}
+                            onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                          >
+                            {globalIdx + 1}
+                          </button>
+                        );
+                      })}
+                      {pi < quizParts.length - 1 && (
+                        <div className="w-px h-5 bg-border mx-1" />
+                      )}
+                    </div>
+                  );
+                })}
+                {/* Ungrouped questions (beyond all parts) */}
+                {(() => {
+                  const maxTo = Math.max(...quizParts.map((p) => p.to));
+                  const extra = sortedQs.slice(maxTo);
+                  if (extra.length === 0) return null;
+                  return (
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-px h-5 bg-border mx-1" />
+                      {extra.map((q, qi) => {
+                        const done = answeredIds.has(q.id);
+                        return (
+                          <button
+                            key={q.id}
+                            className={cn(
+                              "w-7 h-7 rounded text-xs font-bold border transition-colors",
+                              done
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background text-muted-foreground border-border hover:border-primary/50"
+                            )}
+                            onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                          >
+                            {maxTo + qi + 1}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-muted-foreground mr-1 shrink-0">Questions:</span>
+                {sortedQs.map((q, i) => {
+                  const done = answeredIds.has(q.id);
+                  return (
+                    <button
+                      key={q.id}
+                      className={cn(
+                        "w-7 h-7 rounded text-xs font-bold border transition-colors",
+                        done
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-muted-foreground border-border hover:border-primary/50"
+                      )}
+                      onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                    >
+                      {i + 1}
+                    </button>
+                  );
+                })}
+                <span className="ml-auto text-xs text-muted-foreground shrink-0">
+                  {answeredIds.size}/{sortedQs.length} answered
+                </span>
+              </div>
+            )}
           </div>
         </footer>
       )}

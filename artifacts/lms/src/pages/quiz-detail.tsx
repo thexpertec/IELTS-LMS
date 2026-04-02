@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PartsEditor, type QuizPart } from "@/components/quiz/parts-editor";
 import { useRoute, useLocation } from "wouter";
 import {
   useGetQuiz,
@@ -336,6 +337,7 @@ export default function QuizDetail() {
   // ── Quiz settings edit state
   const [editSettings, setEditSettings] = useState(false);
   const [settingsForm, setSettingsForm] = useState({ title: "", description: "", passageText: "", courseId: "", timeLimitMinutes: "", isPublished: false });
+  const [editParts, setEditParts] = useState<QuizPart[]>([]);
 
   // ── Question dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -445,6 +447,7 @@ export default function QuizDetail() {
       timeLimitMinutes: quiz.timeLimitMinutes ? String(quiz.timeLimitMinutes) : "",
       isPublished: quiz.isPublished,
     });
+    setEditParts((quiz as { parts?: QuizPart[] | null }).parts ?? []);
     setEditSettings(true);
   }
 
@@ -455,6 +458,7 @@ export default function QuizDetail() {
         title: settingsForm.title,
         description: settingsForm.description,
         passageText: settingsForm.passageText || undefined,
+        parts: editParts.length > 0 ? editParts : [],
         courseId: settingsForm.courseId && settingsForm.courseId !== "none" ? Number(settingsForm.courseId) : undefined,
         timeLimitMinutes: settingsForm.timeLimitMinutes ? Number(settingsForm.timeLimitMinutes) : undefined,
         isPublished: settingsForm.isPublished,
@@ -648,6 +652,11 @@ export default function QuizDetail() {
                 onChange={(e) => setSettingsForm({ ...settingsForm, passageText: e.target.value })}
               />
             </div>
+            <PartsEditor
+              value={editParts}
+              onChange={setEditParts}
+              totalQuestions={questions.length}
+            />
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Linked Course</Label>

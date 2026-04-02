@@ -7,11 +7,18 @@
  */
 import type { QuizQuestion } from "./quizQuestion";
 
+export interface QuizPart {
+  name: string;
+  from: number;
+  to: number;
+}
+
 export interface QuizDetail {
   id: number;
   title: string;
   description: string;
   passageText?: string | null;
+  parts?: QuizPart[] | null;
   courseId?: number | null;
   timeLimitMinutes?: number | null;
   isPublished: boolean;

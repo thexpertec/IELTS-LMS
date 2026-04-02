@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { coursesTable } from "./courses";
@@ -8,6 +8,7 @@ export const quizzesTable = pgTable("quizzes", {
   title: text("title").notNull(),
   description: text("description").notNull().default(""),
   passageText: text("passage_text"),
+  parts: jsonb("parts").$type<Array<{ name: string; from: number; to: number }>>(),
   courseId: integer("course_id").references(() => coursesTable.id, { onDelete: "set null" }),
   timeLimitMinutes: integer("time_limit_minutes"),
   isPublished: boolean("is_published").notNull().default(false),

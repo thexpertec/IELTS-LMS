@@ -19,13 +19,16 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 ## Quiz Feature (Admin LMS)
 
 - Admin sidebar now has a **Quizzes** section at `/quizzes`
-- DB tables: `quizzes` (title, description, courseId, timeLimitMinutes, isPublished) and `quiz_questions` (quizId, type, order, questionText, options jsonb)
+- DB tables: `quizzes` (title, description, passageText, parts jsonb, courseId, timeLimitMinutes, isPublished) and `quiz_questions` (quizId, type, order, questionText, options jsonb)
 - API routes under `/api/quizzes` — CRUD for quizzes and questions
 - 4 question types, each stored as jsonb in `options`:
   - `fill_blank`: `{ sentence, blanks[] }` — sentence with ___ placeholders, ordered correct answers
   - `dropdown`: `{ stem, choices[], correct }` — multiple-choice dropdown
   - `choose_word`: `{ instruction, wordLimit, passageText?, imageUrl?, correct }` — word from passage/picture
   - `matching`: `{ leftItems[], rightItems[], pairs[] }` — column matching pairs
+- **Reading passage**: optional text shown on the left panel during student quiz-taking
+- **Parts/groups**: admin can define question groups (e.g. Part 1: Q1–13, Part 2: Q14–26) stored as `parts: [{name, from, to}]` jsonb. Shown as dark red (bg-[#7F1D1D]) section labels in the quiz footer.
+- Shared `PartsEditor` component: `artifacts/lms/src/components/quiz/parts-editor.tsx`
 
 ## Structure
 
