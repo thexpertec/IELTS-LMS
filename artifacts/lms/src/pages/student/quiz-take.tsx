@@ -194,7 +194,9 @@ export default function StudentQuizTake() {
     id: number; type: string; order: number; questionText: string; options: unknown;
   }>;
   const sortedQs = [...questions].sort((a, b) => a.order - b.order);
-  const quizParts = ((quiz as { parts?: Array<{ name: string; from: number; to: number }> | null })?.parts ?? []) as Array<{ name: string; from: number; to: number }>;
+  const quizParts = ((quiz as { parts?: Array<{ name: string; from: number; to: number; instructions?: string[] }> | null })?.parts ?? []) as Array<{ name: string; from: number; to: number; instructions?: string[] }>;
+  // Only show parts that have at least one actual question within their range
+  const activeParts = quizParts.filter((p) => sortedQs.some((_, i) => i + 1 >= p.from && i + 1 <= p.to));
 
   const handleExpire = useCallback(() => setSubmitOpen(true), []);
   const { display: timerDisplay, isWarning } = useTimer(quiz?.timeLimitMinutes, handleExpire);
@@ -333,8 +335,8 @@ export default function StudentQuizTake() {
                 // Build a flat list of React nodes: part-instruction blocks + question cards
                 const nodes: React.ReactNode[] = [];
                 // Track which 1-based question indices start a new part
-                const partStartMap = new Map<number, typeof quizParts[number]>();
-                quizParts.forEach((p) => partStartMap.set(p.from, p));
+                const partStartMap = new Map<number, typeof activeParts[number]>();
+                activeParts.forEach((p) => partStartMap.set(p.from, p));
 
                 sortedQs.forEach((q, i) => {
                   const oneBasedIdx = i + 1;
@@ -420,9 +422,9 @@ export default function StudentQuizTake() {
       {sortedQs.length > 0 && (
         <footer className="border-t bg-card flex-shrink-0">
           {/* Parts bar */}
-          {quizParts.length > 0 && (
+          {activeParts.length > 0 && (
             <div className="bg-[#7F1D1D] flex items-center gap-0 overflow-x-auto">
-              {quizParts.map((part, pi) => {
+              {activeParts.map((part, pi) => {
                 const isFirst = pi === 0;
                 return (
                   <button
@@ -452,9 +454,9 @@ export default function StudentQuizTake() {
 
           {/* Question number buttons — grouped by part when parts exist */}
           <div className="px-4 py-3 overflow-x-auto">
-            {quizParts.length > 0 ? (
+            {activeParts.length > 0 ? (
               <div className="flex gap-4 flex-wrap">
-                {quizParts.map((part, pi) => {
+                {activeParts.map((part, pi) => {
                   const partQs = sortedQs.slice(part.from - 1, part.to);
                   return (
                     <div key={pi} className="flex items-center gap-1.5">
@@ -476,7 +478,7 @@ export default function StudentQuizTake() {
                           </button>
                         );
                       })}
-                      {pi < quizParts.length - 1 && (
+                      {pi < activeParts.length - 1 && (
                         <div className="w-px h-5 bg-border mx-1" />
                       )}
                     </div>
@@ -484,7 +486,7 @@ export default function StudentQuizTake() {
                 })}
                 {/* Ungrouped questions (beyond all parts) */}
                 {(() => {
-                  const maxTo = Math.max(...quizParts.map((p) => p.to));
+                  const maxTo = Math.max(...activeParts.map((p) => p.to));
                   const extra = sortedQs.slice(maxTo);
                   if (extra.length === 0) return null;
                   return (
