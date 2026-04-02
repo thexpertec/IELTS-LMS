@@ -49,16 +49,24 @@ router.get("/student/profile", async (req, res): Promise<void> => {
     displayName: profile.displayName,
     bio: profile.bio,
     avatarUrl: profile.avatarUrl ?? undefined,
+    phone: profile.phone ?? undefined,
+    city: profile.city ?? undefined,
+    lastQualification: profile.lastQualification ?? undefined,
+    whyIelts: profile.whyIelts ?? undefined,
     createdAt: profile.createdAt.toISOString(),
   });
 });
 
 router.patch("/student/profile", async (req, res): Promise<void> => {
-  const { email, displayName, bio, avatarUrl } = req.body as {
+  const { email, displayName, bio, avatarUrl, phone, city, lastQualification, whyIelts } = req.body as {
     email?: string;
     displayName?: string;
     bio?: string;
     avatarUrl?: string;
+    phone?: string;
+    city?: string;
+    lastQualification?: string;
+    whyIelts?: string;
   };
 
   if (!email) {
@@ -70,10 +78,14 @@ router.patch("/student/profile", async (req, res): Promise<void> => {
   if (displayName !== undefined) updates.displayName = displayName;
   if (bio !== undefined) updates.bio = bio;
   if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
+  if (phone !== undefined) updates.phone = phone;
+  if (city !== undefined) updates.city = city;
+  if (lastQualification !== undefined) updates.lastQualification = lastQualification;
+  if (whyIelts !== undefined) updates.whyIelts = whyIelts;
 
   const [profile] = await db
     .insert(studentProfilesTable)
-    .values({ email, displayName: displayName ?? email.split("@")[0], bio: bio ?? "", avatarUrl })
+    .values({ email, displayName: displayName ?? email.split("@")[0], bio: bio ?? "", avatarUrl, phone, city, lastQualification, whyIelts })
     .onConflictDoUpdate({ target: studentProfilesTable.email, set: updates })
     .returning();
 
@@ -82,8 +94,54 @@ router.patch("/student/profile", async (req, res): Promise<void> => {
     displayName: profile.displayName,
     bio: profile.bio,
     avatarUrl: profile.avatarUrl ?? undefined,
+    phone: profile.phone ?? undefined,
+    city: profile.city ?? undefined,
+    lastQualification: profile.lastQualification ?? undefined,
+    whyIelts: profile.whyIelts ?? undefined,
     createdAt: profile.createdAt.toISOString(),
   });
+});
+
+// ── Admin: all students with profile + enrollment stats ───────────────────────
+router.get("/admin/students", async (req, res): Promise<void> => {
+  const profiles = await db
+    .select()
+    .from(studentProfilesTable)
+    .orderBy(studentProfilesTable.displayName);
+
+  const enrollmentCounts = await db
+    .select({
+      email: enrollmentsTable.studentEmail,
+      total: sql<number>`count(*)::int`,
+      active: sql<number>`count(*) filter (where ${enrollmentsTable.status} = 'active')::int`,
+      completed: sql<number>`count(*) filter (where ${enrollmentsTable.status} = 'completed')::int`,
+      avgProgress: sql<number>`round(avg(${enrollmentsTable.progressPercent}))::int`,
+    })
+    .from(enrollmentsTable)
+    .groupBy(enrollmentsTable.studentEmail);
+
+  const countMap = new Map(enrollmentCounts.map((e) => [e.email, e]));
+
+  const result = profiles.map((p) => {
+    const counts = countMap.get(p.email);
+    return {
+      email: p.email,
+      displayName: p.displayName,
+      bio: p.bio,
+      avatarUrl: p.avatarUrl ?? null,
+      phone: p.phone ?? null,
+      city: p.city ?? null,
+      lastQualification: p.lastQualification ?? null,
+      whyIelts: p.whyIelts ?? null,
+      createdAt: p.createdAt.toISOString(),
+      totalCourses: counts?.total ?? 0,
+      activeCourses: counts?.active ?? 0,
+      completedCourses: counts?.completed ?? 0,
+      avgProgress: counts?.avgProgress ?? 0,
+    };
+  });
+
+  res.json(result);
 });
 
 router.get("/student/my-enrollments", async (req, res): Promise<void> => {

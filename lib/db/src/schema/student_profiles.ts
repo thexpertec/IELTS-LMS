@@ -7,6 +7,10 @@ export const studentProfilesTable = pgTable("student_profiles", {
   displayName: text("display_name").notNull(),
   bio: text("bio").notNull().default(""),
   avatarUrl: text("avatar_url"),
+  phone: text("phone"),
+  city: text("city"),
+  lastQualification: text("last_qualification"),
+  whyIelts: text("why_ielts"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

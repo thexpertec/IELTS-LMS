@@ -128,7 +128,7 @@ Full-stack LMS (Learning Management System) React + Vite frontend. Contains both
 - Course View at `/student/courses/:id` — lesson list with check-to-complete, discussion board
 - Assignments at `/student/assignments` — pending/submitted assignments & quizzes
 - Notifications at `/student/notifications` — mark read/mark all read
-- Profile at `/student/profile` — edit name/bio, view academic history
+- Profile at `/student/profile` — edit name/bio/phone/city/lastQualification/whyIelts, view academic history
 
 Context: `src/context/student-context.tsx` — manages localStorage session
 Layouts: `src/components/layout/sidebar-layout.tsx` (admin), `src/components/layout/student-layout.tsx` (student)
