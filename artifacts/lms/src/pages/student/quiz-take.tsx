@@ -17,12 +17,13 @@ import { CheckCircle2, Clock, List } from "lucide-react";
 // ─────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────
-type QType = "fill_blank" | "fill_blank_dropdown" | "dropdown" | "choose_word" | "matching" | "short_answer" | "true_false_ng" | "multi_select";
+type QType = "fill_blank" | "fill_blank_dropdown" | "dropdown" | "choose_word" | "matching" | "matching_3col" | "short_answer" | "true_false_ng" | "multi_select";
 interface FillBlankOpts         { sentence: string; blanks: string[] }
 interface FillBlankDropdownOpts { instruction: string; sentences: string[]; choices: string[]; correct: string[] }
 interface DropdownOpts          { stem: string; choices: string[]; correct: string }
 interface ChooseWordOpts        { instruction: string; wordLimit: number; passageText?: string; imageUrl?: string; correct: string }
 interface MatchingOpts          { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[] }
+interface Matching3ColOpts      { columns: [string, string, string]; answerColIndex: 0 | 1 | 2; rows: Array<{ a: string; b: string; c: string }>; instruction?: string }
 interface ShortAnswerOpts       { prompt: string; correct?: string; wordLimit?: number }
 interface TrueFalseNgOpts       { statement: string; correct: "TRUE" | "FALSE" | "NOT GIVEN" | "" }
 interface MultiSelectOpts       { instruction: string; options: string[]; maxSelect: number; correct: number[] }
@@ -33,7 +34,7 @@ function isAnswered(qId: number, qType: QType, answers: AnswerMap): boolean {
   const ans = answers[qId];
   if (ans === undefined || ans === null) return false;
   if (qType === "fill_blank") return Array.isArray(ans) && (ans as string[]).some(Boolean);
-  if (qType === "matching") return Object.keys(ans as Record<number, string>).length > 0;
+  if (qType === "matching" || qType === "matching_3col") return Object.keys(ans as Record<number, string>).length > 0;
   if (qType === "fill_blank_dropdown") return Object.keys(ans as Record<number, string>).length > 0;
   if (qType === "multi_select") return Array.isArray(ans) && (ans as number[]).length > 0;
   return typeof ans === "string" && ans.trim() !== "";
@@ -43,6 +44,10 @@ function questionSlots(q: { type: string; options: unknown }): number {
   if (q.type === "matching") {
     const opts = q.options as MatchingOpts;
     return Math.max(1, (opts.leftItems ?? []).filter(Boolean).length);
+  }
+  if (q.type === "matching_3col") {
+    const opts = q.options as Matching3ColOpts;
+    return Math.max(1, (opts.rows ?? []).filter((r) => r.a || r.b || r.c).length);
   }
   if (q.type === "multi_select") {
     const opts = q.options as MultiSelectOpts;
@@ -285,6 +290,62 @@ function MatchingQuestion({
   );
 }
 
+function Matching3ColQuestion({
+  opts, qId, answers, setAnswers, startNum,
+}: { opts: Matching3ColOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; startNum: number }) {
+  const colKeys: Array<"a" | "b" | "c"> = ["a", "b", "c"];
+  const current = (answers[qId] as Record<number, string>) ?? {};
+  const rows = (opts.rows ?? []).filter((r) => r.a || r.b || r.c);
+
+  const update = (rowIdx: number, val: string) => {
+    setAnswers({ ...answers, [qId]: { ...current, [rowIdx]: val } });
+  };
+
+  const answerIdx = opts.answerColIndex ?? 2;
+  const answerKey = colKeys[answerIdx];
+  const allChoices = Array.from(new Set(rows.map((r) => r[answerKey]).filter(Boolean)));
+
+  return (
+    <div id={`q-${qId}`} className="space-y-2">
+      {opts.instruction && (
+        <p className="text-sm text-muted-foreground italic mb-2">{opts.instruction}</p>
+      )}
+      <div className="grid gap-2 text-xs font-semibold text-muted-foreground px-1 mb-1" style={{ gridTemplateColumns: "20px 1fr 1fr 1fr" }}>
+        <span />
+        {opts.columns.map((col, i) => (
+          <span key={i} className={cn(i === answerIdx && "text-primary")}>{col}</span>
+        ))}
+      </div>
+      {rows.map((row, rowIdx) => {
+        const rowAnswered = !!current[rowIdx];
+        return (
+          <div key={rowIdx} className="grid gap-2 items-center" style={{ gridTemplateColumns: "20px 1fr 1fr 1fr" }}>
+            <span className={cn("text-xs font-bold shrink-0", rowAnswered ? "text-primary" : "text-primary/60")}>
+              {startNum + rowIdx}
+            </span>
+            {colKeys.map((key, colIdx) =>
+              colIdx === answerIdx ? (
+                <Select key={key} value={current[rowIdx] ?? ""} onValueChange={(val) => update(rowIdx, val)}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Select…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allChoices.map((choice, ci) => (
+                      <SelectItem key={ci} value={choice} className="text-sm">{choice}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p key={key} className="text-sm px-3 py-2 bg-muted/60 rounded">{row[key]}</p>
+              )
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function MultiSelectQuestion({
   opts, qId, answers, setAnswers, slotStart,
 }: { opts: MultiSelectOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number }) {
@@ -517,6 +578,12 @@ export default function StudentQuizTake() {
     if (q.type === "matching") {
       const opts = q.options as MatchingOpts;
       const rows = (opts.leftItems ?? []).filter(Boolean).length;
+      for (let i = 0; i < rows; i++) if (matchingRowAnswered(answers, q.id, i)) sum++;
+      return sum;
+    }
+    if (q.type === "matching_3col") {
+      const opts = q.options as Matching3ColOpts;
+      const rows = (opts.rows ?? []).filter((r) => r.a || r.b || r.c).length;
       for (let i = 0; i < rows; i++) if (matchingRowAnswered(answers, q.id, i)) sum++;
       return sum;
     }
@@ -771,6 +838,9 @@ export default function StudentQuizTake() {
                             {q.type === "matching" && (
                               <MatchingQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} startNum={slotStart} />
                             )}
+                            {q.type === "matching_3col" && (
+                              <Matching3ColQuestion opts={opts as Matching3ColOpts} qId={q.id} answers={answers} setAnswers={setAnswers} startNum={slotStart} />
+                            )}
                             {q.type === "short_answer" && (
                               <ShortAnswerQuestion opts={opts as ShortAnswerOpts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
                             )}
@@ -840,6 +910,30 @@ export default function StudentQuizTake() {
                 return (
                   <button
                     key={`${q.id}-${ri}`}
+                    onClick={() => scrollToQ(q.id)}
+                    className={cn(
+                      "w-7 h-7 text-xs rounded font-medium transition-all",
+                      done
+                        ? "bg-primary text-primary-foreground"
+                        : isCurrentTab
+                        ? "border border-primary text-primary"
+                        : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {slotNum}
+                  </button>
+                );
+              });
+            }
+            if (q.type === "matching_3col") {
+              const opts = q.options as Matching3ColOpts;
+              const rows = (opts.rows ?? []).filter((r) => r.a || r.b || r.c).length;
+              return Array.from({ length: rows }, (_, ri) => {
+                const done = matchingRowAnswered(answers, q.id, ri);
+                const slotNum = si.slotStart + ri + 1;
+                return (
+                  <button
+                    key={`${q.id}-m3-${ri}`}
                     onClick={() => scrollToQ(q.id)}
                     className={cn(
                       "w-7 h-7 text-xs rounded font-medium transition-all",
@@ -950,6 +1044,27 @@ export default function StudentQuizTake() {
                   return (
                     <button
                       key={`${q.id}-${ri}`}
+                      onClick={() => { setReviewOpen(false); setTimeout(() => scrollToQ(q.id), 150); }}
+                      className={cn(
+                        "h-9 flex items-center justify-center rounded text-sm font-semibold",
+                        done
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted border border-destructive/40 text-destructive"
+                      )}
+                    >
+                      {si.slotStart + ri + 1}
+                    </button>
+                  );
+                });
+              }
+              if (q.type === "matching_3col") {
+                const opts = q.options as Matching3ColOpts;
+                const rows = (opts.rows ?? []).filter((r) => r.a || r.b || r.c).length;
+                return Array.from({ length: rows }, (_, ri) => {
+                  const done = matchingRowAnswered(answers, q.id, ri);
+                  return (
+                    <button
+                      key={`${q.id}-m3r-${ri}`}
                       onClick={() => { setReviewOpen(false); setTimeout(() => scrollToQ(q.id), 150); }}
                       className={cn(
                         "h-9 flex items-center justify-center rounded text-sm font-semibold",

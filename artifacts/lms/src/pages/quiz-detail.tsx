@@ -74,17 +74,18 @@ import {
 // ─────────────────────────────────────────────
 // Types for the eight question formats
 // ─────────────────────────────────────────────
-type QType = "fill_blank" | "fill_blank_dropdown" | "dropdown" | "choose_word" | "matching" | "short_answer" | "true_false_ng" | "multi_select";
+type QType = "fill_blank" | "fill_blank_dropdown" | "dropdown" | "choose_word" | "matching" | "matching_3col" | "short_answer" | "true_false_ng" | "multi_select";
 
 interface FillBlankOpts          { sentence: string; blanks: string[] }
 interface FillBlankDropdownOpts  { instruction: string; sentences: string[]; choices: string[]; correct: string[] }
 interface DropdownOpts           { stem: string; choices: string[]; correct: string }
 interface ChooseWordOpts         { instruction: string; wordLimit: number; passageText?: string; imageUrl?: string; correct: string }
 interface MatchingOpts           { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[] }
+interface Matching3ColOpts       { columns: [string, string, string]; answerColIndex: 0 | 1 | 2; rows: Array<{ a: string; b: string; c: string }>; instruction?: string }
 interface ShortAnswerOpts        { prompt: string; correct?: string; wordLimit?: number }
 interface TrueFalseNgOpts        { statement: string; correct: "TRUE" | "FALSE" | "NOT GIVEN" | "" }
 interface MultiSelectOpts        { instruction: string; options: string[]; maxSelect: number; correct: number[] }
-type QOptions = FillBlankOpts | FillBlankDropdownOpts | DropdownOpts | ChooseWordOpts | MatchingOpts | ShortAnswerOpts | TrueFalseNgOpts | MultiSelectOpts;
+type QOptions = FillBlankOpts | FillBlankDropdownOpts | DropdownOpts | ChooseWordOpts | MatchingOpts | Matching3ColOpts | ShortAnswerOpts | TrueFalseNgOpts | MultiSelectOpts;
 
 const Q_TYPE_LABELS: Record<QType, string> = {
   fill_blank:          "Fill Blanks — Text Input",
@@ -92,6 +93,7 @@ const Q_TYPE_LABELS: Record<QType, string> = {
   dropdown:            "Dropdown Options",
   choose_word:         "Choose One Word",
   matching:            "Column Matching",
+  matching_3col:       "3-Column Matching",
   short_answer:        "Short Answer",
   true_false_ng:       "True / False / Not Given",
   multi_select:        "Multiple Selection",
@@ -103,6 +105,7 @@ const Q_TYPE_COLORS: Record<QType, string> = {
   dropdown:            "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
   choose_word:         "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
   matching:            "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
+  matching_3col:       "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
   short_answer:        "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300",
   true_false_ng:       "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
   multi_select:        "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
@@ -118,6 +121,7 @@ function defaultOptions(type: QType): QOptions {
     case "dropdown":            return { stem: "", choices: ["", "", ""], correct: "" };
     case "choose_word":         return { instruction: "Choose ONE WORD from the passage below.", wordLimit: 1, passageText: "", imageUrl: "", correct: "" };
     case "matching":            return { leftItems: ["", ""], rightItems: ["", ""], pairs: [] };
+    case "matching_3col":       return { columns: ["Column A", "Column B", "Column C"], answerColIndex: 2, rows: [{ a: "", b: "", c: "" }, { a: "", b: "", c: "" }], instruction: "" };
     case "short_answer":        return { prompt: "", correct: "", wordLimit: undefined };
     case "true_false_ng":       return { statement: "", correct: "" };
     case "multi_select":        return { instruction: "", options: ["", "", "", ""], maxSelect: 2, correct: [] };
@@ -438,6 +442,121 @@ function MatchingEditor({ opts, onChange }: { opts: MatchingOpts; onChange: (o: 
   );
 }
 
+function Matching3ColEditor({ opts, onChange }: { opts: Matching3ColOpts; onChange: (o: Matching3ColOpts) => void }) {
+  const colKeys: Array<"a" | "b" | "c"> = ["a", "b", "c"];
+
+  const updateColumn = (i: number, val: string) => {
+    const cols = [...opts.columns] as [string, string, string];
+    cols[i] = val;
+    onChange({ ...opts, columns: cols });
+  };
+
+  const updateRow = (rowIdx: number, key: "a" | "b" | "c", val: string) => {
+    const rows = opts.rows.map((r, i) => i === rowIdx ? { ...r, [key]: val } : r);
+    onChange({ ...opts, rows });
+  };
+
+  const addRow = () => onChange({ ...opts, rows: [...opts.rows, { a: "", b: "", c: "" }] });
+
+  const removeRow = (i: number) => onChange({ ...opts, rows: opts.rows.filter((_, idx) => idx !== i) });
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Three-column matching — students choose the answer for one column; the other two are shown as fixed text.
+      </p>
+
+      {/* Column headers */}
+      <div>
+        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">Column Names</Label>
+        <div className="grid grid-cols-3 gap-2">
+          {opts.columns.map((col, i) => (
+            <Input
+              key={i}
+              placeholder={`Column ${["A", "B", "C"][i]} name`}
+              value={col}
+              onChange={(e) => updateColumn(i, e.target.value)}
+              className="text-sm"
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Answer column selector */}
+      <div>
+        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">Students Select From</Label>
+        <div className="flex gap-2">
+          {[0, 1, 2].map((i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onChange({ ...opts, answerColIndex: i as 0 | 1 | 2 })}
+              className={cn(
+                "flex-1 py-1.5 rounded border text-xs font-semibold transition-all",
+                opts.answerColIndex === i
+                  ? "bg-amber-600 text-white border-amber-600"
+                  : "bg-white dark:bg-card text-muted-foreground border-border hover:border-amber-500 hover:text-amber-700"
+              )}
+            >
+              {opts.columns[i] || `Column ${["A", "B", "C"][i]}`}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          The selected column will be scrambled and presented as a dropdown to students.
+        </p>
+      </div>
+
+      {/* Instruction */}
+      <div>
+        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+          Instruction <span className="font-normal normal-case">(optional)</span>
+        </Label>
+        <Input
+          placeholder="e.g. Match each item in Column A with the correct Category and Example."
+          value={opts.instruction ?? ""}
+          onChange={(e) => onChange({ ...opts, instruction: e.target.value })}
+          className="text-sm"
+        />
+      </div>
+
+      {/* Row editor */}
+      <div className="space-y-2">
+        <div className={`grid gap-2 text-xs font-medium text-muted-foreground px-1`} style={{ gridTemplateColumns: "1fr 1fr 1fr auto" }}>
+          {opts.columns.map((col, i) => (
+            <span key={i} className={cn(opts.answerColIndex === i && "text-amber-700 font-semibold")}>
+              {col || `Column ${["A", "B", "C"][i]}`}
+              {opts.answerColIndex === i && " ★"}
+            </span>
+          ))}
+          <span className="w-8" />
+        </div>
+        {opts.rows.map((row, rowIdx) => (
+          <div key={rowIdx} className="grid gap-2 items-center" style={{ gridTemplateColumns: "1fr 1fr 1fr auto" }}>
+            {colKeys.map((key, colIdx) => (
+              <Input
+                key={key}
+                placeholder={`${opts.columns[colIdx] || ["A", "B", "C"][colIdx]} ${rowIdx + 1}`}
+                value={row[key]}
+                onChange={(e) => updateRow(rowIdx, key, e.target.value)}
+                className={cn("text-sm", opts.answerColIndex === colIdx && "border-amber-400 focus-visible:ring-amber-400/30")}
+              />
+            ))}
+            {opts.rows.length > 2 && (
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeRow(rowIdx)} type="button">
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            )}
+          </div>
+        ))}
+        <Button variant="outline" size="sm" onClick={addRow} type="button">
+          <Plus className="w-3.5 h-3.5 mr-1" /> Add Row
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function MultiSelectEditor({ opts, onChange }: { opts: MultiSelectOpts; onChange: (o: MultiSelectOpts) => void }) {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const setOption = (i: number, val: string) => {
@@ -611,6 +730,11 @@ function QuestionSummary({ type, options }: { type: QType; options: QOptions }) 
   if (type === "matching") {
     const o = options as MatchingOpts;
     return <p className="text-xs text-muted-foreground">{o.leftItems.filter(Boolean).length} pairs</p>;
+  }
+  if (type === "matching_3col") {
+    const o = options as Matching3ColOpts;
+    const answerColName = o.columns[o.answerColIndex] || ["A", "B", "C"][o.answerColIndex];
+    return <p className="text-xs text-muted-foreground">{o.rows.filter((r) => r.a || r.b || r.c).length} rows · answer: {answerColName}</p>;
   }
   if (type === "short_answer") {
     const o = options as ShortAnswerOpts;
@@ -1360,6 +1484,9 @@ export default function QuizDetail() {
             )}
             {qType === "matching" && (
               <MatchingEditor opts={qOptions as MatchingOpts} onChange={(o) => setQOptions(o)} />
+            )}
+            {qType === "matching_3col" && (
+              <Matching3ColEditor opts={qOptions as Matching3ColOpts} onChange={(o) => setQOptions(o)} />
             )}
             {qType === "short_answer" && (
               <ShortAnswerEditor opts={qOptions as ShortAnswerOpts} onChange={(o) => setQOptions(o)} />

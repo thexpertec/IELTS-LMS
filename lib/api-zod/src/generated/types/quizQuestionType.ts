@@ -15,6 +15,7 @@ export const QuizQuestionType = {
   dropdown: "dropdown",
   choose_word: "choose_word",
   matching: "matching",
+  matching_3col: "matching_3col",
   short_answer: "short_answer",
   true_false_ng: "true_false_ng",
   multi_select: "multi_select",
