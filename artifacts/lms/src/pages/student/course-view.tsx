@@ -112,6 +112,7 @@ export default function CourseView() {
   const [expandedLesson, setExpandedLesson] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState<Record<number, string>>({});
   const [discussionText, setDiscussionText] = useState("");
+  const [curriculumSub, setCurriculumSub] = useState<"lessons" | "quizzes" | "assignments">("lessons");
 
   // ── Queries ─────────────────────────────────────────────────────────────────
 
@@ -440,8 +441,6 @@ export default function CourseView() {
   // ── Curriculum tab ────────────────────────────────────────────────────────
 
   function CurriculumPanel() {
-    const [curriculumSub, setCurriculumSub] = useState<"lessons" | "quizzes" | "assignments">("lessons");
-
     const subTabs: { id: typeof curriculumSub; label: string; count: number }[] = [
       { id: "lessons",     label: "Lessons",     count: lessons.length },
       { id: "quizzes",     label: "Quizzes",     count: quizzes.length },
@@ -867,10 +866,10 @@ export default function CourseView() {
 
       {/* Tab content */}
       <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6">
-        {activeTab === "stream"      && <StreamPanel />}
-        {activeTab === "curriculum"  && <CurriculumPanel />}
-        {activeTab === "grades"      && <GradesPanel />}
-        {activeTab === "instructors" && <InstructorsPanel />}
+        {activeTab === "stream"      && StreamPanel()}
+        {activeTab === "curriculum"  && CurriculumPanel()}
+        {activeTab === "grades"      && GradesPanel()}
+        {activeTab === "instructors" && InstructorsPanel()}
       </div>
     </div>
   );
