@@ -72,28 +72,31 @@ import {
 } from "lucide-react";
 
 // ─────────────────────────────────────────────
-// Types for the four question formats
+// Types for the five question formats
 // ─────────────────────────────────────────────
-type QType = "fill_blank" | "dropdown" | "choose_word" | "matching";
+type QType = "fill_blank" | "dropdown" | "choose_word" | "matching" | "short_answer";
 
-interface FillBlankOpts { sentence: string; blanks: string[] }
-interface DropdownOpts  { stem: string; choices: string[]; correct: string }
-interface ChooseWordOpts { instruction: string; wordLimit: number; passageText?: string; imageUrl?: string; correct: string }
-interface MatchingOpts  { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[] }
-type QOptions = FillBlankOpts | DropdownOpts | ChooseWordOpts | MatchingOpts;
+interface FillBlankOpts   { sentence: string; blanks: string[] }
+interface DropdownOpts    { stem: string; choices: string[]; correct: string }
+interface ChooseWordOpts  { instruction: string; wordLimit: number; passageText?: string; imageUrl?: string; correct: string }
+interface MatchingOpts    { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[] }
+interface ShortAnswerOpts { prompt: string; correct?: string; wordLimit?: number }
+type QOptions = FillBlankOpts | DropdownOpts | ChooseWordOpts | MatchingOpts | ShortAnswerOpts;
 
 const Q_TYPE_LABELS: Record<QType, string> = {
-  fill_blank:   "Fill in the Blanks",
-  dropdown:     "Dropdown Options",
-  choose_word:  "Choose One Word",
-  matching:     "Column Matching",
+  fill_blank:    "Fill in the Blanks",
+  dropdown:      "Dropdown Options",
+  choose_word:   "Choose One Word",
+  matching:      "Column Matching",
+  short_answer:  "Short Answer",
 };
 
 const Q_TYPE_COLORS: Record<QType, string> = {
-  fill_blank:  "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-  dropdown:    "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
-  choose_word: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
-  matching:    "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
+  fill_blank:   "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+  dropdown:     "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
+  choose_word:  "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+  matching:     "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
+  short_answer: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300",
 };
 
 // ─────────────────────────────────────────────
@@ -105,6 +108,7 @@ function defaultOptions(type: QType): QOptions {
     case "dropdown":     return { stem: "", choices: ["", "", ""], correct: "" };
     case "choose_word":  return { instruction: "Choose ONE WORD from the passage below.", wordLimit: 1, passageText: "", imageUrl: "", correct: "" };
     case "matching":     return { leftItems: ["", ""], rightItems: ["", ""], pairs: [] };
+    case "short_answer": return { prompt: "", correct: "", wordLimit: undefined };
   }
 }
 
@@ -321,6 +325,42 @@ function MatchingEditor({ opts, onChange }: { opts: MatchingOpts; onChange: (o: 
   );
 }
 
+function ShortAnswerEditor({ opts, onChange }: { opts: ShortAnswerOpts; onChange: (o: ShortAnswerOpts) => void }) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>Question / Prompt</Label>
+        <Textarea
+          className="mt-1.5 min-h-[80px]"
+          placeholder="e.g. What is the main argument presented in the passage?"
+          value={opts.prompt}
+          onChange={(e) => onChange({ ...opts, prompt: e.target.value })}
+        />
+      </div>
+      <div>
+        <Label>Word Limit <span className="text-muted-foreground text-xs">(optional)</span></Label>
+        <Input
+          className="mt-1.5 w-32"
+          type="number"
+          min={1}
+          placeholder="No limit"
+          value={opts.wordLimit ?? ""}
+          onChange={(e) => onChange({ ...opts, wordLimit: e.target.value ? Number(e.target.value) : undefined })}
+        />
+      </div>
+      <div>
+        <Label>Model Answer <span className="text-muted-foreground text-xs">(shown after submission for self-assessment)</span></Label>
+        <Textarea
+          className="mt-1.5 min-h-[60px]"
+          placeholder="e.g. The author argues that technology improves human communication…"
+          value={opts.correct ?? ""}
+          onChange={(e) => onChange({ ...opts, correct: e.target.value })}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────
 // Question summary preview
 // ─────────────────────────────────────────────
@@ -340,6 +380,10 @@ function QuestionSummary({ type, options }: { type: QType; options: QOptions }) 
   if (type === "matching") {
     const o = options as MatchingOpts;
     return <p className="text-xs text-muted-foreground">{o.leftItems.filter(Boolean).length} pairs</p>;
+  }
+  if (type === "short_answer") {
+    const o = options as ShortAnswerOpts;
+    return <p className="text-xs text-muted-foreground truncate">{o.prompt || "—"}{o.wordLimit ? ` · up to ${o.wordLimit} word${o.wordLimit !== 1 ? "s" : ""}` : ""}</p>;
   }
   return null;
 }
@@ -1059,6 +1103,9 @@ export default function QuizDetail() {
             )}
             {qType === "matching" && (
               <MatchingEditor opts={qOptions as MatchingOpts} onChange={(o) => setQOptions(o)} />
+            )}
+            {qType === "short_answer" && (
+              <ShortAnswerEditor opts={qOptions as ShortAnswerOpts} onChange={(o) => setQOptions(o)} />
             )}
           </div>
 

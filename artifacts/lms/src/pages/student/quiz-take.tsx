@@ -17,11 +17,12 @@ import { CheckCircle2, Clock, List } from "lucide-react";
 // ─────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────
-type QType = "fill_blank" | "dropdown" | "choose_word" | "matching";
-interface FillBlankOpts { sentence: string; blanks: string[] }
-interface DropdownOpts  { stem: string; choices: string[]; correct: string }
-interface ChooseWordOpts { instruction: string; wordLimit: number; passageText?: string; imageUrl?: string; correct: string }
-interface MatchingOpts  { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[] }
+type QType = "fill_blank" | "dropdown" | "choose_word" | "matching" | "short_answer";
+interface FillBlankOpts   { sentence: string; blanks: string[] }
+interface DropdownOpts    { stem: string; choices: string[]; correct: string }
+interface ChooseWordOpts  { instruction: string; wordLimit: number; passageText?: string; imageUrl?: string; correct: string }
+interface MatchingOpts    { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[] }
+interface ShortAnswerOpts { prompt: string; correct?: string; wordLimit?: number }
 
 type AnswerMap = Record<number, string | string[] | Record<number, string>>;
 
@@ -212,6 +213,33 @@ function MatchingQuestion({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function ShortAnswerQuestion({
+  opts, qId, answers, setAnswers, slotStart,
+}: { opts: ShortAnswerOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number }) {
+  const answered = !!(answers[qId] as string)?.trim();
+  const wordLimit = opts.wordLimit;
+  return (
+    <div id={`q-${qId}`} className="flex items-start gap-2">
+      <QNum num={slotStart} answered={answered} />
+      <div className="flex-1 space-y-2">
+        <p className="text-sm leading-relaxed">{opts.prompt}</p>
+        <textarea
+          className="w-full border border-border rounded-md px-3 py-2 text-sm bg-transparent focus:outline-none focus:border-primary resize-none min-h-[80px]"
+          placeholder={wordLimit ? `Write your answer (up to ${wordLimit} word${wordLimit !== 1 ? "s" : ""})…` : "Write your answer…"}
+          value={(answers[qId] as string) ?? ""}
+          onChange={(e) => setAnswers({ ...answers, [qId]: e.target.value })}
+          rows={3}
+        />
+        {wordLimit && (
+          <p className="text-xs text-muted-foreground">
+            Word limit: {wordLimit} word{wordLimit !== 1 ? "s" : ""}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -557,6 +585,9 @@ export default function StudentQuizTake() {
                             )}
                             {q.type === "matching" && (
                               <MatchingQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} startNum={slotStart} />
+                            )}
+                            {q.type === "short_answer" && (
+                              <ShortAnswerQuestion opts={opts as ShortAnswerOpts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
                             )}
                           </div>
                         );
