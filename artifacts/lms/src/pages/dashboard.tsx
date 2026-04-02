@@ -1,88 +1,382 @@
-import { useGetDashboardStats, useGetRecentActivity, useGetCourseStats } from "@workspace/api-client-react";
+import {
+  useGetDashboardStats,
+  useGetRecentActivity,
+  useGetCourseStats,
+  useGetDashboardEnrollmentTrend,
+  useGetDashboardQuizAnalytics,
+  useGetDashboardTopCourses,
+} from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, BookOpen, GraduationCap, CheckCircle, UserPlus } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format } from "date-fns";
+import {
+  Activity, BookOpen, GraduationCap, CheckCircle, UserPlus,
+  TrendingUp, ClipboardList, Award, BarChart2, Plus, Users,
+  FileQuestion, BookCheck, ArrowRight, Layers, Target, Zap,
+} from "lucide-react";
+import {
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
+} from "recharts";
+import { format, parseISO } from "date-fns";
+import { useLocation } from "wouter";
+import { cn } from "@/lib/utils";
+
+const COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
 
 export default function Dashboard() {
+  const [, setLocation] = useLocation();
   const { data: stats, isLoading: statsLoading } = useGetDashboardStats();
-  const { data: activity, isLoading: activityLoading } = useGetRecentActivity({ limit: 10 });
+  const { data: activity, isLoading: activityLoading } = useGetRecentActivity({ limit: 8 });
   const { data: courseStats, isLoading: courseStatsLoading } = useGetCourseStats();
+  const { data: trend, isLoading: trendLoading } = useGetDashboardEnrollmentTrend();
+  const { data: quizAnalytics, isLoading: quizLoading } = useGetDashboardQuizAnalytics();
+  const { data: topCourses, isLoading: topCoursesLoading } = useGetDashboardTopCourses();
+
+  const categoryData = courseStats
+    ? Object.entries(
+        courseStats.reduce((acc, c) => {
+          acc[c.category] = (acc[c.category] ?? 0) + c.enrollmentCount;
+          return acc;
+        }, {} as Record<string, number>)
+      ).map(([name, value]) => ({ name, value }))
+    : [];
+
+  const quickActions = [
+    { label: "New Course", icon: Plus, color: "bg-primary text-primary-foreground", path: "/courses/new" },
+    { label: "Students", icon: Users, color: "bg-violet-500 text-white", path: "/students" },
+    { label: "Quizzes", icon: FileQuestion, color: "bg-amber-500 text-white", path: "/quizzes" },
+    { label: "Assignments", icon: BookCheck, color: "bg-emerald-500 text-white", path: "/assignments" },
+    { label: "Enrollments", icon: Layers, color: "bg-rose-500 text-white", path: "/enrollments" },
+    { label: "Analytics", icon: BarChart2, color: "bg-indigo-500 text-white", path: "/?section=analytics" },
+  ];
 
   return (
-    <div className="p-8 space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Overview of your learning platform.</p>
+    <div className="p-4 sm:p-8 space-y-8 max-w-[1400px]">
+
+      {/* ── Hero Header ── */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-indigo-600 p-6 sm:p-8 text-white shadow-lg">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.15),_transparent_60%)]" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-primary-foreground/70 text-sm font-medium mb-1">Admin Dashboard</p>
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Learning Platform</h1>
+            <p className="text-primary-foreground/75 mt-2 text-sm sm:text-base">
+              {statsLoading
+                ? "Loading overview…"
+                : `${stats?.totalStudents ?? 0} students across ${stats?.totalCourses ?? 0} courses — ${stats?.completionRate ?? 0}% completion rate`}
+            </p>
+          </div>
+          <div className="flex gap-3 shrink-0">
+            <Button
+              variant="secondary"
+              className="bg-white/15 hover:bg-white/25 text-white border-0 backdrop-blur-sm"
+              onClick={() => setLocation("/courses/new")}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              New Course
+            </Button>
+            <Button
+              variant="secondary"
+              className="bg-white/15 hover:bg-white/25 text-white border-0 backdrop-blur-sm"
+              onClick={() => setLocation("/students")}
+            >
+              <Users className="w-4 h-4 mr-2" />
+              Students
+            </Button>
+          </div>
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
+      {/* ── KPI Row 1 ── */}
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <KpiCard
           title="Total Courses"
           value={stats?.totalCourses}
-          description={`${stats?.publishedCourses || 0} published`}
+          sub={`${stats?.publishedCourses ?? 0} published`}
           icon={BookOpen}
+          iconColor="bg-blue-500/10 text-blue-600"
           loading={statsLoading}
           testId="stat-total-courses"
         />
-        <StatCard
+        <KpiCard
           title="Total Students"
           value={stats?.totalStudents}
-          description="Unique learners"
+          sub="Unique learners"
           icon={GraduationCap}
+          iconColor="bg-violet-500/10 text-violet-600"
           loading={statsLoading}
           testId="stat-total-students"
         />
-        <StatCard
+        <KpiCard
           title="Active Enrollments"
           value={stats?.activeEnrollments}
-          description={`Out of ${stats?.totalEnrollments || 0} total`}
+          sub={`of ${stats?.totalEnrollments ?? 0} total`}
           icon={Activity}
+          iconColor="bg-emerald-500/10 text-emerald-600"
           loading={statsLoading}
           testId="stat-active-enrollments"
         />
-        <StatCard
+        <KpiCard
           title="Completion Rate"
           value={stats?.completionRate != null ? `${Math.round(stats.completionRate)}%` : undefined}
-          description={`${stats?.completedEnrollments || 0} completed`}
+          sub={`${stats?.completedEnrollments ?? 0} completed`}
           icon={CheckCircle}
+          iconColor="bg-amber-500/10 text-amber-600"
           loading={statsLoading}
           testId="stat-completion-rate"
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
+      {/* ── KPI Row 2 — Quiz Analytics ── */}
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <KpiCard
+          title="Total Quizzes"
+          value={quizAnalytics?.totalQuizzes}
+          sub="Created on platform"
+          icon={FileQuestion}
+          iconColor="bg-rose-500/10 text-rose-600"
+          loading={quizLoading}
+        />
+        <KpiCard
+          title="Quiz Attempts"
+          value={quizAnalytics?.totalAttempts}
+          sub="All submissions"
+          icon={ClipboardList}
+          iconColor="bg-indigo-500/10 text-indigo-600"
+          loading={quizLoading}
+        />
+        <KpiCard
+          title="Avg Quiz Score"
+          value={quizAnalytics?.avgScore != null ? `${quizAnalytics.avgScore}` : undefined}
+          sub="Points average"
+          icon={Target}
+          iconColor="bg-orange-500/10 text-orange-600"
+          loading={quizLoading}
+        />
+        <KpiCard
+          title="Pass Rate"
+          value={quizAnalytics?.passRate != null ? `${quizAnalytics.passRate}%` : undefined}
+          sub="Score ≥ 60 pts"
+          icon={Award}
+          iconColor="bg-teal-500/10 text-teal-600"
+          loading={quizLoading}
+        />
+      </div>
+
+      {/* ── Enrollment Trend + Quick Actions ── */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2 ring-1 ring-border">
           <CardHeader>
-            <CardTitle>Course Performance</CardTitle>
-            <CardDescription>Enrollments and completions per course</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              Enrollment Trend
+            </CardTitle>
+            <CardDescription>Daily new enrollments over the last 30 days</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {trendLoading ? (
+              <Skeleton className="h-[220px] w-full" />
+            ) : trend && trend.length > 0 ? (
+              <div className="h-[220px]" data-testid="chart-enrollment-trend">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={trend} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted" />
+                    <XAxis
+                      dataKey="date"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                      tickFormatter={(v) => {
+                        try { return format(parseISO(v), "MMM d"); } catch { return v; }
+                      }}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} allowDecimals={false} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "hsl(var(--popover))", borderColor: "hsl(var(--border))", borderRadius: "8px", fontSize: 12 }}
+                      labelFormatter={(v) => { try { return format(parseISO(String(v)), "MMMM d, yyyy"); } catch { return v; } }}
+                    />
+                    <Area type="monotone" dataKey="count" name="Enrollments" stroke="hsl(var(--primary))" fill="url(#trendGrad)" strokeWidth={2} dot={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground">
+                No enrollment data in the last 30 days
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Quick Actions */}
+        <Card className="ring-1 ring-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-amber-500" />
+              Quick Actions
+            </CardTitle>
+            <CardDescription>Jump to key sections instantly</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-3">
+            {quickActions.map(({ label, icon: Icon, color, path }) => (
+              <button
+                key={label}
+                onClick={() => setLocation(path)}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border ring-1 ring-border hover:ring-primary/40 hover:shadow-md transition-all group text-center"
+              >
+                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", color)}>
+                  <Icon className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">{label}</span>
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Top Courses + Category Breakdown ── */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2 ring-1 ring-border">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart2 className="w-5 h-5 text-primary" />
+                Top Courses
+              </CardTitle>
+              <CardDescription>Ranked by enrollment — with completion & progress</CardDescription>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setLocation("/courses")} className="shrink-0">
+              View All <ArrowRight className="ml-1 w-4 h-4" />
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {topCoursesLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-14 w-full" />)}
+              </div>
+            ) : topCourses && topCourses.length > 0 ? (
+              <div className="space-y-3" data-testid="list-top-courses">
+                {topCourses.map((course, idx) => (
+                  <div
+                    key={course.courseId}
+                    className="flex items-center gap-4 p-3 rounded-xl border hover:bg-muted/30 transition-colors cursor-pointer"
+                    onClick={() => setLocation(`/courses/${course.courseId}`)}
+                  >
+                    <div className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0",
+                      idx === 0 ? "bg-amber-100 text-amber-700" :
+                      idx === 1 ? "bg-slate-100 text-slate-600" :
+                      idx === 2 ? "bg-orange-100 text-orange-700" :
+                      "bg-muted text-muted-foreground"
+                    )}>
+                      {idx + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-sm font-semibold truncate">{course.title}</p>
+                        <Badge variant={course.isPublished ? "default" : "secondary"} className="text-xs shrink-0">
+                          {course.isPublished ? "Live" : "Draft"}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Progress value={course.avgProgress} className="h-1.5 flex-1" />
+                        <span className="text-xs text-muted-foreground shrink-0">{course.avgProgress}%</span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold">{course.enrollmentCount}</p>
+                      <p className="text-xs text-muted-foreground">{course.completionRate}% done</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-sm text-muted-foreground py-8">No course data yet.</div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Category Breakdown */}
+        <Card className="ring-1 ring-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Layers className="w-5 h-5 text-violet-500" />
+              By Category
+            </CardTitle>
+            <CardDescription>Enrollments per category</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {courseStatsLoading ? (
+              <Skeleton className="h-[220px] w-full" />
+            ) : categoryData.length > 0 ? (
+              <div className="h-[220px]" data-testid="chart-category-breakdown">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={categoryData}
+                      cx="50%"
+                      cy="45%"
+                      innerRadius={55}
+                      outerRadius={80}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {categoryData.map((_, i) => (
+                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: 11 }} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "hsl(var(--popover))", borderColor: "hsl(var(--border))", borderRadius: "8px", fontSize: 12 }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground">No data yet.</div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Course Performance Bar Chart + Activity Feed ── */}
+      <div className="grid gap-4 lg:grid-cols-7">
+        <Card className="col-span-4 ring-1 ring-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart2 className="w-5 h-5 text-primary" />
+              Course Performance
+            </CardTitle>
+            <CardDescription>Enrollments vs completions per course</CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
             {courseStatsLoading ? (
-              <div className="h-[350px] w-full flex items-center justify-center">
-                <Skeleton className="h-[300px] w-full" />
-              </div>
+              <Skeleton className="h-[300px] w-full" />
             ) : (
-              <div className="h-[350px] w-full" data-testid="chart-course-stats">
+              <div className="h-[300px]" data-testid="chart-course-stats">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={courseStats} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <BarChart data={courseStats ?? []} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted" />
-                    <XAxis 
-                      dataKey="title" 
-                      tickLine={false} 
-                      axisLine={false} 
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                      tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
+                    <XAxis
+                      dataKey="title"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                      tickFormatter={(v: string) => v.length > 12 ? `${v.slice(0, 12)}…` : v}
                     />
-                    <YAxis 
-                      tickLine={false} 
-                      axisLine={false} 
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <Tooltip 
-                      cursor={{ fill: 'hsl(var(--muted)/0.5)' }}
-                      contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', borderRadius: 'var(--radius)' }}
+                    <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <Tooltip
+                      cursor={{ fill: "hsl(var(--muted)/0.5)" }}
+                      contentStyle={{ backgroundColor: "hsl(var(--popover))", borderColor: "hsl(var(--border))", borderRadius: "8px", fontSize: 12 }}
                     />
                     <Bar dataKey="enrollmentCount" name="Enrollments" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="completionCount" name="Completions" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
@@ -93,54 +387,64 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-3">
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest enrollments and progress</CardDescription>
+        {/* Recent Activity */}
+        <Card className="col-span-3 ring-1 ring-border">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="w-5 h-5 text-primary" />
+                Recent Activity
+              </CardTitle>
+              <CardDescription>Latest enrollments</CardDescription>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setLocation("/enrollments")} className="shrink-0">
+              All <ArrowRight className="ml-1 w-4 h-4" />
+            </Button>
           </CardHeader>
           <CardContent>
             {activityLoading ? (
               <div className="space-y-4">
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="flex items-center gap-4">
-                    <Skeleton className="h-9 w-9 rounded-full" />
-                    <div className="space-y-2 flex-1">
-                      <Skeleton className="h-4 w-full" />
+                  <div key={i} className="flex items-center gap-3">
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                    <div className="space-y-1.5 flex-1">
+                      <Skeleton className="h-3.5 w-full" />
                       <Skeleton className="h-3 w-2/3" />
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="space-y-6" data-testid="list-recent-activity">
-                {activity?.map((item) => (
-                  <div key={item.id} className="flex items-start gap-4">
-                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      {item.type === 'enrollment' ? (
+              <div className="space-y-4" data-testid="list-recent-activity">
+                {activity?.map((item, i) => (
+                  <div key={item.id ?? i} className="flex items-start gap-3">
+                    <div className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                      item.type === "enrollment" ? "bg-primary/10" :
+                      item.type === "completion" ? "bg-emerald-500/10" : "bg-amber-500/10"
+                    )}>
+                      {item.type === "enrollment" ? (
                         <UserPlus className="w-4 h-4 text-primary" />
-                      ) : item.type === 'completion' ? (
-                        <CheckCircle className="w-4 h-4 text-chart-2" />
+                      ) : item.type === "completion" ? (
+                        <CheckCircle className="w-4 h-4 text-emerald-600" />
                       ) : (
-                        <Activity className="w-4 h-4 text-chart-4" />
+                        <Activity className="w-4 h-4 text-amber-600" />
                       )}
                     </div>
-                    <div className="flex-1 space-y-1">
-                      <p className="text-sm font-medium leading-none">
-                        <span className="font-semibold">{item.studentName}</span> {item.description}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium leading-snug">
+                        <span className="font-semibold">{item.studentName}</span>{" "}
+                        <span className="text-muted-foreground font-normal">{item.description}</span>
                       </p>
-                      <p className="text-sm text-muted-foreground">
-                        {item.courseName}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground truncate">{item.courseName}</p>
+                      <p className="text-xs text-muted-foreground/60">
                         {format(new Date(item.occurredAt), "MMM d, h:mm a")}
                       </p>
                     </div>
                   </div>
                 ))}
                 {(!activity || activity.length === 0) && (
-                  <div className="text-center text-sm text-muted-foreground py-4">
-                    No recent activity.
-                  </div>
+                  <div className="text-center text-sm text-muted-foreground py-6">No recent activity.</div>
                 )}
               </div>
             )}
@@ -151,38 +455,37 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ 
-  title, 
-  value, 
-  description, 
-  icon: Icon, 
-  loading,
-  testId
-}: { 
-  title: string; 
-  value?: string | number; 
-  description: string; 
+function KpiCard({
+  title, value, sub, icon: Icon, iconColor, loading, testId,
+}: {
+  title: string;
+  value?: string | number;
+  sub: string;
   icon: React.ElementType;
+  iconColor: string;
   loading: boolean;
   testId?: string;
 }) {
   return (
-    <Card data-testid={testId}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
+    <Card data-testid={testId} className="ring-1 ring-border hover:shadow-md transition-shadow">
+      <CardContent className="pt-5 pb-4 px-5">
         {loading ? (
-          <>
-            <Skeleton className="h-8 w-20 mb-1" />
-            <Skeleton className="h-3 w-32" />
-          </>
+          <div className="space-y-3">
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-8 w-16" />
+            <Skeleton className="h-3 w-24" />
+          </div>
         ) : (
-          <>
-            <div className="text-2xl font-bold">{value ?? 0}</div>
-            <p className="text-xs text-muted-foreground">{description}</p>
-          </>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
+              <p className="text-3xl font-bold mt-1.5 leading-none">{value ?? 0}</p>
+              <p className="text-xs text-muted-foreground mt-1.5">{sub}</p>
+            </div>
+            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", iconColor)}>
+              <Icon className="w-5 h-5" />
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>

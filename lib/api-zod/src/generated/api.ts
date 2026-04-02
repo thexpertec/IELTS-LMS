@@ -426,6 +426,44 @@ export const GetCourseStatsResponseItem = zod.object({
 export const GetCourseStatsResponse = zod.array(GetCourseStatsResponseItem);
 
 /**
+ * @summary Daily enrollment counts for the last 30 days
+ */
+export const GetDashboardEnrollmentTrendResponseItem = zod.object({
+  date: zod.string(),
+  count: zod.number(),
+});
+export const GetDashboardEnrollmentTrendResponse = zod.array(
+  GetDashboardEnrollmentTrendResponseItem,
+);
+
+/**
+ * @summary Quiz attempt statistics across all courses
+ */
+export const GetDashboardQuizAnalyticsResponse = zod.object({
+  totalAttempts: zod.number(),
+  avgScore: zod.number(),
+  passRate: zod.number(),
+  totalQuizzes: zod.number(),
+});
+
+/**
+ * @summary Top 6 courses by enrollment with avg progress
+ */
+export const GetDashboardTopCoursesResponseItem = zod.object({
+  courseId: zod.number(),
+  title: zod.string(),
+  category: zod.string(),
+  instructor: zod.string(),
+  enrollmentCount: zod.number(),
+  completionRate: zod.number(),
+  avgProgress: zod.number(),
+  isPublished: zod.boolean(),
+});
+export const GetDashboardTopCoursesResponse = zod.array(
+  GetDashboardTopCoursesResponseItem,
+);
+
+/**
  * @summary Get or create student profile by email
  */
 export const GetStudentProfileQueryParams = zod.object({

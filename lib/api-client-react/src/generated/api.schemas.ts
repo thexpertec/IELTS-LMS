@@ -230,6 +230,29 @@ export interface CourseStats {
   completionRate: number;
 }
 
+export interface EnrollmentTrendPoint {
+  date: string;
+  count: number;
+}
+
+export interface QuizAnalytics {
+  totalAttempts: number;
+  avgScore: number;
+  passRate: number;
+  totalQuizzes: number;
+}
+
+export interface TopCourse {
+  courseId: number;
+  title: string;
+  category: string;
+  instructor: string;
+  enrollmentCount: number;
+  completionRate: number;
+  avgProgress: number;
+  isPublished: boolean;
+}
+
 export interface StudentProfile {
   email: string;
   displayName: string;

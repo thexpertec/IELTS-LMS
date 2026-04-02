@@ -37,6 +37,7 @@ import type {
   DashboardStats,
   Discussion,
   Enrollment,
+  EnrollmentTrendPoint,
   ErrorEnvelope,
   ErrorResponse,
   GetAvailableCoursesParams,
@@ -62,6 +63,7 @@ import type {
   Notification,
   PostDiscussionBody,
   Quiz,
+  QuizAnalytics,
   QuizDetail,
   QuizQuestion,
   StudentCourseDetail,
@@ -69,6 +71,7 @@ import type {
   StudentEnrollment,
   StudentProfile,
   SubmitAssignmentBody,
+  TopCourse,
   UpdateAssignmentBody,
   UpdateCourseBody,
   UpdateEnrollmentBody,
@@ -2238,6 +2241,238 @@ export function useGetCourseStats<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetCourseStatsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Daily enrollment counts for the last 30 days
+ */
+export const getGetDashboardEnrollmentTrendUrl = () => {
+  return `/api/dashboard/enrollment-trend`;
+};
+
+export const getDashboardEnrollmentTrend = async (
+  options?: RequestInit,
+): Promise<EnrollmentTrendPoint[]> => {
+  return customFetch<EnrollmentTrendPoint[]>(
+    getGetDashboardEnrollmentTrendUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetDashboardEnrollmentTrendQueryKey = () => {
+  return [`/api/dashboard/enrollment-trend`] as const;
+};
+
+export const getGetDashboardEnrollmentTrendQueryOptions = <
+  TData = Awaited<ReturnType<typeof getDashboardEnrollmentTrend>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardEnrollmentTrend>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetDashboardEnrollmentTrendQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getDashboardEnrollmentTrend>>
+  > = ({ signal }) =>
+    getDashboardEnrollmentTrend({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardEnrollmentTrend>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetDashboardEnrollmentTrendQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getDashboardEnrollmentTrend>>
+>;
+export type GetDashboardEnrollmentTrendQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Daily enrollment counts for the last 30 days
+ */
+
+export function useGetDashboardEnrollmentTrend<
+  TData = Awaited<ReturnType<typeof getDashboardEnrollmentTrend>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardEnrollmentTrend>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetDashboardEnrollmentTrendQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Quiz attempt statistics across all courses
+ */
+export const getGetDashboardQuizAnalyticsUrl = () => {
+  return `/api/dashboard/quiz-analytics`;
+};
+
+export const getDashboardQuizAnalytics = async (
+  options?: RequestInit,
+): Promise<QuizAnalytics> => {
+  return customFetch<QuizAnalytics>(getGetDashboardQuizAnalyticsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetDashboardQuizAnalyticsQueryKey = () => {
+  return [`/api/dashboard/quiz-analytics`] as const;
+};
+
+export const getGetDashboardQuizAnalyticsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getDashboardQuizAnalytics>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardQuizAnalytics>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetDashboardQuizAnalyticsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getDashboardQuizAnalytics>>
+  > = ({ signal }) => getDashboardQuizAnalytics({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardQuizAnalytics>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetDashboardQuizAnalyticsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getDashboardQuizAnalytics>>
+>;
+export type GetDashboardQuizAnalyticsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Quiz attempt statistics across all courses
+ */
+
+export function useGetDashboardQuizAnalytics<
+  TData = Awaited<ReturnType<typeof getDashboardQuizAnalytics>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardQuizAnalytics>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetDashboardQuizAnalyticsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Top 6 courses by enrollment with avg progress
+ */
+export const getGetDashboardTopCoursesUrl = () => {
+  return `/api/dashboard/top-courses`;
+};
+
+export const getDashboardTopCourses = async (
+  options?: RequestInit,
+): Promise<TopCourse[]> => {
+  return customFetch<TopCourse[]>(getGetDashboardTopCoursesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetDashboardTopCoursesQueryKey = () => {
+  return [`/api/dashboard/top-courses`] as const;
+};
+
+export const getGetDashboardTopCoursesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getDashboardTopCourses>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardTopCourses>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetDashboardTopCoursesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getDashboardTopCourses>>
+  > = ({ signal }) => getDashboardTopCourses({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardTopCourses>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetDashboardTopCoursesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getDashboardTopCourses>>
+>;
+export type GetDashboardTopCoursesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Top 6 courses by enrollment with avg progress
+ */
+
+export function useGetDashboardTopCourses<
+  TData = Awaited<ReturnType<typeof getDashboardTopCourses>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardTopCourses>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetDashboardTopCoursesQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

@@ -573,6 +573,49 @@ paths:
                 items:
                   $ref: "#/components/schemas/CourseStats"
 
+  /dashboard/enrollment-trend:
+    get:
+      operationId: getDashboardEnrollmentTrend
+      tags: [dashboard]
+      summary: Daily enrollment counts for the last 30 days
+      responses:
+        "200":
+          description: Enrollment trend data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EnrollmentTrendPoint"
+
+  /dashboard/quiz-analytics:
+    get:
+      operationId: getDashboardQuizAnalytics
+      tags: [dashboard]
+      summary: Quiz attempt statistics across all courses
+      responses:
+        "200":
+          description: Quiz analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuizAnalytics"
+
+  /dashboard/top-courses:
+    get:
+      operationId: getDashboardTopCourses
+      tags: [dashboard]
+      summary: Top 6 courses by enrollment with avg progress
+      responses:
+        "200":
+          description: Top courses list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TopCourse"
+
   /student/profile:
     get:
       operationId: getStudentProfile
@@ -1613,6 +1656,63 @@ components:
         - enrollmentCount
         - completionCount
         - completionRate
+
+    EnrollmentTrendPoint:
+      type: object
+      properties:
+        date:
+          type: string
+        count:
+          type: integer
+      required:
+        - date
+        - count
+
+    QuizAnalytics:
+      type: object
+      properties:
+        totalAttempts:
+          type: integer
+        avgScore:
+          type: number
+        passRate:
+          type: number
+        totalQuizzes:
+          type: integer
+      required:
+        - totalAttempts
+        - avgScore
+        - passRate
+        - totalQuizzes
+
+    TopCourse:
+      type: object
+      properties:
+        courseId:
+          type: integer
+        title:
+          type: string
+        category:
+          type: string
+        instructor:
+          type: string
+        enrollmentCount:
+          type: integer
+        completionRate:
+          type: number
+        avgProgress:
+          type: number
+        isPublished:
+          type: boolean
+      required:
+        - courseId
+        - title
+        - category
+        - instructor
+        - enrollmentCount
+        - completionRate
+        - avgProgress
+        - isPublished
 
     StudentProfile:
       type: object

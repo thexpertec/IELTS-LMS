@@ -1,11 +1,15 @@
 import { Router, type IRouter } from "express";
-import { eq, count, countDistinct, sql } from "drizzle-orm";
-import { db, coursesTable, enrollmentsTable, lessonProgressTable } from "@workspace/db";
+import { eq, count, countDistinct, sql, avg } from "drizzle-orm";
+import { db, coursesTable, enrollmentsTable } from "@workspace/db";
+import { quizAttemptsTable, quizzesTable } from "@workspace/db";
 import {
   GetDashboardStatsResponse,
   GetRecentActivityResponse,
   GetRecentActivityQueryParams,
   GetCourseStatsResponse,
+  GetDashboardEnrollmentTrendResponse,
+  GetDashboardQuizAnalyticsResponse,
+  GetDashboardTopCoursesResponse,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -104,6 +108,88 @@ router.get("/dashboard/course-stats", async (_req, res): Promise<void> => {
   });
 
   res.json(GetCourseStatsResponse.parse(stats));
+});
+
+router.get("/dashboard/enrollment-trend", async (_req, res): Promise<void> => {
+  const rows = await db
+    .select({
+      date: sql<string>`DATE(${enrollmentsTable.enrolledAt})::text`,
+      count: count(enrollmentsTable.id),
+    })
+    .from(enrollmentsTable)
+    .where(sql`${enrollmentsTable.enrolledAt} >= NOW() - INTERVAL '30 days'`)
+    .groupBy(sql`DATE(${enrollmentsTable.enrolledAt})`)
+    .orderBy(sql`DATE(${enrollmentsTable.enrolledAt}) ASC`);
+
+  const points = rows.map((r) => ({ date: r.date, count: Number(r.count) }));
+  res.json(GetDashboardEnrollmentTrendResponse.parse(points));
+});
+
+router.get("/dashboard/quiz-analytics", async (_req, res): Promise<void> => {
+  const [attemptStats] = await db
+    .select({
+      totalAttempts: count(quizAttemptsTable.id),
+      avgScore: avg(quizAttemptsTable.score),
+    })
+    .from(quizAttemptsTable);
+
+  const [quizCount] = await db
+    .select({ totalQuizzes: count(quizzesTable.id) })
+    .from(quizzesTable);
+
+  const totalAttempts = Number(attemptStats?.totalAttempts ?? 0);
+  const avgScore = Number(attemptStats?.avgScore ?? 0);
+
+  const passAttempts = await db
+    .select({ c: count(quizAttemptsTable.id) })
+    .from(quizAttemptsTable)
+    .where(sql`${quizAttemptsTable.score} >= 60`);
+
+  const passing = Number(passAttempts[0]?.c ?? 0);
+  const passRate = totalAttempts > 0 ? Math.round((passing / totalAttempts) * 100) : 0;
+
+  res.json(GetDashboardQuizAnalyticsResponse.parse({
+    totalAttempts,
+    avgScore: Math.round(avgScore * 10) / 10,
+    passRate,
+    totalQuizzes: Number(quizCount?.totalQuizzes ?? 0),
+  }));
+});
+
+router.get("/dashboard/top-courses", async (_req, res): Promise<void> => {
+  const rows = await db
+    .select({
+      courseId: coursesTable.id,
+      title: coursesTable.title,
+      category: coursesTable.category,
+      instructor: coursesTable.instructor,
+      isPublished: coursesTable.isPublished,
+      enrollmentCount: count(enrollmentsTable.id),
+      completionCount: sql<number>`COUNT(CASE WHEN ${enrollmentsTable.status} = 'completed' THEN 1 END)`,
+      avgProgress: avg(enrollmentsTable.progressPercent),
+    })
+    .from(coursesTable)
+    .leftJoin(enrollmentsTable, eq(coursesTable.id, enrollmentsTable.courseId))
+    .groupBy(coursesTable.id, coursesTable.title, coursesTable.category, coursesTable.instructor, coursesTable.isPublished)
+    .orderBy(sql`COUNT(${enrollmentsTable.id}) DESC`)
+    .limit(6);
+
+  const topCourses = rows.map((r) => {
+    const enrollmentCount = Number(r.enrollmentCount);
+    const completionCount = Number(r.completionCount);
+    return {
+      courseId: r.courseId,
+      title: r.title,
+      category: r.category,
+      instructor: r.instructor,
+      isPublished: r.isPublished,
+      enrollmentCount,
+      completionRate: enrollmentCount > 0 ? Math.round((completionCount / enrollmentCount) * 100) : 0,
+      avgProgress: Math.round(Number(r.avgProgress ?? 0)),
+    };
+  });
+
+  res.json(GetDashboardTopCoursesResponse.parse(topCourses));
 });
 
 export default router;
