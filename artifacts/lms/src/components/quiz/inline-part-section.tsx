@@ -91,6 +91,7 @@ export function InlinePartSection({
           className="h-8 bg-transparent text-white font-semibold border-0 shadow-none focus-visible:ring-white/30 focus-visible:ring-1 px-1 flex-1 min-w-0 placeholder:text-white/50"
           value={part.name}
           onChange={(e) => handleChange({ name: e.target.value })}
+          onBlur={() => { if (isDirty) handleSave(); }}
           placeholder="Part name…"
         />
 
