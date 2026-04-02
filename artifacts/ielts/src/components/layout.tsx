@@ -12,7 +12,8 @@ import {
   Headphones,
   Mic,
   FileText,
-  Type
+  Type,
+  ClipboardList
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -79,6 +80,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </Link>
             </Button>
           ))}
+        </div>
+      </div>
+
+      <div className="pt-4 pb-2">
+        <h4 className="px-2 text-xs font-semibold text-muted-foreground tracking-wider uppercase mb-2">
+          Practice Tests
+        </h4>
+        <div className="space-y-1">
+          <Button
+            variant={location === "/reading-test" ? "secondary" : "ghost"}
+            className="w-full justify-start"
+            asChild
+          >
+            <Link href="/reading-test" data-testid="nav-reading-test">
+              <ClipboardList className="mr-2 h-4 w-4" />
+              Reading Test
+            </Link>
+          </Button>
         </div>
       </div>
 

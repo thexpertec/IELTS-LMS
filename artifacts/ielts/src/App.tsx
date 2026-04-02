@@ -10,6 +10,7 @@ import Dashboard from "@/pages/dashboard";
 import Module from "@/pages/module";
 import Profile from "@/pages/profile";
 import Notifications from "@/pages/notifications";
+import ReadingTest from "@/pages/reading-test";
 
 const queryClient = new QueryClient();
 
@@ -17,6 +18,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Login} />
+      <Route path="/reading-test" component={ReadingTest} />
       <Route path="/dashboard">
         <Layout><Dashboard /></Layout>
       </Route>
