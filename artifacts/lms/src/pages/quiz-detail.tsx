@@ -80,7 +80,7 @@ interface FillBlankOpts          { sentence: string; blanks: string[] }
 interface FillBlankDropdownOpts  { instruction: string; sentences: string[]; choices: string[]; correct: string[] }
 interface DropdownOpts           { stem: string; choices: string[]; correct: string }
 interface ChooseWordOpts         { instruction: string; wordLimit: number; passageText?: string; imageUrl?: string; correct: string }
-interface MatchingOpts           { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[] }
+interface MatchingOpts           { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[]; instruction?: string }
 interface Matching3ColOpts       { columns: [string, string, string]; answerColIndex: 0 | 1 | 2; rows: Array<{ a: string; b: string; c: string }>; instruction?: string }
 interface ShortAnswerOpts        { prompt: string; correct?: string; wordLimit?: number }
 interface TrueFalseNgOpts        { statement: string; correct: "TRUE" | "FALSE" | "NOT GIVEN" | "" }
@@ -120,7 +120,7 @@ function defaultOptions(type: QType): QOptions {
     case "fill_blank_dropdown": return { instruction: "", sentences: ["", ""], choices: ["A", "B", "C"], correct: ["", ""] };
     case "dropdown":            return { stem: "", choices: ["", "", ""], correct: "" };
     case "choose_word":         return { instruction: "Choose ONE WORD from the passage below.", wordLimit: 1, passageText: "", imageUrl: "", correct: "" };
-    case "matching":            return { leftItems: ["", ""], rightItems: ["", ""], pairs: [] };
+    case "matching":            return { leftItems: ["", ""], rightItems: ["", ""], pairs: [], instruction: "" };
     case "matching_3col":       return { columns: ["Column A", "Column B", "Column C"], answerColIndex: 2, rows: [{ a: "", b: "", c: "" }, { a: "", b: "", c: "" }], instruction: "" };
     case "short_answer":        return { prompt: "", correct: "", wordLimit: undefined };
     case "true_false_ng":       return { statement: "", correct: "" };
@@ -409,6 +409,17 @@ function MatchingEditor({ opts, onChange }: { opts: MatchingOpts; onChange: (o: 
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">Add matching pairs. The right column will be scrambled for students.</p>
+      <div>
+        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+          Instruction <span className="font-normal normal-case">(optional)</span>
+        </Label>
+        <Input
+          placeholder="e.g. Match each scientist with their contribution."
+          value={opts.instruction ?? ""}
+          onChange={(e) => onChange({ ...opts, instruction: e.target.value })}
+          className="text-sm"
+        />
+      </div>
       <div className="space-y-2">
         <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-xs font-medium text-muted-foreground px-1">
           <span>Left Column</span>
