@@ -33,6 +33,19 @@ function isAnswered(qId: number, qType: QType, answers: AnswerMap): boolean {
   return typeof ans === "string" && ans.trim() !== "";
 }
 
+function questionSlots(q: { type: string; options: unknown }): number {
+  if (q.type === "matching") {
+    const opts = q.options as MatchingOpts;
+    return Math.max(1, (opts.leftItems ?? []).filter(Boolean).length);
+  }
+  return 1;
+}
+
+function matchingRowAnswered(answers: AnswerMap, qId: number, rowIdx: number): boolean {
+  const current = (answers[qId] as Record<number, string> | undefined) ?? {};
+  return !!current[rowIdx];
+}
+
 // ─────────────────────────────────────────────
 // Timer hook
 // ─────────────────────────────────────────────
@@ -143,33 +156,43 @@ function ChooseWordQuestion({
 }
 
 function MatchingQuestion({
-  opts, qId, answers, setAnswers,
-}: { opts: MatchingOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void }) {
+  opts, qId, answers, setAnswers, startNum,
+}: { opts: MatchingOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; startNum: number }) {
   const current = (answers[qId] as Record<number, string>) ?? {};
   const update = (leftIdx: number, rightVal: string) => {
     setAnswers({ ...answers, [qId]: { ...current, [leftIdx]: rightVal } });
   };
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-2 text-xs font-semibold text-muted-foreground px-1 mb-2">
+      <div className="grid grid-cols-[32px_1fr_1fr] gap-2 text-xs font-semibold text-muted-foreground px-1 mb-2">
+        <span />
         <span>Column A</span>
         <span>Column B</span>
       </div>
-      {opts.leftItems.filter(Boolean).map((item, i) => (
-        <div key={i} className="grid grid-cols-2 gap-3 items-center">
-          <p className="text-sm px-3 py-2 bg-muted rounded-md">{item}</p>
-          <Select value={current[i] ?? ""} onValueChange={(val) => update(i, val)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Match..." />
-            </SelectTrigger>
-            <SelectContent>
-              {opts.rightItems.filter(Boolean).map((r, j) => (
-                <SelectItem key={j} value={r}>{r}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      ))}
+      {opts.leftItems.filter(Boolean).map((item, i) => {
+        const rowDone = matchingRowAnswered(answers, qId, i);
+        return (
+          <div key={i} className="grid grid-cols-[32px_1fr_1fr] gap-3 items-center">
+            <span className={cn(
+              "text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0",
+              rowDone ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+            )}>
+              {startNum + i}
+            </span>
+            <p className="text-sm px-3 py-2 bg-muted rounded-md">{item}</p>
+            <Select value={current[i] ?? ""} onValueChange={(val) => update(i, val)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Match..." />
+              </SelectTrigger>
+              <SelectContent>
+                {opts.rightItems.filter(Boolean).map((r, j) => (
+                  <SelectItem key={j} value={r}>{r}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -206,8 +229,19 @@ export default function StudentQuizTake() {
   const { display: timerDisplay, isWarning } = useTimer(quiz?.timeLimitMinutes, handleExpire);
 
   function handleSubmit() {
-    const answered = sortedQs.filter((q) => isAnswered(q.id, q.type as QType, answers)).length;
-    setScore({ answered, total: sortedQs.length });
+    const total = sortedQs.reduce((sum, q) => sum + questionSlots(q), 0);
+    const answered = sortedQs.reduce((sum, q) => {
+      if (q.type === "matching") {
+        const opts = q.options as MatchingOpts;
+        const rows = (opts.leftItems ?? []).filter(Boolean).length;
+        for (let i = 0; i < rows; i++) {
+          if (matchingRowAnswered(answers, q.id, i)) sum++;
+        }
+        return sum;
+      }
+      return sum + (isAnswered(q.id, q.type as QType, answers) ? 1 : 0);
+    }, 0);
+    setScore({ answered, total });
     setSubmitted(true);
     setSubmitOpen(false);
     setReviewOpen(false);
@@ -273,7 +307,31 @@ export default function StudentQuizTake() {
   }
 
   const answeredIds = new Set(sortedQs.filter((q) => isAnswered(q.id, q.type as QType, answers)).map((q) => q.id));
-  const unanswered = sortedQs.length - answeredIds.size;
+
+  // Slot-aware numbering: each matching row counts as 1 slot
+  const slotMap = (() => {
+    const map = new Map<number, { slotStart: number; slots: number }>();
+    let cursor = 0;
+    for (const q of sortedQs) {
+      const slots = questionSlots(q);
+      map.set(q.id, { slotStart: cursor, slots });
+      cursor += slots;
+    }
+    return map;
+  })();
+  const totalSlots = sortedQs.reduce((sum, q) => sum + questionSlots(q), 0);
+  const answeredSlots = sortedQs.reduce((sum, q) => {
+    if (q.type === "matching") {
+      const opts = q.options as MatchingOpts;
+      const rows = (opts.leftItems ?? []).filter(Boolean).length;
+      for (let i = 0; i < rows; i++) {
+        if (matchingRowAnswered(answers, q.id, i)) sum++;
+      }
+      return sum;
+    }
+    return sum + (isAnswered(q.id, q.type as QType, answers) ? 1 : 0);
+  }, 0);
+  const unanswered = totalSlots - answeredSlots;
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
