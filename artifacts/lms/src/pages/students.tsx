@@ -1,13 +1,16 @@
 import { useListEnrollments } from "@workspace/api-client-react";
-import { Users, GraduationCap, Search, Mail } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Users, GraduationCap, Search, Mail, LogIn } from "lucide-react";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { useState, useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useLocation } from "wouter";
 
 export default function Students() {
   const [search, setSearch] = useState("");
+  const [, setLocation] = useLocation();
   const { data: enrollments, isLoading } = useListEnrollments();
 
   // Group enrollments by student to create a unique student view
@@ -144,6 +147,18 @@ export default function Students() {
                   </div>
                 </div>
               </CardContent>
+              <CardFooter className="pt-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-2"
+                  data-testid={`btn-view-student-${student.email}`}
+                  onClick={() => setLocation(`/enrollments?student=${encodeURIComponent(student.name)}`)}
+                >
+                  <LogIn className="w-4 h-4" />
+                  View Enrollments
+                </Button>
+              </CardFooter>
             </Card>
           ))}
         </div>

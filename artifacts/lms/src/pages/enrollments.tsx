@@ -1,10 +1,10 @@
 import { useListEnrollments, useUpdateEnrollment, useDeleteEnrollment, getListEnrollmentsQueryKey } from "@workspace/api-client-react";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import { Plus, Search, MoreHorizontal, User, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -28,9 +28,17 @@ import {
 import { Progress } from "@/components/ui/progress";
 
 export default function Enrollments() {
-  const [search, setSearch] = useState("");
+  const queryString = useSearch();
+  const params = new URLSearchParams(queryString);
+  const prefilter = params.get("student") ?? "";
+
+  const [search, setSearch] = useState(prefilter);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (prefilter) setSearch(prefilter);
+  }, [prefilter]);
 
   const { data: enrollments, isLoading } = useListEnrollments({
     studentName: search || undefined,
@@ -81,6 +89,24 @@ export default function Enrollments() {
           </Button>
         </Link>
       </div>
+
+      {prefilter && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary/10 border border-primary/20">
+          <User className="w-4 h-4 text-primary flex-shrink-0" />
+          <span className="text-sm font-medium text-primary">
+            Viewing enrollments for <span className="font-bold">{prefilter}</span>
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto h-7 text-xs text-primary hover:text-primary"
+            data-testid="btn-clear-student-filter"
+            onClick={() => { setSearch(""); window.history.replaceState(null, "", "/enrollments"); }}
+          >
+            Clear filter
+          </Button>
+        </div>
+      )}
 
       <div className="flex items-center">
         <div className="relative w-full max-w-md">
