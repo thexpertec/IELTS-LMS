@@ -10,6 +10,9 @@ export interface QuizPart {
   from: number;
   to: number;
   instructions: string[];
+  passageText?: string;
+  imageUrl?: string;
+  audioUrl?: string;
 }
 
 interface PartsEditorProps {

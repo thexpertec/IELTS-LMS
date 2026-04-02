@@ -1,11 +1,16 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import {
   DndContext,
+  DragOverlay,
   closestCenter,
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
   type DragEndEvent,
+  type DragStartEvent,
+  type DragOverEvent,
+  type UniqueIdentifier,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -14,7 +19,8 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { PartsEditor, type QuizPart } from "@/components/quiz/parts-editor";
+import { type QuizPart } from "@/components/quiz/parts-editor";
+import { InlinePartSection } from "@/components/quiz/inline-part-section";
 import { useRoute, useLocation } from "wouter";
 import {
   useGetQuiz,
@@ -339,6 +345,14 @@ function QuestionSummary({ type, options }: { type: QType; options: QOptions }) 
 }
 
 // ─────────────────────────────────────────────
+// Droppable area for ungrouped questions
+// ─────────────────────────────────────────────
+function UngroupedDropArea({ groupKey, children }: { groupKey: string; children: ReactNode }) {
+  const { setNodeRef } = useDroppable({ id: groupKey });
+  return <div ref={setNodeRef} className="space-y-3">{children}</div>;
+}
+
+// ─────────────────────────────────────────────
 // Sortable question row
 // ─────────────────────────────────────────────
 type QuestionRow = { id: number; type: string; order: number; questionText: string; options: unknown };
@@ -446,8 +460,7 @@ export default function QuizDetail() {
 
   // ── Quiz settings edit state
   const [editSettings, setEditSettings] = useState(false);
-  const [settingsForm, setSettingsForm] = useState({ title: "", description: "", passageText: "", courseId: "", timeLimitMinutes: "", isPublished: false });
-  const [editParts, setEditParts] = useState<QuizPart[]>([]);
+  const [settingsForm, setSettingsForm] = useState({ title: "", description: "", courseId: "", timeLimitMinutes: "", isPublished: false });
 
   // ── Question dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -456,43 +469,180 @@ export default function QuizDetail() {
   const [qText, setQText] = useState("");
   const [qOptions, setQOptions] = useState<QOptions>(defaultOptions("fill_blank"));
 
-  // ── Ordered questions (local state for optimistic DnD reordering)
-  const [orderedQuestions, setOrderedQuestions] = useState<QuestionRow[]>([]);
+  // ── Multi-container DnD state
+  type InlineGroup = { key: string; part?: QuizPart; questionIds: number[] };
+  const [groups, setGroups] = useState<InlineGroup[]>([{ key: "ungrouped", questionIds: [] }]);
+  const [activeId, setActiveId] = useState<number | null>(null);
   const isReordering = useRef(false);
 
   const { data: quiz, isLoading } = useGetQuiz(quizId);
 
-  // Sync server data into local order state (skip while a drag is in-flight)
-  useEffect(() => {
-    if (isReordering.current) return;
+  // Build a lookup map of all questions from server data
+  const questionMap = useMemo(() => {
     const qs = ((quiz as { questions?: unknown[] })?.questions ?? []) as QuestionRow[];
-    setOrderedQuestions([...qs].sort((a, b) => a.order - b.order));
+    return new Map(qs.map((q) => [q.id, q]));
+  }, [quiz]);
+
+  // Sync groups from server (skip during drag)
+  useEffect(() => {
+    if (isReordering.current || !quiz) return;
+    const qs = (((quiz as { questions?: unknown[] })?.questions ?? []) as QuestionRow[]).sort((a, b) => a.order - b.order);
+    const parts = ((quiz as { parts?: QuizPart[] | null }).parts ?? []) as QuizPart[];
+
+    if (parts.length === 0) {
+      setGroups([{ key: "ungrouped", questionIds: qs.map((q) => q.id) }]);
+      return;
+    }
+
+    const ungrouped: number[] = [];
+    const partGroups: number[][] = parts.map(() => []);
+    qs.forEach((q, i) => {
+      const pos = i + 1;
+      const pi = parts.findIndex((p) => pos >= p.from && pos <= p.to);
+      if (pi >= 0) partGroups[pi].push(q.id);
+      else ungrouped.push(q.id);
+    });
+
+    setGroups([
+      { key: "ungrouped", questionIds: ungrouped },
+      ...parts.map((p, i) => ({ key: `part-${i}`, part: p, questionIds: partGroups[i] })),
+    ]);
   }, [quiz]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
+  function findContainer(id: UniqueIdentifier): string | null {
+    if (typeof id === "string" && groups.some((g) => g.key === id)) return id;
+    const numId = Number(id);
+    return groups.find((g) => g.questionIds.includes(numId))?.key ?? null;
+  }
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(Number(event.active.id));
+  }
+
+  function handleDragOver(event: DragOverEvent) {
+    const { active, over } = event;
+    if (!over) return;
+    const fromKey = findContainer(active.id);
+    const toKey = findContainer(over.id) ?? (typeof over.id === "string" ? over.id : null);
+    if (!fromKey || !toKey || fromKey === toKey) return;
+
+    setGroups((prev) => {
+      const fromGroup = prev.find((g) => g.key === fromKey)!;
+      const toGroup = prev.find((g) => g.key === toKey)!;
+      const activeIdx = fromGroup.questionIds.indexOf(Number(active.id));
+      const overIdx = toGroup.questionIds.indexOf(Number(over.id));
+      const newFrom = fromGroup.questionIds.filter((id) => id !== Number(active.id));
+      const newTo = [...toGroup.questionIds];
+      newTo.splice(overIdx >= 0 ? overIdx : newTo.length, 0, Number(active.id));
+      return prev.map((g) => {
+        if (g.key === fromKey) return { ...g, questionIds: newFrom };
+        if (g.key === toKey) return { ...g, questionIds: newTo };
+        return g;
+      });
+    });
+  }
+
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
+    setActiveId(null);
+    if (!over) return;
 
-    const oldIndex = orderedQuestions.findIndex((q) => q.id === active.id);
-    const newIndex = orderedQuestions.findIndex((q) => q.id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
+    const fromKey = findContainer(active.id);
+    const toKey = findContainer(over.id) ?? (typeof over.id === "string" ? over.id : null);
 
-    const reordered = arrayMove(orderedQuestions, oldIndex, newIndex);
-    setOrderedQuestions(reordered);
+    let finalGroups = groups;
+    if (fromKey && toKey && fromKey === toKey && active.id !== over.id) {
+      const group = groups.find((g) => g.key === fromKey)!;
+      const oldIdx = group.questionIds.indexOf(Number(active.id));
+      const newIdx = group.questionIds.indexOf(Number(over.id));
+      if (oldIdx !== newIdx) {
+        finalGroups = groups.map((g) =>
+          g.key === fromKey ? { ...g, questionIds: arrayMove(g.questionIds, oldIdx, newIdx) } : g
+        );
+        setGroups(finalGroups);
+      }
+    }
+    await saveOrderAndParts(finalGroups);
+  }
 
+  async function saveOrderAndParts(currentGroups: InlineGroup[]) {
+    if (!quiz) return;
     isReordering.current = true;
     try {
-      await fetch(`${import.meta.env.BASE_URL}api/quizzes/${quizId}/questions/reorder`, {
-        method: "PATCH",
+      const flatIds = currentGroups.flatMap((g) => g.questionIds);
+      if (flatIds.length > 0) {
+        await fetch(`${import.meta.env.BASE_URL}api/quizzes/${quizId}/questions/reorder`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderedIds: flatIds }),
+        });
+      }
+      let cursor = 0;
+      const computedParts: QuizPart[] = [];
+      for (const group of currentGroups) {
+        const count = group.questionIds.length;
+        if (group.part) {
+          computedParts.push(count > 0
+            ? { ...group.part, from: cursor + 1, to: cursor + count }
+            : { ...group.part, from: 0, to: 0 }
+          );
+        }
+        cursor += count;
+      }
+      await fetch(`${import.meta.env.BASE_URL}api/quizzes/${quizId}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderedIds: reordered.map((q) => q.id) }),
+        body: JSON.stringify({
+          title: quiz.title,
+          description: quiz.description ?? "",
+          passageText: (quiz as { passageText?: string }).passageText ?? undefined,
+          courseId: quiz.courseId ?? undefined,
+          timeLimitMinutes: quiz.timeLimitMinutes ?? undefined,
+          isPublished: quiz.isPublished,
+          parts: computedParts,
+        }),
       });
-      queryClient.invalidateQueries({ queryKey: getGetQuizQueryKey(quizId) });
     } finally {
       isReordering.current = false;
     }
+    queryClient.invalidateQueries({ queryKey: getGetQuizQueryKey(quizId) });
+  }
+
+  function addInlinePart() {
+    const partCount = groups.filter((g) => g.part).length;
+    const newPart: QuizPart = { name: `Part ${partCount + 1}`, from: 0, to: 0, instructions: [] };
+    const key = `part-${Date.now()}`;
+    const newGroups = [...groups, { key, part: newPart, questionIds: [] }];
+    setGroups(newGroups);
+    saveOrderAndParts(newGroups);
+  }
+
+  function updateInlinePart(key: string, updates: Partial<QuizPart>) {
+    setGroups((prev) =>
+      prev.map((g) => (g.key === key && g.part ? { ...g, part: { ...g.part, ...updates } } : g))
+    );
+  }
+
+  function saveInlinePart(key: string) {
+    setGroups((prev) => {
+      const current = prev.map((g) => (g.key === key && g.part ? { ...g, part: { ...g.part } } : g));
+      saveOrderAndParts(current);
+      return current;
+    });
+  }
+
+  function deleteInlinePart(key: string) {
+    setGroups((prev) => {
+      const target = prev.find((g) => g.key === key);
+      const orphaned = target?.questionIds ?? [];
+      const next = prev
+        .map((g) => (g.key === "ungrouped" ? { ...g, questionIds: [...g.questionIds, ...orphaned] } : g))
+        .filter((g) => g.key !== key);
+      saveOrderAndParts(next);
+      return next;
+    });
   }
 
   const updateQuiz = useUpdateQuiz({
@@ -589,23 +739,21 @@ export default function QuizDetail() {
     setSettingsForm({
       title: quiz.title,
       description: quiz.description,
-      passageText: (quiz as { passageText?: string | null }).passageText ?? "",
       courseId: quiz.courseId ? String(quiz.courseId) : "none",
       timeLimitMinutes: quiz.timeLimitMinutes ? String(quiz.timeLimitMinutes) : "",
       isPublished: quiz.isPublished,
     });
-    setEditParts((quiz as { parts?: QuizPart[] | null }).parts ?? []);
     setEditSettings(true);
   }
 
   function handleSaveSettings() {
+    const currentParts = groups.filter((g) => g.part).map((g) => g.part!);
     updateQuiz.mutate({
       id: quizId,
       data: {
         title: settingsForm.title,
         description: settingsForm.description,
-        passageText: settingsForm.passageText || undefined,
-        parts: editParts.length > 0 ? editParts : [],
+        parts: currentParts,
         courseId: settingsForm.courseId && settingsForm.courseId !== "none" ? Number(settingsForm.courseId) : undefined,
         timeLimitMinutes: settingsForm.timeLimitMinutes ? Number(settingsForm.timeLimitMinutes) : undefined,
         isPublished: settingsForm.isPublished,
@@ -657,7 +805,7 @@ export default function QuizDetail() {
               </Badge>
               <Badge variant="outline">
                 <ClipboardList className="w-3 h-3 mr-1" />
-                {orderedQuestions.length} question{orderedQuestions.length !== 1 ? "s" : ""}
+                {groups.reduce((sum, g) => sum + g.questionIds.length, 0)} question{groups.reduce((sum, g) => sum + g.questionIds.length, 0) !== 1 ? "s" : ""}
               </Badge>
               {quiz.timeLimitMinutes && (
                 <Badge variant="outline">
@@ -680,13 +828,19 @@ export default function QuizDetail() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Questions</h2>
-          <Button onClick={openAddDialog} data-testid="btn-add-question">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Question
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={addInlinePart} size="sm">
+              <Plus className="w-4 h-4 mr-1.5" />
+              Add Part
+            </Button>
+            <Button onClick={openAddDialog} data-testid="btn-add-question">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Question
+            </Button>
+          </div>
         </div>
 
-        {orderedQuestions.length === 0 ? (
+        {groups.every((g) => g.questionIds.length === 0) && groups.length === 1 ? (
           <div className="text-center py-16 border rounded-lg bg-card/50 border-dashed">
             <ClipboardList className="mx-auto h-10 w-10 text-muted-foreground/40" />
             <h3 className="mt-3 text-base font-semibold">No questions yet</h3>
@@ -694,20 +848,91 @@ export default function QuizDetail() {
             <Button onClick={openAddDialog} size="sm">Add First Question</Button>
           </div>
         ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={orderedQuestions.map((q) => q.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-3" data-testid="list-questions">
-                {orderedQuestions.map((q, i) => (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="space-y-4" data-testid="list-questions">
+              {(() => {
+                // Compute global sequential numbering across all groups
+                let globalIdx = 0;
+                return groups.map((group) => {
+                  const startIdx = globalIdx;
+                  globalIdx += group.questionIds.length;
+
+                  if (!group.part) {
+                    // Ungrouped section — only show if there are ungrouped questions
+                    if (group.questionIds.length === 0) return null;
+                    return (
+                      <div key="ungrouped" className="space-y-3">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
+                          Ungrouped Questions
+                        </p>
+                        <UngroupedDropArea groupKey="ungrouped">
+                          <SortableContext items={group.questionIds} strategy={verticalListSortingStrategy}>
+                            {group.questionIds.map((id, qi) => {
+                              const q = questionMap.get(id);
+                              if (!q) return null;
+                              return (
+                                <SortableQuestionCard
+                                  key={id}
+                                  q={q}
+                                  index={startIdx + qi}
+                                  onEdit={openEditDialog}
+                                  onDelete={(qid) => deleteQuestion.mutate({ id: quizId, questionId: qid })}
+                                />
+                              );
+                            })}
+                          </SortableContext>
+                        </UngroupedDropArea>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <InlinePartSection
+                      key={group.key}
+                      groupKey={group.key}
+                      part={group.part}
+                      questionIds={group.questionIds}
+                      onPartChange={(updates) => updateInlinePart(group.key, updates)}
+                      onPartBlur={() => saveInlinePart(group.key)}
+                      onDeletePart={() => deleteInlinePart(group.key)}
+                    >
+                      {group.questionIds.map((id, qi) => {
+                        const q = questionMap.get(id);
+                        if (!q) return null;
+                        return (
+                          <SortableQuestionCard
+                            key={id}
+                            q={q}
+                            index={startIdx + qi}
+                            onEdit={openEditDialog}
+                            onDelete={(qid) => deleteQuestion.mutate({ id: quizId, questionId: qid })}
+                          />
+                        );
+                      })}
+                    </InlinePartSection>
+                  );
+                });
+              })()}
+            </div>
+
+            <DragOverlay>
+              {activeId && questionMap.get(activeId) ? (
+                <div className="opacity-80 shadow-2xl rounded-lg">
                   <SortableQuestionCard
-                    key={q.id}
-                    q={q}
-                    index={i}
-                    onEdit={openEditDialog}
-                    onDelete={(id) => deleteQuestion.mutate({ id: quizId, questionId: id })}
+                    q={questionMap.get(activeId)!}
+                    index={groups.flatMap((g) => g.questionIds).indexOf(activeId)}
+                    onEdit={() => {}}
+                    onDelete={() => {}}
                   />
-                ))}
-              </div>
-            </SortableContext>
+                </div>
+              ) : null}
+            </DragOverlay>
           </DndContext>
         )}
       </div>
@@ -737,20 +962,6 @@ export default function QuizDetail() {
                 onChange={(e) => setSettingsForm({ ...settingsForm, description: e.target.value })}
               />
             </div>
-            <div>
-              <Label>Reading Passage <span className="text-muted-foreground font-normal text-xs">(shown on the left during the quiz)</span></Label>
-              <Textarea
-                className="mt-1.5 min-h-[140px] text-sm font-mono"
-                placeholder="Paste reading passage here..."
-                value={settingsForm.passageText}
-                onChange={(e) => setSettingsForm({ ...settingsForm, passageText: e.target.value })}
-              />
-            </div>
-            <PartsEditor
-              value={editParts}
-              onChange={setEditParts}
-              totalQuestions={orderedQuestions.length}
-            />
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Linked Course</Label>

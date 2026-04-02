@@ -194,9 +194,13 @@ export default function StudentQuizTake() {
     id: number; type: string; order: number; questionText: string; options: unknown;
   }>;
   const sortedQs = [...questions].sort((a, b) => a.order - b.order);
-  const quizParts = ((quiz as { parts?: Array<{ name: string; from: number; to: number; instructions?: string[] }> | null })?.parts ?? []) as Array<{ name: string; from: number; to: number; instructions?: string[] }>;
+  type QuizPartFull = { name: string; from: number; to: number; instructions?: string[]; passageText?: string; imageUrl?: string; audioUrl?: string };
+  const quizParts = ((quiz as { parts?: QuizPartFull[] | null })?.parts ?? []) as QuizPartFull[];
   // Only show parts that have at least one actual question within their range
   const activeParts = quizParts.filter((p) => sortedQs.some((_, i) => i + 1 >= p.from && i + 1 <= p.to));
+  // Parts that have media content for the left panel
+  const partsWithMedia = activeParts.filter((p) => p.passageText || p.imageUrl || p.audioUrl);
+  const hasLeftPanel = partsWithMedia.length > 0 || !!(quiz as { passageText?: string }).passageText;
 
   const handleExpire = useCallback(() => setSubmitOpen(true), []);
   const { display: timerDisplay, isWarning } = useTimer(quiz?.timeLimitMinutes, handleExpire);
@@ -305,25 +309,56 @@ export default function StudentQuizTake() {
       {/* ── BODY: passage + questions ── */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* Left: Passage */}
+        {/* Left: Per-part passages / media */}
         <div className={cn(
           "border-r overflow-y-auto",
-          quiz.passageText ? "w-1/2" : "w-0 hidden"
+          hasLeftPanel ? "w-1/2" : "w-0 hidden"
         )}>
-          {quiz.passageText && (
-            <div className="p-6 prose prose-sm dark:prose-invert max-w-none">
-              <h2 className="text-base font-bold mb-4">{quiz.title}</h2>
-              <div className="text-sm leading-7 whitespace-pre-wrap text-foreground">
-                {quiz.passageText}
-              </div>
+          {partsWithMedia.length > 0 ? (
+            <div className="divide-y">
+              {partsWithMedia.map((part, pi) => (
+                <div key={pi} className="p-6">
+                  {partsWithMedia.length > 1 && (
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">
+                      {part.name} · Questions {part.from}–{part.to}
+                    </p>
+                  )}
+                  {part.imageUrl && (
+                    <img
+                      src={part.imageUrl}
+                      alt={`${part.name} visual`}
+                      className="max-w-full rounded-lg border object-contain mb-4"
+                    />
+                  )}
+                  {part.audioUrl && (
+                    <audio controls src={part.audioUrl} className="w-full mb-4">
+                      Your browser does not support audio playback.
+                    </audio>
+                  )}
+                  {part.passageText && (
+                    <div className="text-sm leading-7 whitespace-pre-wrap text-foreground">
+                      {part.passageText}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
+          ) : (
+            (quiz as { passageText?: string }).passageText && (
+              <div className="p-6 prose prose-sm dark:prose-invert max-w-none">
+                <h2 className="text-base font-bold mb-4">{quiz.title}</h2>
+                <div className="text-sm leading-7 whitespace-pre-wrap text-foreground">
+                  {(quiz as { passageText?: string }).passageText}
+                </div>
+              </div>
+            )
           )}
         </div>
 
         {/* Right: Questions */}
         <div className={cn(
           "overflow-y-auto",
-          quiz.passageText ? "w-1/2" : "w-full"
+          hasLeftPanel ? "w-1/2" : "w-full"
         )}>
           {sortedQs.length === 0 ? (
             <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
