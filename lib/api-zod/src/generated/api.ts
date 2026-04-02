@@ -658,7 +658,7 @@ export const ListQuizzesResponse = zod.array(ListQuizzesResponseItem);
 /**
  * @summary Create a new quiz
  */
-const QuizPartSchema = zod.object({ name: zod.string(), from: zod.number(), to: zod.number() });
+const QuizPartSchema = zod.object({ name: zod.string(), from: zod.number(), to: zod.number(), instructions: zod.array(zod.string()).optional() });
 
 export const CreateQuizBody = zod.object({
   title: zod.string(),

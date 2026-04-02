@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useGetQuiz } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -328,49 +328,89 @@ export default function StudentQuizTake() {
               No questions in this quiz yet.
             </div>
           ) : (
-            <div className="p-6 space-y-8">
-              {sortedQs.map((q, i) => {
-                const opts = q.options as FillBlankOpts & DropdownOpts & ChooseWordOpts & MatchingOpts;
-                const answered = answeredIds.has(q.id);
-                return (
-                  <div
-                    key={q.id}
-                    id={`q-${q.id}`}
-                    className={cn(
-                      "p-4 rounded-lg border transition-colors",
-                      answered ? "border-primary/30 bg-primary/5" : "border-border"
-                    )}
-                  >
-                    <div className="flex items-start gap-3 mb-3">
-                      <span className={cn(
-                        "text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5",
-                        answered
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground"
-                      )}>
-                        {i + 1}
-                      </span>
-                      <div className="flex-1">
-                        {q.questionText && (
-                          <p className="text-sm font-medium text-muted-foreground mb-2">{q.questionText}</p>
-                        )}
-                        {q.type === "fill_blank" && (
-                          <FillBlankQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} />
-                        )}
-                        {q.type === "dropdown" && (
-                          <DropdownQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} />
-                        )}
-                        {q.type === "choose_word" && (
-                          <ChooseWordQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} />
-                        )}
-                        {q.type === "matching" && (
-                          <MatchingQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} />
-                        )}
+            <div className="p-6 space-y-6">
+              {(() => {
+                // Build a flat list of React nodes: part-instruction blocks + question cards
+                const nodes: React.ReactNode[] = [];
+                // Track which 1-based question indices start a new part
+                const partStartMap = new Map<number, typeof quizParts[number]>();
+                quizParts.forEach((p) => partStartMap.set(p.from, p));
+
+                sortedQs.forEach((q, i) => {
+                  const oneBasedIdx = i + 1;
+                  const part = partStartMap.get(oneBasedIdx);
+
+                  // Insert part instruction header if this question starts a part
+                  if (part && (part.instructions ?? []).some(Boolean)) {
+                    nodes.push(
+                      <div
+                        key={`part-header-${i}`}
+                        id={`part-${oneBasedIdx}`}
+                        className="rounded-lg border-l-4 border-[#7F1D1D] bg-red-50 dark:bg-red-950/20 px-5 py-4"
+                      >
+                        <p className="text-sm font-bold text-[#7F1D1D] mb-3">
+                          {part.name}: Questions {part.from}–{part.to}
+                        </p>
+                        <ul className="space-y-1.5">
+                          {(part.instructions ?? []).filter(Boolean).map((instr, j) => (
+                            <li key={j} className="flex gap-2.5 text-sm text-foreground">
+                              <span className="mt-0.5 shrink-0 text-foreground">•</span>
+                              <span
+                                dangerouslySetInnerHTML={{
+                                  __html: instr.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>"),
+                                }}
+                              />
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  }
+
+                  const opts = q.options as FillBlankOpts & DropdownOpts & ChooseWordOpts & MatchingOpts;
+                  const answered = answeredIds.has(q.id);
+                  nodes.push(
+                    <div
+                      key={q.id}
+                      id={`q-${q.id}`}
+                      className={cn(
+                        "p-4 rounded-lg border transition-colors",
+                        answered ? "border-primary/30 bg-primary/5" : "border-border"
+                      )}
+                    >
+                      <div className="flex items-start gap-3 mb-3">
+                        <span className={cn(
+                          "text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5",
+                          answered
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground"
+                        )}>
+                          {oneBasedIdx}
+                        </span>
+                        <div className="flex-1">
+                          {q.questionText && (
+                            <p className="text-sm font-medium text-muted-foreground mb-2">{q.questionText}</p>
+                          )}
+                          {q.type === "fill_blank" && (
+                            <FillBlankQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} />
+                          )}
+                          {q.type === "dropdown" && (
+                            <DropdownQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} />
+                          )}
+                          {q.type === "choose_word" && (
+                            <ChooseWordQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} />
+                          )}
+                          {q.type === "matching" && (
+                            <MatchingQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} />
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                });
+
+                return nodes;
+              })()}
             </div>
           )}
         </div>

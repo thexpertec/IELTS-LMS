@@ -11,6 +11,7 @@ export interface QuizPart {
   name: string;
   from: number;
   to: number;
+  instructions?: string[];
 }
 
 export interface QuizDetail {
