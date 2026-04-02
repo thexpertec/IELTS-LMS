@@ -7,7 +7,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Users, ClipboardList, ArrowUpDown, Check, X, Pencil, Zap } from "lucide-react";
+
+// ── Standard feedback remarks ─────────────────────────────────────────────────
+const REMARK_NONE = "__none__";
+const FEEDBACK_REMARKS = [
+  { value: REMARK_NONE,              label: "— No remark —" },
+  { value: "Excellent work!",        label: "Excellent work!" },
+  { value: "Great job!",             label: "Great job!" },
+  { value: "Good effort.",           label: "Good effort." },
+  { value: "Well done.",             label: "Well done." },
+  { value: "Satisfactory.",          label: "Satisfactory." },
+  { value: "Needs improvement.",     label: "Needs improvement." },
+  { value: "Incomplete submission.",  label: "Incomplete submission." },
+  { value: "Please resubmit.",       label: "Please resubmit." },
+  { value: "Late submission.",       label: "Late submission." },
+  { value: "Missing key sections.",  label: "Missing key sections." },
+  { value: "Below expectations.",    label: "Below expectations." },
+];
+// Convert between the sentinel and actual empty string
+function feedbackToSelect(f: string) { return f === "" ? REMARK_NONE : f; }
+function selectToFeedback(v: string) { return v === REMARK_NONE ? "" : v; }
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -482,15 +505,23 @@ export function GradesTab({ courseId }: { courseId: number }) {
                                 <X className="w-3 h-3" />
                               </Button>
                             </div>
-                            <Input
-                              type="text"
-                              className="h-6 text-xs px-2"
-                              placeholder="Feedback (optional)"
-                              value={editing!.currentFeedback}
-                              onChange={(e) =>
-                                setEditing((prev) => prev ? { ...prev, currentFeedback: e.target.value } : null)
+                            <Select
+                              value={feedbackToSelect(editing!.currentFeedback)}
+                              onValueChange={(val) =>
+                                setEditing((prev) => prev ? { ...prev, currentFeedback: selectToFeedback(val) } : null)
                               }
-                            />
+                            >
+                              <SelectTrigger className="h-7 text-xs w-full">
+                                <SelectValue placeholder="Select remark…" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {FEEDBACK_REMARKS.map((r) => (
+                                  <SelectItem key={r.value} value={r.value} className="text-xs">
+                                    {r.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                         ) : (
                           <div className="group flex items-start justify-between gap-1">
