@@ -247,7 +247,12 @@ export default function CourseDetail() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 ml-4">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" disabled>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setLocation(`/courses/${id}/lessons/${lesson.id}/edit`)}
+                    >
                       <Edit className="w-4 h-4" />
                     </Button>
                     <AlertDialog>

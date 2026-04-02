@@ -14,6 +14,7 @@ import Courses from "@/pages/courses";
 import CourseNew from "@/pages/course-new";
 import CourseDetail from "@/pages/course-detail";
 import LessonNew from "@/pages/lesson-new";
+import LessonEdit from "@/pages/lesson-edit";
 import Enrollments from "@/pages/enrollments";
 import EnrollmentNew from "@/pages/enrollment-new";
 import Students from "@/pages/students";
@@ -95,6 +96,7 @@ function Router() {
             <Route path="/courses/new" component={CourseNew} />
             <Route path="/courses/:id" component={CourseDetail} />
             <Route path="/courses/:id/lessons/new" component={LessonNew} />
+            <Route path="/courses/:id/lessons/:lessonId/edit" component={LessonEdit} />
             <Route path="/enrollments" component={Enrollments} />
             <Route path="/enrollments/new" component={EnrollmentNew} />
             <Route path="/students" component={Students} />
