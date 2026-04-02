@@ -127,6 +127,14 @@ Full-stack LMS (Learning Management System) React + Vite frontend. Contains both
 Context: `src/context/student-context.tsx` — manages localStorage session
 Layouts: `src/components/layout/sidebar-layout.tsx` (admin), `src/components/layout/student-layout.tsx` (student)
 
+### `lib/object-storage-web` (`@workspace/object-storage-web`)
+
+Client-side React utility for file uploads via GCS presigned URLs. Exports:
+- `useUpload(options)` — hook that performs the two-step presigned URL upload flow (request URL, PUT file to GCS). Returns `{ uploadFile, isUploading, error, progress }`.
+- `ObjectUploader` — full Uppy-based drag-and-drop UI component (requires Uppy deps).
+
+Used by: `@workspace/lms` quiz part editor for image/audio uploads.
+
 ### `scripts` (`@workspace/scripts`)
 
 Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.

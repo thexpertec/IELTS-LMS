@@ -1,11 +1,12 @@
-import { useState, type ReactNode } from "react";
+import { useState, useRef, type ReactNode } from "react";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, ChevronDown, ChevronRight, Image, Volume2, FileText, Save, Check } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, Image, Volume2, FileText, Save, Check, Upload, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUpload } from "@workspace/object-storage-web";
 import type { QuizPart } from "./parts-editor";
 
 interface InlinePartSectionProps {
@@ -34,6 +35,21 @@ export function InlinePartSection({
   const [isDirty, setIsDirty] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const { setNodeRef } = useDroppable({ id: groupKey });
+
+  const imageFileRef = useRef<HTMLInputElement>(null);
+  const audioFileRef = useRef<HTMLInputElement>(null);
+
+  const imageUpload = useUpload({
+    onSuccess: (res) => {
+      handleChange({ imageUrl: `/api/storage/objects/${res.objectPath.replace(/^\/objects\//, "")}` });
+    },
+  });
+
+  const audioUpload = useUpload({
+    onSuccess: (res) => {
+      handleChange({ audioUrl: `/api/storage/objects/${res.objectPath.replace(/^\/objects\//, "")}` });
+    },
+  });
 
   function handleChange(updates: Partial<QuizPart>) {
     onPartChange(updates);
@@ -163,13 +179,55 @@ export function InlinePartSection({
           {/* Image content */}
           {activeMedia === "image" && (
             <div className="space-y-2">
-              <Input
-                className="text-sm"
-                placeholder="https://example.com/image.png"
-                value={part.imageUrl ?? ""}
-                onChange={(e) => handleChange({ imageUrl: e.target.value })}
-                autoFocus
-              />
+              <div className="flex gap-2">
+                <Input
+                  className="text-sm flex-1"
+                  placeholder="https://example.com/image.png or upload a file →"
+                  value={part.imageUrl ?? ""}
+                  onChange={(e) => handleChange({ imageUrl: e.target.value })}
+                  autoFocus
+                />
+                <input
+                  ref={imageFileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) imageUpload.uploadFile(f);
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-1.5 text-xs"
+                  disabled={imageUpload.isUploading}
+                  onClick={() => imageFileRef.current?.click()}
+                >
+                  {imageUpload.isUploading ? (
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading…</>
+                  ) : (
+                    <><Upload className="w-3.5 h-3.5" /> Upload</>
+                  )}
+                </Button>
+                {part.imageUrl && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0 text-muted-foreground hover:text-destructive px-2"
+                    onClick={() => handleChange({ imageUrl: "" })}
+                    title="Clear image"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </div>
+              {imageUpload.error && (
+                <p className="text-xs text-destructive">Upload failed: {imageUpload.error.message}</p>
+              )}
               {part.imageUrl && (
                 <img
                   src={part.imageUrl}
@@ -184,13 +242,55 @@ export function InlinePartSection({
           {/* Audio content */}
           {activeMedia === "audio" && (
             <div className="space-y-2">
-              <Input
-                className="text-sm"
-                placeholder="https://example.com/audio.mp3"
-                value={part.audioUrl ?? ""}
-                onChange={(e) => handleChange({ audioUrl: e.target.value })}
-                autoFocus
-              />
+              <div className="flex gap-2">
+                <Input
+                  className="text-sm flex-1"
+                  placeholder="https://example.com/audio.mp3 or upload a file →"
+                  value={part.audioUrl ?? ""}
+                  onChange={(e) => handleChange({ audioUrl: e.target.value })}
+                  autoFocus
+                />
+                <input
+                  ref={audioFileRef}
+                  type="file"
+                  accept="audio/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) audioUpload.uploadFile(f);
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-1.5 text-xs"
+                  disabled={audioUpload.isUploading}
+                  onClick={() => audioFileRef.current?.click()}
+                >
+                  {audioUpload.isUploading ? (
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading…</>
+                  ) : (
+                    <><Upload className="w-3.5 h-3.5" /> Upload</>
+                  )}
+                </Button>
+                {part.audioUrl && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0 text-muted-foreground hover:text-destructive px-2"
+                    onClick={() => handleChange({ audioUrl: "" })}
+                    title="Clear audio"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </div>
+              {audioUpload.error && (
+                <p className="text-xs text-destructive">Upload failed: {audioUpload.error.message}</p>
+              )}
               {part.audioUrl && (
                 <audio controls className="w-full" key={part.audioUrl}>
                   <source src={part.audioUrl} />

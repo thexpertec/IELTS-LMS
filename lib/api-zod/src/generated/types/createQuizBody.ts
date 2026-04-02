@@ -5,13 +5,7 @@
  * LMS API specification
  * OpenAPI spec version: 0.1.0
  */
-
-export interface QuizPart {
-  name: string;
-  from: number;
-  to: number;
-  instructions?: string[];
-}
+import type { QuizPart } from "./quizPart";
 
 export interface CreateQuizBody {
   title: string;

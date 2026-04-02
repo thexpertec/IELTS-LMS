@@ -11,7 +11,12 @@ export type CreateQuizQuestionBodyType =
 
 export const CreateQuizQuestionBodyType = {
   fill_blank: "fill_blank",
+  fill_blank_dropdown: "fill_blank_dropdown",
   dropdown: "dropdown",
   choose_word: "choose_word",
   matching: "matching",
+  matching_3col: "matching_3col",
+  short_answer: "short_answer",
+  true_false_ng: "true_false_ng",
+  multi_select: "multi_select",
 } as const;

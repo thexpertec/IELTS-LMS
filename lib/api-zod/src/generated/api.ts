@@ -658,13 +658,23 @@ export const ListQuizzesResponse = zod.array(ListQuizzesResponseItem);
 /**
  * @summary Create a new quiz
  */
-const QuizPartSchema = zod.object({ name: zod.string(), from: zod.number(), to: zod.number(), instructions: zod.array(zod.string()).optional(), passageText: zod.string().optional(), imageUrl: zod.string().optional(), audioUrl: zod.string().optional() });
-
 export const CreateQuizBody = zod.object({
   title: zod.string(),
   description: zod.string().optional(),
   passageText: zod.string().optional(),
-  parts: zod.array(QuizPartSchema).optional(),
+  parts: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        from: zod.number(),
+        to: zod.number(),
+        instructions: zod.array(zod.string()).optional(),
+        passageText: zod.string().optional(),
+        imageUrl: zod.string().optional(),
+        audioUrl: zod.string().optional(),
+      }),
+    )
+    .optional(),
   courseId: zod.number().optional(),
   timeLimitMinutes: zod.number().optional(),
   isPublished: zod.boolean().optional(),
@@ -682,7 +692,6 @@ export const GetQuizResponse = zod.object({
   title: zod.string(),
   description: zod.string(),
   passageText: zod.string().nullish(),
-  parts: zod.array(QuizPartSchema).nullish(),
   courseId: zod.number().nullish(),
   timeLimitMinutes: zod.number().nullish(),
   isPublished: zod.boolean(),
@@ -690,7 +699,17 @@ export const GetQuizResponse = zod.object({
     zod.object({
       id: zod.number(),
       quizId: zod.number(),
-      type: zod.enum(["fill_blank", "fill_blank_dropdown", "dropdown", "choose_word", "matching", "matching_3col", "short_answer", "true_false_ng", "multi_select"]),
+      type: zod.enum([
+        "fill_blank",
+        "fill_blank_dropdown",
+        "dropdown",
+        "choose_word",
+        "matching",
+        "matching_3col",
+        "short_answer",
+        "true_false_ng",
+        "multi_select",
+      ]),
       order: zod.number(),
       questionText: zod.string(),
       options: zod
@@ -715,7 +734,19 @@ export const UpdateQuizBody = zod.object({
   title: zod.string(),
   description: zod.string().optional(),
   passageText: zod.string().optional(),
-  parts: zod.array(QuizPartSchema).optional(),
+  parts: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        from: zod.number(),
+        to: zod.number(),
+        instructions: zod.array(zod.string()).optional(),
+        passageText: zod.string().optional(),
+        imageUrl: zod.string().optional(),
+        audioUrl: zod.string().optional(),
+      }),
+    )
+    .optional(),
   courseId: zod.number().optional(),
   timeLimitMinutes: zod.number().optional(),
   isPublished: zod.boolean().optional(),
@@ -726,7 +757,6 @@ export const UpdateQuizResponse = zod.object({
   title: zod.string(),
   description: zod.string(),
   passageText: zod.string().nullish(),
-  parts: zod.array(QuizPartSchema).nullish(),
   courseId: zod.number().nullish(),
   timeLimitMinutes: zod.number().nullish(),
   isPublished: zod.boolean(),
@@ -750,7 +780,17 @@ export const AddQuizQuestionParams = zod.object({
 });
 
 export const AddQuizQuestionBody = zod.object({
-  type: zod.enum(["fill_blank", "fill_blank_dropdown", "dropdown", "choose_word", "matching", "matching_3col", "short_answer", "true_false_ng", "multi_select"]),
+  type: zod.enum([
+    "fill_blank",
+    "fill_blank_dropdown",
+    "dropdown",
+    "choose_word",
+    "matching",
+    "matching_3col",
+    "short_answer",
+    "true_false_ng",
+    "multi_select",
+  ]),
   order: zod.number().optional(),
   questionText: zod.string(),
   options: zod.object({}).passthrough(),
@@ -765,7 +805,17 @@ export const UpdateQuizQuestionParams = zod.object({
 });
 
 export const UpdateQuizQuestionBody = zod.object({
-  type: zod.enum(["fill_blank", "fill_blank_dropdown", "dropdown", "choose_word", "matching", "matching_3col", "short_answer", "true_false_ng", "multi_select"]),
+  type: zod.enum([
+    "fill_blank",
+    "fill_blank_dropdown",
+    "dropdown",
+    "choose_word",
+    "matching",
+    "matching_3col",
+    "short_answer",
+    "true_false_ng",
+    "multi_select",
+  ]),
   order: zod.number().optional(),
   questionText: zod.string(),
   options: zod.object({}).passthrough(),
@@ -774,7 +824,17 @@ export const UpdateQuizQuestionBody = zod.object({
 export const UpdateQuizQuestionResponse = zod.object({
   id: zod.number(),
   quizId: zod.number(),
-  type: zod.enum(["fill_blank", "fill_blank_dropdown", "dropdown", "choose_word", "matching", "matching_3col", "short_answer", "true_false_ng", "multi_select"]),
+  type: zod.enum([
+    "fill_blank",
+    "fill_blank_dropdown",
+    "dropdown",
+    "choose_word",
+    "matching",
+    "matching_3col",
+    "short_answer",
+    "true_false_ng",
+    "multi_select",
+  ]),
   order: zod.number(),
   questionText: zod.string(),
   options: zod.object({}).passthrough().describe("Type-specific options JSON"),
@@ -787,4 +847,33 @@ export const UpdateQuizQuestionResponse = zod.object({
 export const DeleteQuizQuestionParams = zod.object({
   id: zod.coerce.number(),
   questionId: zod.coerce.number(),
+});
+
+/**
+ * @summary Request a presigned URL for file upload
+ */
+
+export const RequestUploadUrlBody = zod.object({
+  name: zod.string().min(1),
+  size: zod.number().min(1),
+  contentType: zod.string().min(1),
+});
+
+export const RequestUploadUrlResponse = zod.object({
+  uploadURL: zod.string().url(),
+  objectPath: zod.string(),
+  metadata: zod
+    .object({
+      name: zod.string().min(1),
+      size: zod.number().min(1),
+      contentType: zod.string().min(1),
+    })
+    .optional(),
+});
+
+/**
+ * @summary Serve an uploaded object
+ */
+export const GetStorageObjectParams = zod.object({
+  objectPath: zod.coerce.string(),
 });

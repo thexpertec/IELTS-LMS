@@ -372,9 +372,14 @@ export type QuizQuestionType =
 
 export const QuizQuestionType = {
   fill_blank: "fill_blank",
+  fill_blank_dropdown: "fill_blank_dropdown",
   dropdown: "dropdown",
   choose_word: "choose_word",
   matching: "matching",
+  matching_3col: "matching_3col",
+  short_answer: "short_answer",
+  true_false_ng: "true_false_ng",
+  multi_select: "multi_select",
 } as const;
 
 /**
@@ -406,13 +411,43 @@ export interface QuizDetail {
   updatedAt: string;
 }
 
+export interface QuizPart {
+  name: string;
+  from: number;
+  to: number;
+  instructions?: string[];
+  passageText?: string;
+  imageUrl?: string;
+  audioUrl?: string;
+}
+
 export interface CreateQuizBody {
   title: string;
   description?: string;
   passageText?: string;
+  parts?: QuizPart[];
   courseId?: number;
   timeLimitMinutes?: number;
   isPublished?: boolean;
+}
+
+export interface UploadUrlRequest {
+  /** @minLength 1 */
+  name: string;
+  /** @minimum 1 */
+  size: number;
+  /** @minLength 1 */
+  contentType: string;
+}
+
+export interface UploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+  metadata?: UploadUrlRequest;
+}
+
+export interface ErrorEnvelope {
+  error: string;
 }
 
 export type CreateQuizQuestionBodyType =
@@ -420,9 +455,14 @@ export type CreateQuizQuestionBodyType =
 
 export const CreateQuizQuestionBodyType = {
   fill_blank: "fill_blank",
+  fill_blank_dropdown: "fill_blank_dropdown",
   dropdown: "dropdown",
   choose_word: "choose_word",
   matching: "matching",
+  matching_3col: "matching_3col",
+  short_answer: "short_answer",
+  true_false_ng: "true_false_ng",
+  multi_select: "multi_select",
 } as const;
 
 export type CreateQuizQuestionBodyOptions = { [key: string]: unknown };
