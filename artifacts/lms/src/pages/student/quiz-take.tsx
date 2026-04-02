@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useGetQuiz } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -239,7 +238,9 @@ export default function StudentQuizTake() {
   const [submitOpen, setSubmitOpen] = useState(false);
   const [score, setScore] = useState<{ answered: number; total: number } | null>(null);
   const [activePart, setActivePart] = useState(0);
+
   const rightRef = useRef<HTMLDivElement>(null);
+  const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const questions = ((quiz as { questions?: unknown[] })?.questions ?? []) as Array<{
     id: number; type: string; order: number; questionText: string; options: unknown;
@@ -248,13 +249,12 @@ export default function StudentQuizTake() {
   const quizParts = ((quiz as { parts?: QuizPartFull[] | null })?.parts ?? []) as QuizPartFull[];
   const activeParts = quizParts.filter((p) => sortedQs.some((_, i) => i + 1 >= p.from && i + 1 <= p.to));
 
-  // Build tabs: each defined part + optional ungrouped tab
   const maxTo = activeParts.length > 0 ? Math.max(...activeParts.map((p) => p.to)) : 0;
   const ungroupedQs = sortedQs.slice(maxTo);
 
   type Tab = {
-    label: string; rangeLabel: string;
-    from: number; to: number; // 1-based question indices
+    label: string;
+    from: number; to: number;
     instructions?: string[];
     passageText?: string; imageUrl?: string; audioUrl?: string;
   };
@@ -262,7 +262,6 @@ export default function StudentQuizTake() {
   const tabs: Tab[] = [
     ...activeParts.map((p) => ({
       label: p.name.toUpperCase(),
-      rangeLabel: `${p.from} to ${p.to} Questions`,
       from: p.from, to: p.to,
       instructions: p.instructions,
       passageText: p.passageText,
@@ -271,26 +270,18 @@ export default function StudentQuizTake() {
     })),
     ...(ungroupedQs.length > 0 ? [{
       label: "QUESTIONS",
-      rangeLabel: `${maxTo + 1} to ${sortedQs.length} Questions`,
       from: maxTo + 1, to: sortedQs.length,
       instructions: undefined, passageText: undefined, imageUrl: undefined, audioUrl: undefined,
     }] : []),
   ];
 
-  // Fallback: if no tabs/parts, one virtual tab covering all questions
   const allTabs: Tab[] = tabs.length > 0 ? tabs : [{
-    label: "QUESTIONS", rangeLabel: `1 to ${sortedQs.length} Questions`,
+    label: "QUESTIONS",
     from: 1, to: sortedQs.length,
   }];
 
   const clampedPart = Math.min(activePart, allTabs.length - 1);
   const currentTab = allTabs[clampedPart] ?? allTabs[0];
-
-  // Questions visible in the right panel (current tab only)
-  const tabQs = sortedQs.filter((_, i) => {
-    const qNum = i + 1;
-    return qNum >= currentTab.from && qNum <= currentTab.to;
-  });
 
   // Left panel: current tab media OR quiz-level passageText
   const quizPassage = (quiz as { passageText?: string })?.passageText;
@@ -313,12 +304,9 @@ export default function StudentQuizTake() {
   })();
   const totalSlots = sortedQs.reduce((sum, q) => sum + questionSlots(q), 0);
 
-  // Compute actual slot ranges per tab (matching rows count as multiple slots)
+  // Compute actual slot ranges per tab
   const tabSlotRanges = allTabs.map((tab) => {
-    const qs = sortedQs.filter((_, i) => {
-      const n = i + 1;
-      return n >= tab.from && n <= tab.to;
-    });
+    const qs = sortedQs.filter((_, i) => { const n = i + 1; return n >= tab.from && n <= tab.to; });
     if (qs.length === 0) return { min: 1, max: 0 };
     let min = Infinity, max = -Infinity;
     for (const q of qs) {
@@ -327,7 +315,7 @@ export default function StudentQuizTake() {
     }
     return { min: min === Infinity ? 1 : min, max: max === -Infinity ? 0 : max };
   });
-  const currentTabSlots = tabSlotRanges[clampedPart] ?? { min: currentTab.from, max: currentTab.to };
+
   const answeredIds = new Set(sortedQs.filter((q) => isAnswered(q.id, q.type as QType, answers)).map((q) => q.id));
   const answeredSlots = sortedQs.reduce((sum, q) => {
     if (q.type === "matching") {
@@ -338,6 +326,25 @@ export default function StudentQuizTake() {
     }
     return sum + (answeredIds.has(q.id) ? 1 : 0);
   }, 0);
+
+  // ── Scroll-driven active part detection ──
+  useEffect(() => {
+    const el = rightRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      const threshold = el.scrollTop + el.clientHeight * 0.25;
+      let activeIdx = 0;
+      for (let i = 0; i < sectionRefs.current.length; i++) {
+        const section = sectionRefs.current[i];
+        if (section && section.offsetTop <= threshold) {
+          activeIdx = i;
+        }
+      }
+      setActivePart(activeIdx);
+    };
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, [allTabs.length]);
 
   const handleExpire = useCallback(() => setSubmitOpen(true), []);
   const { display: timerDisplay, isWarning } = useTimer(quiz?.timeLimitMinutes, handleExpire);
@@ -352,13 +359,17 @@ export default function StudentQuizTake() {
   function scrollToQ(qId: number) {
     const el = document.getElementById(`q-${qId}`);
     if (el && rightRef.current) {
-      rightRef.current.scrollTop = el.offsetTop - rightRef.current.offsetTop - 16;
+      const offset = el.offsetTop - rightRef.current.offsetTop - 16;
+      rightRef.current.scrollTo({ top: offset, behavior: "smooth" });
     }
   }
 
-  function switchTab(idx: number) {
-    setActivePart(idx);
-    setTimeout(() => rightRef.current?.scrollTo({ top: 0 }), 50);
+  function scrollToPartSection(idx: number) {
+    const section = sectionRefs.current[idx];
+    if (section && rightRef.current) {
+      const offset = section.offsetTop - rightRef.current.offsetTop - 8;
+      rightRef.current.scrollTo({ top: offset, behavior: "smooth" });
+    }
   }
 
   // ── Loading ──
@@ -427,7 +438,7 @@ export default function StudentQuizTake() {
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background">
 
-      {/* ── HEADER (IELTS-style: primary bg) ── */}
+      {/* ── HEADER ── */}
       <header className="flex-shrink-0 h-12 bg-primary text-primary-foreground flex items-center px-4 gap-3 z-10">
         <span className="font-semibold text-sm tracking-wide truncate flex-1">{quiz.title}</span>
         {timerDisplay && (
@@ -460,7 +471,7 @@ export default function StudentQuizTake() {
       {/* ── MAIN PANELS ── */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* LEFT: Passage / Media */}
+        {/* LEFT: Passage / Media — updates based on scroll-driven activePart */}
         {hasLeftPanel && (
           <div className="w-1/2 overflow-y-auto border-r bg-card">
             <div className="p-6 max-w-2xl mx-auto">
@@ -484,7 +495,7 @@ export default function StudentQuizTake() {
           </div>
         )}
 
-        {/* RIGHT: Questions */}
+        {/* RIGHT: All questions, all parts, continuous scroll */}
         <div
           className={cn("overflow-y-auto bg-muted/10", hasLeftPanel ? "w-1/2" : "w-full")}
           ref={rightRef}
@@ -494,53 +505,71 @@ export default function StudentQuizTake() {
               No questions in this quiz yet.
             </div>
           ) : (
-            <div className="p-6 space-y-8">
-              {/* Tab header with instructions */}
-              {(currentTab.instructions?.some(Boolean) || tabQs.length > 0) && (
-                <div className="space-y-3">
-                  {tabQs.length > 0 && (
-                    <h3 className="text-sm font-bold text-foreground">
-                      {currentTab.label !== "QUESTIONS"
-                        ? `${currentTab.label}: Questions ${currentTabSlots.min}–${currentTabSlots.max}`
-                        : `Questions ${currentTabSlots.min}–${currentTabSlots.max}`}
-                    </h3>
-                  )}
-                  {currentTab.instructions?.some(Boolean) && (
-                    <div className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed border-l-4 border-primary pl-3">
-                      {currentTab.instructions.filter(Boolean).join("\n")}
-                    </div>
-                  )}
-                </div>
-              )}
+            <div className="p-6 space-y-10">
+              {allTabs.map((tab, tabIdx) => {
+                const tabQs = sortedQs.filter((_, i) => {
+                  const n = i + 1;
+                  return n >= tab.from && n <= tab.to;
+                });
+                if (tabQs.length === 0) return null;
+                const slotRange = tabSlotRanges[tabIdx];
 
-              {/* Questions for current tab */}
-              <div className="space-y-5">
-                {tabQs.map((q) => {
-                  const si = slotMap.get(q.id)!;
-                  const slotStart = si.slotStart + 1;
-                  const opts = q.options as FillBlankOpts & DropdownOpts & ChooseWordOpts & MatchingOpts;
-
-                  return (
-                    <div key={q.id}>
-                      {q.questionText && (
-                        <p className="text-xs text-muted-foreground mb-1 italic">{q.questionText}</p>
-                      )}
-                      {q.type === "fill_blank" && (
-                        <FillBlankQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
-                      )}
-                      {q.type === "dropdown" && (
-                        <DropdownQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
-                      )}
-                      {q.type === "choose_word" && (
-                        <ChooseWordQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
-                      )}
-                      {q.type === "matching" && (
-                        <MatchingQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} startNum={slotStart} />
+                return (
+                  <div
+                    key={tabIdx}
+                    ref={(el) => { sectionRefs.current[tabIdx] = el; }}
+                    className="space-y-5"
+                  >
+                    {/* Part section header */}
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-bold text-foreground">
+                        {tab.label !== "QUESTIONS"
+                          ? `${tab.label}: Questions ${slotRange?.min ?? tab.from}–${slotRange?.max ?? tab.to}`
+                          : `Questions ${slotRange?.min ?? tab.from}–${slotRange?.max ?? tab.to}`}
+                      </h3>
+                      {tab.instructions?.some(Boolean) && (
+                        <div className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed border-l-4 border-primary pl-3">
+                          {tab.instructions.filter(Boolean).join("\n")}
+                        </div>
                       )}
                     </div>
-                  );
-                })}
-              </div>
+
+                    {/* Questions */}
+                    <div className="space-y-5">
+                      {tabQs.map((q) => {
+                        const si = slotMap.get(q.id)!;
+                        const slotStart = si.slotStart + 1;
+                        const opts = q.options as FillBlankOpts & DropdownOpts & ChooseWordOpts & MatchingOpts;
+
+                        return (
+                          <div key={q.id}>
+                            {q.questionText && (
+                              <p className="text-xs text-muted-foreground mb-1 italic">{q.questionText}</p>
+                            )}
+                            {q.type === "fill_blank" && (
+                              <FillBlankQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
+                            )}
+                            {q.type === "dropdown" && (
+                              <DropdownQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
+                            )}
+                            {q.type === "choose_word" && (
+                              <ChooseWordQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
+                            )}
+                            {q.type === "matching" && (
+                              <MatchingQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} startNum={slotStart} />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Subtle divider between parts */}
+                    {tabIdx < allTabs.length - 1 && (
+                      <div className="border-t border-dashed border-border/60 pt-2" />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -549,13 +578,13 @@ export default function StudentQuizTake() {
       {/* ── FOOTER ── */}
       <footer className="flex-shrink-0 border-t bg-card">
 
-        {/* Part tabs */}
+        {/* Part tabs — clicking scrolls to that section */}
         {allTabs.length > 1 && (
           <div className="flex border-b">
             {allTabs.map((tab, idx) => (
               <button
                 key={idx}
-                onClick={() => switchTab(idx)}
+                onClick={() => scrollToPartSection(idx)}
                 className={cn(
                   "flex-1 py-2 text-xs font-semibold tracking-wide transition-colors",
                   clampedPart === idx
@@ -589,7 +618,7 @@ export default function StudentQuizTake() {
                 return (
                   <button
                     key={`${q.id}-${ri}`}
-                    onClick={() => { if (qTabIdx !== -1) switchTab(qTabIdx); setTimeout(() => scrollToQ(q.id), 60); }}
+                    onClick={() => scrollToQ(q.id)}
                     className={cn(
                       "w-7 h-7 text-xs rounded font-medium transition-all",
                       done
@@ -609,7 +638,7 @@ export default function StudentQuizTake() {
             return [(
               <button
                 key={q.id}
-                onClick={() => { if (qTabIdx !== -1) switchTab(qTabIdx); setTimeout(() => scrollToQ(q.id), 60); }}
+                onClick={() => scrollToQ(q.id)}
                 className={cn(
                   "w-7 h-7 text-xs rounded font-medium transition-all",
                   done
