@@ -14,7 +14,7 @@ import {
   Megaphone, MessageSquare, Calendar, Trash2, Plus,
   ClipboardList, FileText, ChevronDown, ChevronUp,
 } from "lucide-react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -56,10 +56,11 @@ const fetchUpcoming = (courseId: number) =>
 
 export function StreamTab({ courseId }: { courseId: number }) {
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const subTab = new URLSearchParams(window.location.search).get("sub") ?? "all";
+  const subTab = new URLSearchParams(search).get("sub") ?? "all";
   function setSubTab(v: string) {
     setLocation(`/courses/${courseId}?tab=stream&sub=${v}`);
   }

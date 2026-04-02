@@ -1,5 +1,5 @@
 import { useGetCourse, useUpdateCourse, useDeleteCourse, getGetCourseQueryKey, getListCoursesQueryKey } from "@workspace/api-client-react";
-import { useLocation, useParams } from "wouter";
+import { useLocation, useParams, useSearch } from "wouter";
 import { ArrowLeft, BookOpen, Clock, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,6 +23,7 @@ export default function CourseDetail() {
   const { id: idStr } = useParams();
   const id = Number(idStr);
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -51,7 +52,7 @@ export default function CourseDetail() {
     }
   });
 
-  const tab = new URLSearchParams(window.location.search).get("tab") ?? "curriculum";
+  const tab = new URLSearchParams(search).get("tab") ?? "curriculum";
 
   if (courseLoading) {
     return (

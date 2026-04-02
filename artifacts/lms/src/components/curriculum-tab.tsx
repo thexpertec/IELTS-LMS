@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import {
   useListLessons,
   useDeleteLesson,
@@ -160,6 +160,7 @@ function ChapterSection({
 
 export function CurriculumTab({ courseId }: { courseId: number }) {
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -235,11 +236,9 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
   const chapterIds = new Set(chapters.map((c) => c.id));
   const unassignedLessons = lessons.filter((l: Lesson) => !l.chapterId || !chapterIds.has(l.chapterId!));
 
-  const subTab = new URLSearchParams(window.location.search).get("sub") ?? "lessons";
+  const subTab = new URLSearchParams(search).get("sub") ?? "lessons";
 
   function setSubTab(v: string) {
-    const params = new URLSearchParams(window.location.search);
-    params.set("sub", v);
     setLocation(`/courses/${courseId}?tab=curriculum&sub=${v}`);
   }
 
