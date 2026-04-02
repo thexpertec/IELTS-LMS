@@ -7,6 +7,7 @@ export const quizzesTable = pgTable("quizzes", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description").notNull().default(""),
+  passageText: text("passage_text"),
   courseId: integer("course_id").references(() => coursesTable.id, { onDelete: "set null" }),
   timeLimitMinutes: integer("time_limit_minutes"),
   isPublished: boolean("is_published").notNull().default(false),

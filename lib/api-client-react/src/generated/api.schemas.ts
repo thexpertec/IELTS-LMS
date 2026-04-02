@@ -358,6 +358,7 @@ export interface Quiz {
   id: number;
   title: string;
   description: string;
+  passageText?: string | null;
   courseId?: number | null;
   timeLimitMinutes?: number | null;
   isPublished: boolean;
@@ -396,6 +397,7 @@ export interface QuizDetail {
   id: number;
   title: string;
   description: string;
+  passageText?: string | null;
   courseId?: number | null;
   timeLimitMinutes?: number | null;
   isPublished: boolean;
@@ -407,6 +409,7 @@ export interface QuizDetail {
 export interface CreateQuizBody {
   title: string;
   description?: string;
+  passageText?: string;
   courseId?: number;
   timeLimitMinutes?: number;
   isPublished?: boolean;

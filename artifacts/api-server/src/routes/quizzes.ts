@@ -53,6 +53,7 @@ router.post("/quizzes", async (req, res): Promise<void> => {
   const [quiz] = await db.insert(quizzesTable).values({
     title: parsed.data.title,
     description: parsed.data.description ?? "",
+    passageText: parsed.data.passageText ?? null,
     courseId: parsed.data.courseId ?? null,
     timeLimitMinutes: parsed.data.timeLimitMinutes ?? null,
     isPublished: parsed.data.isPublished ?? false,
@@ -101,6 +102,7 @@ router.put("/quizzes/:id", async (req, res): Promise<void> => {
     .set({
       ...(parsed.data.title !== undefined && { title: parsed.data.title }),
       ...(parsed.data.description !== undefined && { description: parsed.data.description }),
+      ...(parsed.data.passageText !== undefined && { passageText: parsed.data.passageText || null }),
       ...(parsed.data.courseId !== undefined && { courseId: parsed.data.courseId }),
       ...(parsed.data.timeLimitMinutes !== undefined && { timeLimitMinutes: parsed.data.timeLimitMinutes }),
       ...(parsed.data.isPublished !== undefined && { isPublished: parsed.data.isPublished }),

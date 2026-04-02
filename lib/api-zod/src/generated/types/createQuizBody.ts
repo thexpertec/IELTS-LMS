@@ -9,6 +9,7 @@
 export interface CreateQuizBody {
   title: string;
   description?: string;
+  passageText?: string;
   courseId?: number;
   timeLimitMinutes?: number;
   isPublished?: boolean;

@@ -11,6 +11,7 @@ export interface QuizDetail {
   id: number;
   title: string;
   description: string;
+  passageText?: string | null;
   courseId?: number | null;
   timeLimitMinutes?: number | null;
   isPublished: boolean;

@@ -1600,6 +1600,9 @@ components:
           type: string
         description:
           type: string
+        passageText:
+          type: string
+          nullable: true
         courseId:
           type: integer
           nullable: true
@@ -1663,6 +1666,9 @@ components:
           type: string
         description:
           type: string
+        passageText:
+          type: string
+          nullable: true
         courseId:
           type: integer
           nullable: true
@@ -1696,6 +1702,8 @@ components:
         title:
           type: string
         description:
+          type: string
+        passageText:
           type: string
         courseId:
           type: integer

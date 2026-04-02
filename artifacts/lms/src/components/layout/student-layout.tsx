@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { BookOpen, Home, FileText, Bell, User, LogOut, GraduationCap, Sun, Moon } from "lucide-react";
+import { BookOpen, Home, FileText, Bell, User, LogOut, GraduationCap, Sun, Moon, ClipboardList } from "lucide-react";
 import { useStudent } from "@/context/student-context";
 import { useGetStudentNotifications } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 const navItems = [
   { href: "/student/dashboard", label: "Dashboard", icon: Home },
   { href: "/student/courses", label: "My Courses", icon: BookOpen },
+  { href: "/student/quizzes", label: "Quizzes", icon: ClipboardList },
   { href: "/student/assignments", label: "Assignments", icon: FileText },
   { href: "/student/notifications", label: "Notifications", icon: Bell },
   { href: "/student/profile", label: "Profile", icon: User },

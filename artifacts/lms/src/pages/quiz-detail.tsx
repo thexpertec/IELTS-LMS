@@ -335,7 +335,7 @@ export default function QuizDetail() {
 
   // ── Quiz settings edit state
   const [editSettings, setEditSettings] = useState(false);
-  const [settingsForm, setSettingsForm] = useState({ title: "", description: "", courseId: "", timeLimitMinutes: "", isPublished: false });
+  const [settingsForm, setSettingsForm] = useState({ title: "", description: "", passageText: "", courseId: "", timeLimitMinutes: "", isPublished: false });
 
   // ── Question dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -440,6 +440,7 @@ export default function QuizDetail() {
     setSettingsForm({
       title: quiz.title,
       description: quiz.description,
+      passageText: (quiz as { passageText?: string | null }).passageText ?? "",
       courseId: quiz.courseId ? String(quiz.courseId) : "none",
       timeLimitMinutes: quiz.timeLimitMinutes ? String(quiz.timeLimitMinutes) : "",
       isPublished: quiz.isPublished,
@@ -453,6 +454,7 @@ export default function QuizDetail() {
       data: {
         title: settingsForm.title,
         description: settingsForm.description,
+        passageText: settingsForm.passageText || undefined,
         courseId: settingsForm.courseId && settingsForm.courseId !== "none" ? Number(settingsForm.courseId) : undefined,
         timeLimitMinutes: settingsForm.timeLimitMinutes ? Number(settingsForm.timeLimitMinutes) : undefined,
         isPublished: settingsForm.isPublished,
@@ -635,6 +637,15 @@ export default function QuizDetail() {
                 className="mt-1.5"
                 value={settingsForm.description}
                 onChange={(e) => setSettingsForm({ ...settingsForm, description: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>Reading Passage <span className="text-muted-foreground font-normal text-xs">(shown on the left during the quiz)</span></Label>
+              <Textarea
+                className="mt-1.5 min-h-[140px] text-sm font-mono"
+                placeholder="Paste reading passage here..."
+                value={settingsForm.passageText}
+                onChange={(e) => setSettingsForm({ ...settingsForm, passageText: e.target.value })}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">

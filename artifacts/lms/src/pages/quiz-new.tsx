@@ -20,6 +20,7 @@ import { ArrowLeft } from "lucide-react";
 const formSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters."),
   description: z.string().optional().default(""),
+  passageText: z.string().optional().default(""),
   courseId: z.string().optional(),
   timeLimitMinutes: z.coerce.number().min(1).optional().or(z.literal("")),
   isPublished: z.boolean().default(false),
@@ -38,6 +39,7 @@ export default function QuizNew() {
     defaultValues: {
       title: "",
       description: "",
+      passageText: "",
       courseId: undefined,
       timeLimitMinutes: "",
       isPublished: false,
@@ -60,6 +62,7 @@ export default function QuizNew() {
       data: {
         title: values.title,
         description: values.description || "",
+        passageText: values.passageText || undefined,
         courseId: values.courseId && values.courseId !== "none" ? Number(values.courseId) : undefined,
         timeLimitMinutes: values.timeLimitMinutes ? Number(values.timeLimitMinutes) : undefined,
         isPublished: values.isPublished,
@@ -115,6 +118,26 @@ export default function QuizNew() {
                       data-testid="input-description"
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="passageText"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Reading Passage <span className="text-muted-foreground font-normal text-xs">(optional — shown to students on the left side during the quiz)</span></FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Paste the reading passage here. Students will see it on the left while answering questions on the right..."
+                      className="min-h-[200px] font-mono text-sm"
+                      {...field}
+                      data-testid="input-passage"
+                    />
+                  </FormControl>
+                  <FormDescription>Leave empty if the quiz does not require a reading passage.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

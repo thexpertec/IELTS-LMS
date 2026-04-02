@@ -22,6 +22,10 @@ import QuizNew from "@/pages/quiz-new";
 import QuizDetail from "@/pages/quiz-detail";
 import NotFound from "@/pages/not-found";
 
+// Student quiz pages
+import StudentQuizList from "@/pages/student/quiz-list";
+import StudentQuizTake from "@/pages/student/quiz-take";
+
 // Student portal pages
 import StudentLogin from "@/pages/student/login";
 import StudentDashboard from "@/pages/student/dashboard";
@@ -46,6 +50,12 @@ function StudentGuard({ children }: { children: ReactNode }) {
   return <StudentLayout>{children}</StudentLayout>;
 }
 
+function StudentGuardNoLayout({ children }: { children: ReactNode }) {
+  const { student } = useStudent();
+  if (!student) return <Redirect to="/student" />;
+  return <>{children}</>;
+}
+
 function Router() {
   return (
     <Switch>
@@ -59,6 +69,12 @@ function Router() {
       </Route>
       <Route path="/student/courses/:id">
         <StudentGuard><CourseView /></StudentGuard>
+      </Route>
+      <Route path="/student/quizzes">
+        <StudentGuard><StudentQuizList /></StudentGuard>
+      </Route>
+      <Route path="/student/quizzes/:id">
+        <StudentGuardNoLayout><StudentQuizTake /></StudentGuardNoLayout>
       </Route>
       <Route path="/student/assignments">
         <StudentGuard><Assignments /></StudentGuard>
