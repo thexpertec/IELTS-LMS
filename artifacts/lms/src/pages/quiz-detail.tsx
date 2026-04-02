@@ -75,7 +75,7 @@ import { cn } from "@/lib/utils";
 // ─────────────────────────────────────────────
 // Types for the eight question formats
 // ─────────────────────────────────────────────
-type QType = "fill_blank" | "fill_blank_dropdown" | "dropdown" | "choose_word" | "matching" | "matching_3col" | "short_answer" | "true_false_ng" | "multi_select";
+type QType = "fill_blank" | "fill_blank_dropdown" | "dropdown" | "choose_word" | "matching" | "matching_3col" | "short_answer" | "true_false_ng" | "multi_select" | "writing";
 
 interface FillBlankOpts          { sentence: string; blanks: string[] }
 interface FillBlankDropdownOpts  { instruction: string; sentences: string[]; choices: string[]; correct: string[] }
@@ -86,7 +86,8 @@ interface Matching3ColOpts       { columns: [string, string, string]; answerColI
 interface ShortAnswerOpts        { prompt: string; correct?: string; wordLimit?: number }
 interface TrueFalseNgOpts        { statement: string; correct: "TRUE" | "FALSE" | "NOT GIVEN" | "" }
 interface MultiSelectOpts        { instruction: string; options: string[]; maxSelect: number; correct: number[] }
-type QOptions = FillBlankOpts | FillBlankDropdownOpts | DropdownOpts | ChooseWordOpts | MatchingOpts | Matching3ColOpts | ShortAnswerOpts | TrueFalseNgOpts | MultiSelectOpts;
+interface WritingOpts            { taskTitle?: string; minWords?: number; modelAnswer?: string }
+type QOptions = FillBlankOpts | FillBlankDropdownOpts | DropdownOpts | ChooseWordOpts | MatchingOpts | Matching3ColOpts | ShortAnswerOpts | TrueFalseNgOpts | MultiSelectOpts | WritingOpts;
 
 const Q_TYPE_LABELS: Record<QType, string> = {
   fill_blank:          "Fill Blanks — Text Input",
@@ -98,6 +99,7 @@ const Q_TYPE_LABELS: Record<QType, string> = {
   short_answer:        "Short Answer",
   true_false_ng:       "True / False / Not Given",
   multi_select:        "Multiple Selection",
+  writing:             "Writing Task (Essay)",
 };
 
 const Q_TYPE_COLORS: Record<QType, string> = {
@@ -110,6 +112,7 @@ const Q_TYPE_COLORS: Record<QType, string> = {
   short_answer:        "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300",
   true_false_ng:       "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
   multi_select:        "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
+  writing:             "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300",
 };
 
 // ─────────────────────────────────────────────
@@ -126,6 +129,7 @@ function defaultOptions(type: QType): QOptions {
     case "short_answer":        return { prompt: "", correct: "", wordLimit: undefined };
     case "true_false_ng":       return { statement: "", correct: "" };
     case "multi_select":        return { instruction: "", options: ["", "", "", ""], maxSelect: 2, correct: [] };
+    case "writing":             return { taskTitle: "", minWords: 150, modelAnswer: "" };
   }
 }
 
@@ -723,6 +727,45 @@ function ShortAnswerEditor({ opts, onChange }: { opts: ShortAnswerOpts; onChange
   );
 }
 
+function WritingEditor({ opts, onChange }: { opts: WritingOpts; onChange: (o: WritingOpts) => void }) {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-md bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 px-4 py-3 text-xs text-yellow-800 dark:text-yellow-300">
+        The writing task prompt and instructions should be set in the <strong>Part's Passage</strong> field (left panel). This question captures the student's written response.
+      </div>
+      <div>
+        <Label>Task Title <span className="text-muted-foreground text-xs">(optional heading shown above the textarea)</span></Label>
+        <Input
+          className="mt-1.5"
+          placeholder="e.g. WRITING TASK 1"
+          value={opts.taskTitle ?? ""}
+          onChange={(e) => onChange({ ...opts, taskTitle: e.target.value })}
+        />
+      </div>
+      <div>
+        <Label>Minimum Word Count <span className="text-muted-foreground text-xs">(optional — shown to student)</span></Label>
+        <Input
+          className="mt-1.5 w-36"
+          type="number"
+          min={1}
+          placeholder="e.g. 150"
+          value={opts.minWords ?? ""}
+          onChange={(e) => onChange({ ...opts, minWords: e.target.value ? Number(e.target.value) : undefined })}
+        />
+      </div>
+      <div>
+        <Label>Model / Sample Answer <span className="text-muted-foreground text-xs">(optional — shown after submission for self-assessment)</span></Label>
+        <Textarea
+          className="mt-1.5 min-h-[100px]"
+          placeholder="Paste a sample answer here…"
+          value={opts.modelAnswer ?? ""}
+          onChange={(e) => onChange({ ...opts, modelAnswer: e.target.value })}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────
 // Question summary preview
 // ─────────────────────────────────────────────
@@ -764,6 +807,10 @@ function QuestionSummary({ type, options }: { type: QType; options: QOptions }) 
     const o = options as MultiSelectOpts;
     const n = o.options.filter(Boolean).length;
     return <p className="text-xs text-muted-foreground truncate">Choose {o.maxSelect} of {n} · {o.instruction || "—"}</p>;
+  }
+  if (type === "writing") {
+    const o = options as WritingOpts;
+    return <p className="text-xs text-muted-foreground truncate">{o.taskTitle || "Writing task"}{o.minWords ? ` · min ${o.minWords} words` : ""}</p>;
   }
   return null;
 }
@@ -1508,6 +1555,9 @@ export default function QuizDetail() {
             )}
             {qType === "multi_select" && (
               <MultiSelectEditor opts={qOptions as MultiSelectOpts} onChange={(o) => setQOptions(o)} />
+            )}
+            {qType === "writing" && (
+              <WritingEditor opts={qOptions as WritingOpts} onChange={(o) => setQOptions(o)} />
             )}
           </div>
 

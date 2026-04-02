@@ -19,4 +19,5 @@ export const CreateQuizQuestionBodyType = {
   short_answer: "short_answer",
   true_false_ng: "true_false_ng",
   multi_select: "multi_select",
+  writing: "writing",
 } as const;

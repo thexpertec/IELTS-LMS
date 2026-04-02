@@ -17,7 +17,7 @@ import { CheckCircle2, Clock, List } from "lucide-react";
 // ─────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────
-type QType = "fill_blank" | "fill_blank_dropdown" | "dropdown" | "choose_word" | "matching" | "matching_3col" | "short_answer" | "true_false_ng" | "multi_select";
+type QType = "fill_blank" | "fill_blank_dropdown" | "dropdown" | "choose_word" | "matching" | "matching_3col" | "short_answer" | "true_false_ng" | "multi_select" | "writing";
 interface FillBlankOpts         { sentence: string; blanks: string[] }
 interface FillBlankDropdownOpts { instruction: string; sentences: string[]; choices: string[]; correct: string[] }
 interface DropdownOpts          { stem: string; choices: string[]; correct: string }
@@ -27,6 +27,7 @@ interface Matching3ColOpts      { columns: [string, string, string]; answerColIn
 interface ShortAnswerOpts       { prompt: string; correct?: string; wordLimit?: number }
 interface TrueFalseNgOpts       { statement: string; correct: "TRUE" | "FALSE" | "NOT GIVEN" | "" }
 interface MultiSelectOpts       { instruction: string; options: string[]; maxSelect: number; correct: number[] }
+interface WritingOpts           { taskTitle?: string; minWords?: number; modelAnswer?: string }
 
 type AnswerMap = Record<number, string | string[] | Record<number, string>>;
 
@@ -476,6 +477,52 @@ function ShortAnswerQuestion({
   );
 }
 
+function WritingQuestion({
+  opts, qId, answers, setAnswers,
+}: { opts: WritingOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void }) {
+  const text = (answers[qId] as string) ?? "";
+  const wordCount = text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
+  const minWords = opts.minWords;
+  const belowMin = minWords !== undefined && wordCount < minWords;
+
+  return (
+    <div id={`q-${qId}`} className="flex flex-col gap-3">
+      {opts.taskTitle && (
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{opts.taskTitle}</p>
+      )}
+      <textarea
+        className={cn(
+          "w-full border rounded-lg px-4 py-3 text-sm bg-background focus:outline-none resize-none",
+          belowMin
+            ? "border-amber-400 focus:border-amber-500"
+            : "border-border focus:border-primary"
+        )}
+        placeholder="Type here…"
+        rows={18}
+        value={text}
+        onChange={(e) => setAnswers({ ...answers, [qId]: e.target.value })}
+        style={{ minHeight: "320px" }}
+      />
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>
+          Words Count:{" "}
+          <span className={cn("font-semibold", belowMin ? "text-amber-600 dark:text-amber-400" : "text-foreground")}>
+            {wordCount}
+          </span>
+          {minWords && (
+            <span className="ml-1.5 text-muted-foreground">/ min {minWords}</span>
+          )}
+        </span>
+        {belowMin && (
+          <span className="text-amber-600 dark:text-amber-400">
+            {minWords! - wordCount} more word{minWords! - wordCount !== 1 ? "s" : ""} needed
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────
 // Main page
 // ─────────────────────────────────────────────
@@ -852,6 +899,9 @@ export default function StudentQuizTake() {
                             )}
                             {q.type === "multi_select" && (
                               <MultiSelectQuestion opts={opts as MultiSelectOpts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
+                            )}
+                            {q.type === "writing" && (
+                              <WritingQuestion opts={opts as WritingOpts} qId={q.id} answers={answers} setAnswers={setAnswers} />
                             )}
                           </div>
                         );
