@@ -34,7 +34,7 @@ router.get("/quizzes", async (req, res): Promise<void> => {
       isPublished: quizzesTable.isPublished,
       createdAt: quizzesTable.createdAt,
       updatedAt: quizzesTable.updatedAt,
-      questionCount: sql<number>`(select count(*) from quiz_questions where quiz_id = ${quizzesTable.id})::int`,
+      questionCount: sql<number>`(select coalesce(sum(case when type = 'matching' then jsonb_array_length(options->'leftItems') else 1 end)::int, 0) from quiz_questions where quiz_id = ${quizzesTable.id})`,
     })
     .from(quizzesTable)
     .where(parsed.data.courseId ? eq(quizzesTable.courseId, parsed.data.courseId) : undefined)
