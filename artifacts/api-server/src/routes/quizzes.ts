@@ -199,6 +199,28 @@ router.put("/quizzes/:id/questions/:questionId", async (req, res): Promise<void>
   res.json(question);
 });
 
+router.patch("/quizzes/:id/questions/reorder", async (req, res): Promise<void> => {
+  const quizId = Number(req.params.id);
+  if (isNaN(quizId)) { res.status(400).json({ error: "Invalid quiz id" }); return; }
+
+  const { orderedIds } = req.body as { orderedIds: number[] };
+  if (!Array.isArray(orderedIds) || orderedIds.some((x) => typeof x !== "number")) {
+    res.status(400).json({ error: "orderedIds must be an array of numbers" });
+    return;
+  }
+
+  await db.transaction(async (tx) => {
+    for (let i = 0; i < orderedIds.length; i++) {
+      await tx
+        .update(quizQuestionsTable)
+        .set({ order: i + 1 })
+        .where(eq(quizQuestionsTable.id, orderedIds[i]));
+    }
+  });
+
+  res.json({ ok: true });
+});
+
 router.delete("/quizzes/:id/questions/:questionId", async (req, res): Promise<void> => {
   const params = DeleteQuizQuestionParams.safeParse({ id: req.params.id, questionId: req.params.questionId });
   if (!params.success) {

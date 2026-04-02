@@ -1,4 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { PartsEditor, type QuizPart } from "@/components/quiz/parts-editor";
 import { useRoute, useLocation } from "wouter";
 import {
@@ -324,6 +339,101 @@ function QuestionSummary({ type, options }: { type: QType; options: QOptions }) 
 }
 
 // ─────────────────────────────────────────────
+// Sortable question row
+// ─────────────────────────────────────────────
+type QuestionRow = { id: number; type: string; order: number; questionText: string; options: unknown };
+
+function SortableQuestionCard({
+  q, index, onEdit, onDelete,
+}: {
+  q: QuestionRow;
+  index: number;
+  onEdit: (q: QuestionRow) => void;
+  onDelete: (id: number) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: q.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-start gap-3 p-4 border rounded-lg bg-card hover:border-primary/40 transition-colors"
+      data-testid={`card-question-${q.id}`}
+    >
+      <div className="flex items-center gap-2 mt-0.5">
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition-colors touch-none"
+          aria-label="Drag to reorder"
+        >
+          <GripVertical className="w-4 h-4" />
+        </button>
+        <span className="text-sm font-bold text-muted-foreground w-5 text-right">{index + 1}.</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${Q_TYPE_COLORS[q.type as QType]}`}>
+            {Q_TYPE_LABELS[q.type as QType]}
+          </span>
+        </div>
+        {q.questionText && (
+          <p className="text-sm font-medium mb-1 line-clamp-1">{q.questionText}</p>
+        )}
+        <QuestionSummary type={q.type as QType} options={q.options as QOptions} />
+      </div>
+      <div className="flex items-center gap-1 shrink-0">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => onEdit(q)}
+          data-testid={`btn-edit-question-${q.id}`}
+        >
+          <Edit className="w-3.5 h-3.5" />
+        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive hover:text-destructive"
+              data-testid={`btn-delete-question-${q.id}`}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Question</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete question #{index + 1}? This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => onDelete(q.id)}
+                data-testid={`btn-confirm-delete-${q.id}`}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // Main page
 // ─────────────────────────────────────────────
 export default function QuizDetail() {
@@ -346,7 +456,44 @@ export default function QuizDetail() {
   const [qText, setQText] = useState("");
   const [qOptions, setQOptions] = useState<QOptions>(defaultOptions("fill_blank"));
 
+  // ── Ordered questions (local state for optimistic DnD reordering)
+  const [orderedQuestions, setOrderedQuestions] = useState<QuestionRow[]>([]);
+  const isReordering = useRef(false);
+
   const { data: quiz, isLoading } = useGetQuiz(quizId);
+
+  // Sync server data into local order state (skip while a drag is in-flight)
+  useEffect(() => {
+    if (isReordering.current) return;
+    const qs = ((quiz as { questions?: unknown[] })?.questions ?? []) as QuestionRow[];
+    setOrderedQuestions([...qs].sort((a, b) => a.order - b.order));
+  }, [quiz]);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = orderedQuestions.findIndex((q) => q.id === active.id);
+    const newIndex = orderedQuestions.findIndex((q) => q.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(orderedQuestions, oldIndex, newIndex);
+    setOrderedQuestions(reordered);
+
+    isReordering.current = true;
+    try {
+      await fetch(`${import.meta.env.BASE_URL}api/quizzes/${quizId}/questions/reorder`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderedIds: reordered.map((q) => q.id) }),
+      });
+      queryClient.invalidateQueries({ queryKey: getGetQuizQueryKey(quizId) });
+    } finally {
+      isReordering.current = false;
+    }
+  }
 
   const updateQuiz = useUpdateQuiz({
     mutation: {
@@ -487,7 +634,6 @@ export default function QuizDetail() {
     );
   }
 
-  const questions = (quiz as { questions?: unknown[] }).questions ?? [];
 
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-8">
@@ -511,7 +657,7 @@ export default function QuizDetail() {
               </Badge>
               <Badge variant="outline">
                 <ClipboardList className="w-3 h-3 mr-1" />
-                {questions.length} question{questions.length !== 1 ? "s" : ""}
+                {orderedQuestions.length} question{orderedQuestions.length !== 1 ? "s" : ""}
               </Badge>
               {quiz.timeLimitMinutes && (
                 <Badge variant="outline">
@@ -540,7 +686,7 @@ export default function QuizDetail() {
           </Button>
         </div>
 
-        {questions.length === 0 ? (
+        {orderedQuestions.length === 0 ? (
           <div className="text-center py-16 border rounded-lg bg-card/50 border-dashed">
             <ClipboardList className="mx-auto h-10 w-10 text-muted-foreground/40" />
             <h3 className="mt-3 text-base font-semibold">No questions yet</h3>
@@ -548,73 +694,21 @@ export default function QuizDetail() {
             <Button onClick={openAddDialog} size="sm">Add First Question</Button>
           </div>
         ) : (
-          <div className="space-y-3" data-testid="list-questions">
-            {(questions as Array<{ id: number; type: string; order: number; questionText: string; options: unknown }>)
-              .sort((a, b) => a.order - b.order)
-              .map((q, i) => (
-                <div
-                  key={q.id}
-                  className="flex items-start gap-3 p-4 border rounded-lg bg-card hover:border-primary/40 transition-colors"
-                  data-testid={`card-question-${q.id}`}
-                >
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <GripVertical className="w-4 h-4 text-muted-foreground/40" />
-                    <span className="text-sm font-bold text-muted-foreground w-5 text-right">{i + 1}.</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${Q_TYPE_COLORS[q.type as QType]}`}>
-                        {Q_TYPE_LABELS[q.type as QType]}
-                      </span>
-                    </div>
-                    {q.questionText && (
-                      <p className="text-sm font-medium mb-1 line-clamp-1">{q.questionText}</p>
-                    )}
-                    <QuestionSummary type={q.type as QType} options={q.options as QOptions} />
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => openEditDialog(q)}
-                      data-testid={`btn-edit-question-${q.id}`}
-                    >
-                      <Edit className="w-3.5 h-3.5" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          data-testid={`btn-delete-question-${q.id}`}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Question</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete question #{i + 1}? This cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            onClick={() => deleteQuestion.mutate({ id: quizId, questionId: q.id })}
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
-              ))}
-          </div>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={orderedQuestions.map((q) => q.id)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-3" data-testid="list-questions">
+                {orderedQuestions.map((q, i) => (
+                  <SortableQuestionCard
+                    key={q.id}
+                    q={q}
+                    index={i}
+                    onEdit={openEditDialog}
+                    onDelete={(id) => deleteQuestion.mutate({ id: quizId, questionId: id })}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
         )}
       </div>
 
@@ -655,7 +749,7 @@ export default function QuizDetail() {
             <PartsEditor
               value={editParts}
               onChange={setEditParts}
-              totalQuestions={questions.length}
+              totalQuestions={orderedQuestions.length}
             />
             <div className="grid grid-cols-2 gap-4">
               <div>
