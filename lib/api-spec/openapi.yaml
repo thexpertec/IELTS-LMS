@@ -1696,6 +1696,30 @@ components:
         - createdAt
         - updatedAt
 
+    QuizPart:
+      type: object
+      properties:
+        name:
+          type: string
+        from:
+          type: integer
+        to:
+          type: integer
+        instructions:
+          type: array
+          items:
+            type: string
+        passageText:
+          type: string
+        imageUrl:
+          type: string
+        audioUrl:
+          type: string
+      required:
+        - name
+        - from
+        - to
+
     CreateQuizBody:
       type: object
       properties:
@@ -1705,6 +1729,10 @@ components:
           type: string
         passageText:
           type: string
+        parts:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuizPart"
         courseId:
           type: integer
         timeLimitMinutes:
