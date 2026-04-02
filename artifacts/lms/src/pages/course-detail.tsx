@@ -1,12 +1,20 @@
+import { useState, useEffect } from "react";
 import { useGetCourse, useUpdateCourse, useDeleteCourse, getGetCourseQueryKey, getListCoursesQueryKey } from "@workspace/api-client-react";
 import { useLocation, useParams, useSearch } from "wouter";
-import { ArrowLeft, BookOpen, Clock, Trash2 } from "lucide-react";
+import { ArrowLeft, BookOpen, Clock, Trash2, Save, Upload, GraduationCap, Image, User, Calendar, ToggleLeft, ToggleRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -20,6 +28,18 @@ import { CurriculumTab } from "@/components/curriculum-tab";
 import { StreamTab } from "@/components/stream-tab";
 import { StudentsTab } from "@/components/course-students-tab";
 import { InstructorsTab } from "@/components/course-instructors-tab";
+import { cn } from "@/lib/utils";
+
+type SettingsForm = {
+  title: string;
+  description: string;
+  instructor: string;
+  category: string;
+  level: string;
+  durationHours: string;
+  imageUrl: string;
+  isPublished: boolean;
+};
 
 export default function CourseDetail() {
   const { id: idStr } = useParams();
@@ -29,9 +49,37 @@ export default function CourseDetail() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const [settingsForm, setSettingsForm] = useState<SettingsForm>({
+    title: "", description: "", instructor: "", category: "",
+    level: "beginner", durationHours: "", imageUrl: "", isPublished: false,
+  });
+  const [settingsDirty, setSettingsDirty] = useState(false);
+
   const { data: course, isLoading: courseLoading } = useGetCourse(id, {
     query: { enabled: !!id, queryKey: getGetCourseQueryKey(id) }
   });
+
+  // Populate form when course loads
+  useEffect(() => {
+    if (course) {
+      setSettingsForm({
+        title: course.title ?? "",
+        description: (course as any).description ?? "",
+        instructor: course.instructor ?? "",
+        category: course.category ?? "",
+        level: course.level ?? "beginner",
+        durationHours: course.durationHours ? String(course.durationHours) : "",
+        imageUrl: (course as any).imageUrl ?? "",
+        isPublished: course.isPublished,
+      });
+      setSettingsDirty(false);
+    }
+  }, [course]);
+
+  function patchForm(patch: Partial<SettingsForm>) {
+    setSettingsForm((f) => ({ ...f, ...patch }));
+    setSettingsDirty(true);
+  }
 
   const updateCourse = useUpdateCourse({
     mutation: {
@@ -39,9 +87,29 @@ export default function CourseDetail() {
         queryClient.invalidateQueries({ queryKey: getGetCourseQueryKey(id) });
         queryClient.invalidateQueries({ queryKey: getListCoursesQueryKey() });
         toast({ title: "Course updated" });
-      }
+        setSettingsDirty(false);
+      },
+      onError: () => {
+        toast({ title: "Failed to save changes", variant: "destructive" });
+      },
     }
   });
+
+  function handleSaveSettings() {
+    updateCourse.mutate({
+      id,
+      data: {
+        title: settingsForm.title || undefined,
+        description: settingsForm.description || undefined,
+        instructor: settingsForm.instructor || undefined,
+        category: settingsForm.category || undefined,
+        level: (settingsForm.level as any) || undefined,
+        durationHours: settingsForm.durationHours ? Number(settingsForm.durationHours) : undefined,
+        imageUrl: settingsForm.imageUrl || undefined,
+        isPublished: settingsForm.isPublished,
+      } as any,
+    });
+  }
 
   const deleteCourse = useDeleteCourse({
     mutation: {
@@ -237,17 +305,208 @@ export default function CourseDetail() {
 
         {/* ── Settings ── */}
         <TabsContent value="settings">
-          <Card>
-            <CardHeader>
-              <CardTitle>Course Information</CardTitle>
-              <CardDescription>Created on {format(new Date(course.createdAt), "MMMM d, yyyy")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground italic">
-                Note: Editing details functionality will be added in a future update.
-              </p>
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+
+            {/* Read-only meta card */}
+            <Card className="ring-1 ring-border">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Course Information</CardTitle>
+                <CardDescription>System-managed fields</CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/40 border">
+                  <User className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Created by</p>
+                    <p className="text-sm font-medium">{course.instructor}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/40 border">
+                  <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Created on</p>
+                    <p className="text-sm font-medium">{format(new Date(course.createdAt), "MMMM d, yyyy")}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Editable settings */}
+            <Card className="ring-1 ring-border">
+              <CardHeader className="pb-3 flex flex-row items-start justify-between gap-4">
+                <div>
+                  <CardTitle className="text-base">Edit Course Details</CardTitle>
+                  <CardDescription>Update course information below and save changes</CardDescription>
+                </div>
+                <Button
+                  onClick={handleSaveSettings}
+                  disabled={!settingsDirty || updateCourse.isPending}
+                  className={cn("shrink-0", settingsDirty && "bg-primary")}
+                  data-testid="btn-save-settings"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {updateCourse.isPending ? "Saving…" : "Save Changes"}
+                </Button>
+              </CardHeader>
+
+              <CardContent className="space-y-6">
+
+                {/* Active / Published toggle */}
+                <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    {settingsForm.isPublished
+                      ? <ToggleRight className="w-5 h-5 text-primary" />
+                      : <ToggleLeft className="w-5 h-5 text-muted-foreground" />}
+                    <div>
+                      <p className="text-sm font-semibold">Course Status</p>
+                      <p className="text-xs text-muted-foreground">
+                        {settingsForm.isPublished
+                          ? "Active — visible to enrolled students"
+                          : "Draft — hidden from students"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={cn("text-sm font-medium", settingsForm.isPublished ? "text-primary" : "text-muted-foreground")}>
+                      {settingsForm.isPublished ? "Active" : "Inactive"}
+                    </span>
+                    <Switch
+                      checked={settingsForm.isPublished}
+                      onCheckedChange={(v) => patchForm({ isPublished: v })}
+                      data-testid="switch-published"
+                    />
+                  </div>
+                </div>
+
+                {/* Thumbnail URL */}
+                <div className="space-y-2">
+                  <Label htmlFor="setting-thumbnail" className="flex items-center gap-2 text-sm font-medium">
+                    <Image className="w-4 h-4" /> Course Thumbnail (URL)
+                  </Label>
+                  <div className="flex gap-3">
+                    {settingsForm.imageUrl && (
+                      <img
+                        src={settingsForm.imageUrl}
+                        alt="Thumbnail preview"
+                        className="w-20 h-14 object-cover rounded-md border shrink-0"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    )}
+                    <Input
+                      id="setting-thumbnail"
+                      placeholder="https://example.com/image.jpg"
+                      value={settingsForm.imageUrl}
+                      onChange={(e) => patchForm({ imageUrl: e.target.value })}
+                      data-testid="input-thumbnail"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Paste a public image URL to use as the course thumbnail.</p>
+                </div>
+
+                <Separator />
+
+                {/* Title */}
+                <div className="space-y-2">
+                  <Label htmlFor="setting-title" className="text-sm font-medium">Course Title</Label>
+                  <Input
+                    id="setting-title"
+                    value={settingsForm.title}
+                    onChange={(e) => patchForm({ title: e.target.value })}
+                    placeholder="e.g. IELTS Academic Preparation"
+                    data-testid="input-title"
+                  />
+                </div>
+
+                {/* Description */}
+                <div className="space-y-2">
+                  <Label htmlFor="setting-description" className="text-sm font-medium">Description</Label>
+                  <Textarea
+                    id="setting-description"
+                    rows={4}
+                    value={settingsForm.description}
+                    onChange={(e) => patchForm({ description: e.target.value })}
+                    placeholder="Describe what students will learn…"
+                    data-testid="textarea-description"
+                  />
+                </div>
+
+                {/* Instructor */}
+                <div className="space-y-2">
+                  <Label htmlFor="setting-instructor" className="flex items-center gap-2 text-sm font-medium">
+                    <GraduationCap className="w-4 h-4" /> Instructor Name
+                  </Label>
+                  <Input
+                    id="setting-instructor"
+                    value={settingsForm.instructor}
+                    onChange={(e) => patchForm({ instructor: e.target.value })}
+                    placeholder="e.g. John Smith"
+                    data-testid="input-instructor"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* Category */}
+                  <div className="space-y-2">
+                    <Label htmlFor="setting-category" className="text-sm font-medium">Category</Label>
+                    <Input
+                      id="setting-category"
+                      value={settingsForm.category}
+                      onChange={(e) => patchForm({ category: e.target.value })}
+                      placeholder="e.g. IELTS"
+                      data-testid="input-category"
+                    />
+                  </div>
+
+                  {/* Level */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Level</Label>
+                    <Select
+                      value={settingsForm.level}
+                      onValueChange={(v) => patchForm({ level: v })}
+                    >
+                      <SelectTrigger data-testid="select-level">
+                        <SelectValue placeholder="Select level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="beginner">Beginner</SelectItem>
+                        <SelectItem value="intermediate">Intermediate</SelectItem>
+                        <SelectItem value="advanced">Advanced</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Duration */}
+                  <div className="space-y-2">
+                    <Label htmlFor="setting-duration" className="flex items-center gap-2 text-sm font-medium">
+                      <Clock className="w-4 h-4" /> Duration (hours)
+                    </Label>
+                    <Input
+                      id="setting-duration"
+                      type="number"
+                      min={1}
+                      value={settingsForm.durationHours}
+                      onChange={(e) => patchForm({ durationHours: e.target.value })}
+                      placeholder="e.g. 10"
+                      data-testid="input-duration"
+                    />
+                  </div>
+                </div>
+
+                {/* Bottom save */}
+                <div className="flex justify-end pt-2">
+                  <Button
+                    onClick={handleSaveSettings}
+                    disabled={!settingsDirty || updateCourse.isPending}
+                    data-testid="btn-save-settings-bottom"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    {updateCourse.isPending ? "Saving…" : "Save Changes"}
+                  </Button>
+                </div>
+
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
