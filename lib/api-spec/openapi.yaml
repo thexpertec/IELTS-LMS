@@ -1,15 +1,24 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: LMS API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: courses
+    description: Course management
+  - name: lessons
+    description: Lesson management
+  - name: enrollments
+    description: Enrollment management
+  - name: progress
+    description: Progress tracking
+  - name: dashboard
+    description: Dashboard stats and activity
 paths:
   /healthz:
     get:
@@ -24,6 +33,440 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /courses:
+    get:
+      operationId: listCourses
+      tags: [courses]
+      summary: List all courses
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of courses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Course"
+    post:
+      operationId: createCourse
+      tags: [courses]
+      summary: Create a new course
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCourseBody"
+      responses:
+        "201":
+          description: Created course
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+
+  /courses/{id}:
+    get:
+      operationId: getCourse
+      tags: [courses]
+      summary: Get a course by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Course detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateCourse
+      tags: [courses]
+      summary: Update a course
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCourseBody"
+      responses:
+        "200":
+          description: Updated course
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteCourse
+      tags: [courses]
+      summary: Delete a course
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /courses/{courseId}/lessons:
+    get:
+      operationId: listLessons
+      tags: [lessons]
+      summary: List lessons for a course
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of lessons
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lesson"
+    post:
+      operationId: createLesson
+      tags: [lessons]
+      summary: Create a lesson in a course
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLessonBody"
+      responses:
+        "201":
+          description: Created lesson
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lesson"
+
+  /courses/{courseId}/lessons/{id}:
+    get:
+      operationId: getLesson
+      tags: [lessons]
+      summary: Get a lesson
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lesson detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lesson"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateLesson
+      tags: [lessons]
+      summary: Update a lesson
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLessonBody"
+      responses:
+        "200":
+          description: Updated lesson
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lesson"
+    delete:
+      operationId: deleteLesson
+      tags: [lessons]
+      summary: Delete a lesson
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /enrollments:
+    get:
+      operationId: listEnrollments
+      tags: [enrollments]
+      summary: List all enrollments
+      parameters:
+        - name: courseId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: studentName
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of enrollments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Enrollment"
+    post:
+      operationId: createEnrollment
+      tags: [enrollments]
+      summary: Enroll a student in a course
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEnrollmentBody"
+      responses:
+        "201":
+          description: Created enrollment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Enrollment"
+        "409":
+          description: Already enrolled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /enrollments/{id}:
+    get:
+      operationId: getEnrollment
+      tags: [enrollments]
+      summary: Get enrollment by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Enrollment detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Enrollment"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateEnrollment
+      tags: [enrollments]
+      summary: Update enrollment status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEnrollmentBody"
+      responses:
+        "200":
+          description: Updated enrollment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Enrollment"
+    delete:
+      operationId: deleteEnrollment
+      tags: [enrollments]
+      summary: Remove an enrollment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /progress:
+    get:
+      operationId: listProgress
+      tags: [progress]
+      summary: List progress records
+      parameters:
+        - name: enrollmentId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of progress records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LessonProgress"
+    post:
+      operationId: markLessonComplete
+      tags: [progress]
+      summary: Mark a lesson as complete or incomplete
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarkProgressBody"
+      responses:
+        "200":
+          description: Progress record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LessonProgress"
+
+  /dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [dashboard]
+      summary: Get dashboard summary stats
+      responses:
+        "200":
+          description: Dashboard statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /dashboard/activity:
+    get:
+      operationId: getRecentActivity
+      tags: [dashboard]
+      summary: Get recent enrollment and progress activity
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Recent activity feed
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+
+  /dashboard/course-stats:
+    get:
+      operationId: getCourseStats
+      tags: [dashboard]
+      summary: Per-course enrollment and completion counts
+      responses:
+        "200":
+          description: Per-course stats
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CourseStats"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +477,330 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    Course:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        instructor:
+          type: string
+        level:
+          type: string
+          enum: [beginner, intermediate, advanced]
+        imageUrl:
+          type: ["string", "null"]
+        durationHours:
+          type: ["integer", "null"]
+        isPublished:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - description
+        - category
+        - instructor
+        - level
+        - imageUrl
+        - durationHours
+        - isPublished
+        - createdAt
+        - updatedAt
+
+    CreateCourseBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        instructor:
+          type: string
+        level:
+          type: string
+          enum: [beginner, intermediate, advanced]
+        imageUrl:
+          type: ["string", "null"]
+        durationHours:
+          type: ["integer", "null"]
+        isPublished:
+          type: boolean
+      required:
+        - title
+        - description
+        - category
+        - instructor
+        - level
+
+    UpdateCourseBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        instructor:
+          type: string
+        level:
+          type: string
+          enum: [beginner, intermediate, advanced]
+        imageUrl:
+          type: ["string", "null"]
+        durationHours:
+          type: ["integer", "null"]
+        isPublished:
+          type: boolean
+
+    Lesson:
+      type: object
+      properties:
+        id:
+          type: integer
+        courseId:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        videoUrl:
+          type: ["string", "null"]
+        durationMinutes:
+          type: ["integer", "null"]
+        order:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - courseId
+        - title
+        - content
+        - videoUrl
+        - durationMinutes
+        - order
+        - createdAt
+        - updatedAt
+
+    CreateLessonBody:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        videoUrl:
+          type: ["string", "null"]
+        durationMinutes:
+          type: ["integer", "null"]
+        order:
+          type: integer
+      required:
+        - title
+        - content
+        - order
+
+    UpdateLessonBody:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        videoUrl:
+          type: ["string", "null"]
+        durationMinutes:
+          type: ["integer", "null"]
+        order:
+          type: integer
+
+    Enrollment:
+      type: object
+      properties:
+        id:
+          type: integer
+        courseId:
+          type: integer
+        studentName:
+          type: string
+        studentEmail:
+          type: string
+        status:
+          type: string
+          enum: [active, completed, dropped]
+        enrolledAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: ["string", "null"]
+          format: date-time
+        progressPercent:
+          type: integer
+        courseName:
+          type: ["string", "null"]
+      required:
+        - id
+        - courseId
+        - studentName
+        - studentEmail
+        - status
+        - enrolledAt
+        - completedAt
+        - progressPercent
+        - courseName
+
+    CreateEnrollmentBody:
+      type: object
+      properties:
+        courseId:
+          type: integer
+        studentName:
+          type: string
+        studentEmail:
+          type: string
+      required:
+        - courseId
+        - studentName
+        - studentEmail
+
+    UpdateEnrollmentBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [active, completed, dropped]
+
+    LessonProgress:
+      type: object
+      properties:
+        id:
+          type: integer
+        enrollmentId:
+          type: integer
+        lessonId:
+          type: integer
+        completed:
+          type: boolean
+        completedAt:
+          type: ["string", "null"]
+          format: date-time
+      required:
+        - id
+        - enrollmentId
+        - lessonId
+        - completed
+        - completedAt
+
+    MarkProgressBody:
+      type: object
+      properties:
+        enrollmentId:
+          type: integer
+        lessonId:
+          type: integer
+        completed:
+          type: boolean
+      required:
+        - enrollmentId
+        - lessonId
+        - completed
+
+    DashboardStats:
+      type: object
+      properties:
+        totalCourses:
+          type: integer
+        publishedCourses:
+          type: integer
+        totalEnrollments:
+          type: integer
+        activeEnrollments:
+          type: integer
+        completedEnrollments:
+          type: integer
+        totalStudents:
+          type: integer
+        completionRate:
+          type: number
+      required:
+        - totalCourses
+        - publishedCourses
+        - totalEnrollments
+        - activeEnrollments
+        - completedEnrollments
+        - totalStudents
+        - completionRate
+
+    ActivityItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [enrollment, progress, completion]
+        description:
+          type: string
+        studentName:
+          type: string
+        courseName:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - description
+        - studentName
+        - courseName
+        - occurredAt
+
+    CourseStats:
+      type: object
+      properties:
+        courseId:
+          type: integer
+        title:
+          type: string
+        category:
+          type: string
+        enrollmentCount:
+          type: integer
+        completionCount:
+          type: integer
+        completionRate:
+          type: number
+      required:
+        - courseId
+        - title
+        - category
+        - enrollmentCount
+        - completionCount
+        - completionRate
