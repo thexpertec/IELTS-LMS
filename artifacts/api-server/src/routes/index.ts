@@ -6,6 +6,7 @@ import enrollmentsRouter from "./enrollments";
 import progressRouter from "./progress";
 import dashboardRouter from "./dashboard";
 import studentRouter from "./student";
+import quizzesRouter from "./quizzes";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(enrollmentsRouter);
 router.use(progressRouter);
 router.use(dashboardRouter);
 router.use(studentRouter);
+router.use(quizzesRouter);
 
 export default router;

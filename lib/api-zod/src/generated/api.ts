@@ -633,3 +633,147 @@ export const PostDiscussionBody = zod.object({
   studentName: zod.string(),
   content: zod.string(),
 });
+
+/**
+ * @summary List all quizzes
+ */
+export const ListQuizzesQueryParams = zod.object({
+  courseId: zod.coerce.number().optional(),
+});
+
+export const ListQuizzesResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  description: zod.string(),
+  courseId: zod.number().nullish(),
+  timeLimitMinutes: zod.number().nullish(),
+  isPublished: zod.boolean(),
+  questionCount: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListQuizzesResponse = zod.array(ListQuizzesResponseItem);
+
+/**
+ * @summary Create a new quiz
+ */
+export const CreateQuizBody = zod.object({
+  title: zod.string(),
+  description: zod.string().optional(),
+  courseId: zod.number().optional(),
+  timeLimitMinutes: zod.number().optional(),
+  isPublished: zod.boolean().optional(),
+});
+
+/**
+ * @summary Get a quiz with its questions
+ */
+export const GetQuizParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetQuizResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  description: zod.string(),
+  courseId: zod.number().nullish(),
+  timeLimitMinutes: zod.number().nullish(),
+  isPublished: zod.boolean(),
+  questions: zod.array(
+    zod.object({
+      id: zod.number(),
+      quizId: zod.number(),
+      type: zod.enum(["fill_blank", "dropdown", "choose_word", "matching"]),
+      order: zod.number(),
+      questionText: zod.string(),
+      options: zod
+        .object({})
+        .passthrough()
+        .describe("Type-specific options JSON"),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update a quiz
+ */
+export const UpdateQuizParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateQuizBody = zod.object({
+  title: zod.string(),
+  description: zod.string().optional(),
+  courseId: zod.number().optional(),
+  timeLimitMinutes: zod.number().optional(),
+  isPublished: zod.boolean().optional(),
+});
+
+export const UpdateQuizResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  description: zod.string(),
+  courseId: zod.number().nullish(),
+  timeLimitMinutes: zod.number().nullish(),
+  isPublished: zod.boolean(),
+  questionCount: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a quiz
+ */
+export const DeleteQuizParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Add a question to a quiz
+ */
+export const AddQuizQuestionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AddQuizQuestionBody = zod.object({
+  type: zod.enum(["fill_blank", "dropdown", "choose_word", "matching"]),
+  order: zod.number().optional(),
+  questionText: zod.string(),
+  options: zod.object({}).passthrough(),
+});
+
+/**
+ * @summary Update a quiz question
+ */
+export const UpdateQuizQuestionParams = zod.object({
+  id: zod.coerce.number(),
+  questionId: zod.coerce.number(),
+});
+
+export const UpdateQuizQuestionBody = zod.object({
+  type: zod.enum(["fill_blank", "dropdown", "choose_word", "matching"]),
+  order: zod.number().optional(),
+  questionText: zod.string(),
+  options: zod.object({}).passthrough(),
+});
+
+export const UpdateQuizQuestionResponse = zod.object({
+  id: zod.number(),
+  quizId: zod.number(),
+  type: zod.enum(["fill_blank", "dropdown", "choose_word", "matching"]),
+  order: zod.number(),
+  questionText: zod.string(),
+  options: zod.object({}).passthrough().describe("Type-specific options JSON"),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a quiz question
+ */
+export const DeleteQuizQuestionParams = zod.object({
+  id: zod.coerce.number(),
+  questionId: zod.coerce.number(),
+});

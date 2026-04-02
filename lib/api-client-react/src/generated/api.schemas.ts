@@ -354,6 +354,83 @@ export interface PostDiscussionBody {
   content: string;
 }
 
+export interface Quiz {
+  id: number;
+  title: string;
+  description: string;
+  courseId?: number | null;
+  timeLimitMinutes?: number | null;
+  isPublished: boolean;
+  questionCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type QuizQuestionType =
+  (typeof QuizQuestionType)[keyof typeof QuizQuestionType];
+
+export const QuizQuestionType = {
+  fill_blank: "fill_blank",
+  dropdown: "dropdown",
+  choose_word: "choose_word",
+  matching: "matching",
+} as const;
+
+/**
+ * Type-specific options JSON
+ */
+export type QuizQuestionOptions = { [key: string]: unknown };
+
+export interface QuizQuestion {
+  id: number;
+  quizId: number;
+  type: QuizQuestionType;
+  order: number;
+  questionText: string;
+  /** Type-specific options JSON */
+  options: QuizQuestionOptions;
+  createdAt: string;
+}
+
+export interface QuizDetail {
+  id: number;
+  title: string;
+  description: string;
+  courseId?: number | null;
+  timeLimitMinutes?: number | null;
+  isPublished: boolean;
+  questions: QuizQuestion[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateQuizBody {
+  title: string;
+  description?: string;
+  courseId?: number;
+  timeLimitMinutes?: number;
+  isPublished?: boolean;
+}
+
+export type CreateQuizQuestionBodyType =
+  (typeof CreateQuizQuestionBodyType)[keyof typeof CreateQuizQuestionBodyType];
+
+export const CreateQuizQuestionBodyType = {
+  fill_blank: "fill_blank",
+  dropdown: "dropdown",
+  choose_word: "choose_word",
+  matching: "matching",
+} as const;
+
+export type CreateQuizQuestionBodyOptions = { [key: string]: unknown };
+
+export interface CreateQuizQuestionBody {
+  type: CreateQuizQuestionBodyType;
+  order?: number;
+  questionText: string;
+  options: CreateQuizQuestionBodyOptions;
+}
+
 export type ListCoursesParams = {
   category?: string;
   search?: string;
@@ -406,4 +483,8 @@ export type GetStudentAssignmentsParams = {
 
 export type ListDiscussionsParams = {
   courseId: number;
+};
+
+export type ListQuizzesParams = {
+  courseId?: number;
 };

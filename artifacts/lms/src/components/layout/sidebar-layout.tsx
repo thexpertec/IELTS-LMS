@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, BookOpen, Users, UserPlus, Moon, Sun, GraduationCap } from "lucide-react";
+import { LayoutDashboard, BookOpen, Users, UserPlus, Moon, Sun, GraduationCap, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
     { name: "Courses", href: "/courses", icon: BookOpen },
+    { name: "Quizzes", href: "/quizzes", icon: ClipboardList },
     { name: "Enrollments", href: "/enrollments", icon: UserPlus },
     { name: "Students", href: "/students", icon: Users },
   ];

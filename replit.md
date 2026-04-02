@@ -16,6 +16,17 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 
+## Quiz Feature (Admin LMS)
+
+- Admin sidebar now has a **Quizzes** section at `/quizzes`
+- DB tables: `quizzes` (title, description, courseId, timeLimitMinutes, isPublished) and `quiz_questions` (quizId, type, order, questionText, options jsonb)
+- API routes under `/api/quizzes` — CRUD for quizzes and questions
+- 4 question types, each stored as jsonb in `options`:
+  - `fill_blank`: `{ sentence, blanks[] }` — sentence with ___ placeholders, ordered correct answers
+  - `dropdown`: `{ stem, choices[], correct }` — multiple-choice dropdown
+  - `choose_word`: `{ instruction, wordLimit, passageText?, imageUrl?, correct }` — word from passage/picture
+  - `matching`: `{ leftItems[], rightItems[], pairs[] }` — column matching pairs
+
 ## Structure
 
 ```text

@@ -6,3 +6,5 @@ export * from "./student_profiles";
 export * from "./assignments";
 export * from "./notifications";
 export * from "./discussions";
+export * from "./quizzes";
+export * from "./quiz_questions";

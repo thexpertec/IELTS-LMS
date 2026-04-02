@@ -21,6 +21,8 @@ tags:
     description: Dashboard stats and activity
   - name: student-portal
     description: Student-facing portal endpoints
+  - name: quizzes
+    description: Quiz management
 paths:
   /healthz:
     get:
@@ -778,6 +780,178 @@ paths:
               schema:
                 $ref: "#/components/schemas/Discussion"
 
+  /quizzes:
+    get:
+      operationId: listQuizzes
+      tags: [quizzes]
+      summary: List all quizzes
+      parameters:
+        - name: courseId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of quizzes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Quiz"
+    post:
+      operationId: createQuiz
+      tags: [quizzes]
+      summary: Create a new quiz
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQuizBody"
+      responses:
+        "201":
+          description: Created quiz
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quiz"
+
+  /quizzes/{id}:
+    get:
+      operationId: getQuiz
+      tags: [quizzes]
+      summary: Get a quiz with its questions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Quiz with questions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuizDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateQuiz
+      tags: [quizzes]
+      summary: Update a quiz
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQuizBody"
+      responses:
+        "200":
+          description: Updated quiz
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quiz"
+    delete:
+      operationId: deleteQuiz
+      tags: [quizzes]
+      summary: Delete a quiz
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /quizzes/{id}/questions:
+    post:
+      operationId: addQuizQuestion
+      tags: [quizzes]
+      summary: Add a question to a quiz
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQuizQuestionBody"
+      responses:
+        "201":
+          description: Created question
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuizQuestion"
+
+  /quizzes/{id}/questions/{questionId}:
+    put:
+      operationId: updateQuizQuestion
+      tags: [quizzes]
+      summary: Update a quiz question
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: questionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQuizQuestionBody"
+      responses:
+        "200":
+          description: Updated question
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuizQuestion"
+    delete:
+      operationId: deleteQuizQuestion
+      tags: [quizzes]
+      summary: Delete a quiz question
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: questionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
 components:
   schemas:
     HealthStatus:
@@ -1416,3 +1590,135 @@ components:
         - studentEmail
         - studentName
         - content
+
+    Quiz:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        courseId:
+          type: integer
+          nullable: true
+        timeLimitMinutes:
+          type: integer
+          nullable: true
+        isPublished:
+          type: boolean
+        questionCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - description
+        - isPublished
+        - questionCount
+        - createdAt
+        - updatedAt
+
+    QuizQuestion:
+      type: object
+      properties:
+        id:
+          type: integer
+        quizId:
+          type: integer
+        type:
+          type: string
+          enum: [fill_blank, dropdown, choose_word, matching]
+        order:
+          type: integer
+        questionText:
+          type: string
+        options:
+          type: object
+          description: Type-specific options JSON
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - quizId
+        - type
+        - order
+        - questionText
+        - options
+        - createdAt
+
+    QuizDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        courseId:
+          type: integer
+          nullable: true
+        timeLimitMinutes:
+          type: integer
+          nullable: true
+        isPublished:
+          type: boolean
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuizQuestion"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - description
+        - isPublished
+        - questions
+        - createdAt
+        - updatedAt
+
+    CreateQuizBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        courseId:
+          type: integer
+        timeLimitMinutes:
+          type: integer
+        isPublished:
+          type: boolean
+      required:
+        - title
+
+    CreateQuizQuestionBody:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [fill_blank, dropdown, choose_word, matching]
+        order:
+          type: integer
+        questionText:
+          type: string
+        options:
+          type: object
+      required:
+        - type
+        - questionText
+        - options

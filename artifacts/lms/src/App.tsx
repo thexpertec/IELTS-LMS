@@ -17,6 +17,9 @@ import LessonNew from "@/pages/lesson-new";
 import Enrollments from "@/pages/enrollments";
 import EnrollmentNew from "@/pages/enrollment-new";
 import Students from "@/pages/students";
+import Quizzes from "@/pages/quizzes";
+import QuizNew from "@/pages/quiz-new";
+import QuizDetail from "@/pages/quiz-detail";
 import NotFound from "@/pages/not-found";
 
 // Student portal pages
@@ -79,6 +82,9 @@ function Router() {
             <Route path="/enrollments" component={Enrollments} />
             <Route path="/enrollments/new" component={EnrollmentNew} />
             <Route path="/students" component={Students} />
+            <Route path="/quizzes" component={Quizzes} />
+            <Route path="/quizzes/new" component={QuizNew} />
+            <Route path="/quizzes/:id" component={QuizDetail} />
             <Route component={NotFound} />
           </Switch>
         </SidebarLayout>
