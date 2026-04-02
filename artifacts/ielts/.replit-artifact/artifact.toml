@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/ielts/"
+title = "IELTS Course Management"
+version = "1.0.0"
+id = "artifacts/ielts"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/ielts/" ]
+localPort = 24500
+
+[services.development]
+run = "pnpm --filter @workspace/ielts run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/ielts", "run", "build" ]
+publicDir = "artifacts/ielts/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24500"
+BASE_PATH = "/ielts/"

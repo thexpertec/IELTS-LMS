@@ -279,7 +279,7 @@ router.get("/student/courses/:courseId", async (req, res): Promise<void> => {
     .select()
     .from(lessonsTable)
     .where(eq(lessonsTable.courseId, courseId))
-    .orderBy(lessonsTable.orderIndex);
+    .orderBy(lessonsTable.order);
 
   const progressRows = await db
     .select()

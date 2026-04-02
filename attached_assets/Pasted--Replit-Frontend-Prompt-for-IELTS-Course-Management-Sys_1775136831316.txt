@@ -1,0 +1,96 @@
+**Replit Frontend Prompt for IELTS Course Management System (Without Backend)**
+
+Create a **frontend-only IELTS Course Management System** using **HTML, CSS, and JavaScript** (or any frontend framework like React.js or Vue.js) that mimics the structure of a complete course system without the need for a backend. The system will simulate the functionality of an LMS with interactive elements, but all data (e.g., course progress, quizzes, assignments) will be stored temporarily in the browser using **localStorage** or in-memory objects.
+
+### **1. Dashboard (Home Page)**
+
+* **Student Dashboard:**
+
+  * Display a welcome message with the student’s name (e.g., "Welcome, [Student Name]!").
+  * Show a navigation menu with links to different course modules: **Reading, Writing, Listening, Speaking, Grammar, Vocabulary**.
+  * Include a **progress bar** for overall course completion, showing percentage progress across all modules.
+* **Course Enrollment:**
+
+  * Display a list of available courses that the student can "enroll" in. Clicking on a course should "enroll" the student and show progress within that course.
+  * Simulate the enrollment process using local data to track which courses the student has selected.
+
+### **2. Course Module Pages**
+
+Each course module (e.g., **Reading, Writing, Listening**) should have its own page with the following features:
+
+* **Module Overview:**
+
+  * Display a **summary** of the module, explaining the content covered and the skills developed (e.g., "This module covers reading comprehension, skimming techniques, and understanding question types").
+
+* **Lessons:**
+
+  * Display a list of **lessons** within each module. Clicking on a lesson will display the content (text, images, or embedded videos).
+  * Add a **"Mark as Complete"** button next to each lesson. When clicked, the lesson will be marked as completed, and the progress bar will update.
+
+* **Quizzes:**
+
+  * Include a small **quiz section** with multiple-choice questions or true/false questions for the students to answer.
+  * Display the quiz results immediately after the student submits the answers, using **localStorage** to store the results temporarily.
+  * Use JavaScript to handle quiz logic, such as marking answers as correct/incorrect and showing feedback.
+
+* **Assignments:**
+
+  * Create **mock assignments** where students can "submit" their work (e.g., typing in a text box).
+  * Once submitted, display a "submitted" message, and simulate the process of grading by showing a random grade or feedback.
+
+### **3. Progress Tracker**
+
+* Display a **progress tracker** for each module (Reading, Writing, Listening, etc.).
+
+  * Use **localStorage** to track lesson completion, quiz results, and assignment submissions.
+  * Show percentage progress based on the number of completed lessons, quizzes, and assignments.
+* **Module Progress:**
+
+  * After completing a module's lesson and quiz, show a progress bar indicating the student’s progress (e.g., 75% complete).
+  * Update the overall course progress on the student dashboard based on the completion of individual modules.
+
+### **4. Interactive Features**
+
+* **Student Profile:**
+
+  * Create a simple profile page where students can update their name, email, and profile picture.
+  * Use **localStorage** to store student profile data temporarily.
+
+* **Upcoming Deadlines (Simulated):**
+
+  * Create a list of **upcoming deadlines** for assignments or quizzes (e.g., "Writing Task 1 is due in 3 days").
+  * Use JavaScript to simulate dates and show reminders on the dashboard.
+
+### **5. User Authentication (Simulated)**
+
+* Simulate a **login page** with a simple form where users can enter a name to "log in".
+
+  * Once the student logs in, redirect them to the dashboard and save their login data in **localStorage**.
+
+### **6. Notifications & Reminders**
+
+* Use JavaScript to create **notification pop-ups** or alert messages for things like upcoming quizzes, reminders to complete assignments, or progress updates.
+* Notifications should be triggered after certain actions, like completing a lesson or quiz.
+
+---
+
+### **Technologies to Use:**
+
+* **HTML:** For the page structure and layout.
+* **CSS:** For styling the pages (you can use CSS frameworks like Bootstrap or Tailwind for responsiveness).
+* **JavaScript (or React.js/Vue.js):** For handling the functionality, including local data management (using **localStorage** or JavaScript objects).
+* **No backend required:** Use **localStorage** or **sessionStorage** to simulate user data, course enrollment, and progress tracking.
+
+---
+
+### **Goal:**
+
+Build a fully functional **frontend-only IELTS Course Management System** that simulates an LMS. Students should be able to:
+
+* Enroll in courses.
+* Access lessons, quizzes, and assignments.
+* Track their progress across modules.
+* View notifications and reminders.
+* Update their profile.
+
+While the system will not have a backend, it should provide a realistic, interactive experience that demonstrates the core functionality of an IELTS preparation course management system.
