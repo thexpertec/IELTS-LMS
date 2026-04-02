@@ -7,7 +7,7 @@ import {
 } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import {
-  BookOpen, Bell, FileText, ArrowRight, Clock, AlertCircle, CheckCircle,
+  BookOpen, Bell, FileText, ArrowRight, Clock, CheckCircle,
   LayoutGrid, Headphones, Mic, PenTool, Type, GraduationCap, Play,
   Users, ClipboardList,
 } from "lucide-react";
@@ -235,83 +235,85 @@ export default function StudentDashboard() {
           )}
         </div>
 
-        {/* Right: Deadlines + Notifications */}
-        <div className="md:col-span-4 space-y-5">
-
-          {/* Upcoming Deadlines */}
-          <Card>
+        {/* Right: Unified Activity Feed */}
+        <div className="md:col-span-4">
+          <Card className="h-full">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center justify-between">
                 <span className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-primary" />
-                  Upcoming Deadlines
+                  <Bell className="w-4 h-4 text-primary" />
+                  Activity & Notifications
                 </span>
-                <Link href="/student/assignments">
+                <Link href="/student/notifications">
                   <Button variant="ghost" size="sm" className="h-6 text-xs text-primary px-2">
                     All
                   </Button>
                 </Link>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {upcomingDeadlines.length === 0 ? (
-                <div className="text-center py-4">
-                  <CheckCircle className="w-7 h-7 text-green-500 mx-auto mb-1.5" />
+            <CardContent className="space-y-1 p-3 pt-0">
+              {upcomingDeadlines.length === 0 && unreadNotifs.length === 0 ? (
+                <div className="text-center py-8">
+                  <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-2" />
                   <p className="text-sm font-medium">All caught up!</p>
-                  <p className="text-xs text-muted-foreground">No pending deadlines</p>
+                  <p className="text-xs text-muted-foreground">No pending deadlines or notifications</p>
                 </div>
               ) : (
-                upcomingDeadlines.map((assignment) => {
-                  const due = new Date(assignment.dueDate);
-                  const daysLeft = Math.ceil((due.getTime() - Date.now()) / 86400000);
-                  const isUrgent = daysLeft <= 3;
-                  return (
-                    <div key={assignment.id} className="flex gap-3 items-start">
-                      <div className={`flex flex-col items-center justify-center rounded-md p-2 min-w-[46px] text-center ${isUrgent ? "bg-destructive/10" : "bg-muted"}`}>
-                        <span className={`text-xs font-bold uppercase leading-none ${isUrgent ? "text-destructive" : "text-muted-foreground"}`}>
-                          {daysLeft <= 0 ? "TODAY" : daysLeft === 1 ? "TMRW" : `${daysLeft}d`}
-                        </span>
+                <>
+                  {upcomingDeadlines.map((assignment) => {
+                    const due = new Date(assignment.dueDate);
+                    const daysLeft = Math.ceil((due.getTime() - Date.now()) / 86400000);
+                    const isUrgent = daysLeft <= 3;
+                    return (
+                      <div
+                        key={`deadline-${assignment.id}`}
+                        className={`flex gap-3 items-start rounded-lg p-2.5 ${isUrgent ? "bg-destructive/5" : "hover:bg-muted/50"} transition-colors`}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isUrgent ? "bg-destructive/10" : "bg-muted"}`}>
+                          <Clock className={`w-4 h-4 ${isUrgent ? "text-destructive" : "text-muted-foreground"}`} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-sm leading-tight truncate">{assignment.title}</p>
+                          <p className="text-xs text-muted-foreground truncate">{assignment.courseTitle}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${isUrgent ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}>
+                              {daysLeft <= 0 ? "Today" : daysLeft === 1 ? "Tomorrow" : `${daysLeft}d left`}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {formatDistanceToNow(due, { addSuffix: true })}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="font-medium text-sm leading-tight truncate">{assignment.title}</p>
-                        <p className="text-xs text-muted-foreground truncate">{assignment.courseTitle}</p>
-                        <p className={`text-xs mt-0.5 ${isUrgent ? "text-destructive" : "text-muted-foreground"}`}>
-                          {formatDistanceToNow(due, { addSuffix: true })}
-                        </p>
+                    );
+                  })}
+
+                  {upcomingDeadlines.length > 0 && unreadNotifs.length > 0 && (
+                    <div className="relative py-1">
+                      <div className="absolute inset-0 flex items-center px-2.5">
+                        <div className="w-full border-t border-dashed" />
                       </div>
                     </div>
-                  );
-                })
+                  )}
+
+                  {unreadNotifs.map((n) => (
+                    <div
+                      key={`notif-${n.id}`}
+                      className="flex gap-3 items-start rounded-lg p-2.5 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Bell className="w-4 h-4 text-primary" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-sm leading-tight">{n.title}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{n.message}</p>
+                      </div>
+                    </div>
+                  ))}
+                </>
               )}
             </CardContent>
           </Card>
-
-          {/* Recent Notifications */}
-          {unreadNotifs.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-primary" />
-                    Notifications
-                  </span>
-                  <Link href="/student/notifications">
-                    <Button variant="ghost" size="sm" className="h-6 text-xs text-primary px-2">
-                      All
-                    </Button>
-                  </Link>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {unreadNotifs.map((n) => (
-                  <div key={n.id} className="space-y-0.5">
-                    <p className="font-medium text-sm leading-tight">{n.title}</p>
-                    <p className="text-xs text-muted-foreground line-clamp-2">{n.message}</p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
     </div>
