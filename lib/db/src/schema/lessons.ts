@@ -9,6 +9,7 @@ export const lessonsTable = pgTable("lessons", {
   courseId: integer("course_id").notNull().references(() => coursesTable.id, { onDelete: "cascade" }),
   chapterId: integer("chapter_id").references(() => chaptersTable.id, { onDelete: "set null" }),
   title: text("title").notNull(),
+  description: text("description").notNull().default(""),
   content: text("content").notNull().default(""),
   videoUrl: text("video_url"),
   imageUrl: text("image_url"),

@@ -102,6 +102,7 @@ export interface Lesson {
   /** @nullable */
   chapterTitle: string | null;
   title: string;
+  description: string;
   content: string;
   /** @nullable */
   videoUrl: string | null;
@@ -119,6 +120,7 @@ export interface Lesson {
 
 export interface CreateLessonBody {
   title: string;
+  description?: string;
   content: string;
   /** @nullable */
   videoUrl?: string | null;
@@ -136,6 +138,7 @@ export interface CreateLessonBody {
 
 export interface UpdateLessonBody {
   title?: string;
+  description?: string;
   content?: string;
   /** @nullable */
   videoUrl?: string | null;

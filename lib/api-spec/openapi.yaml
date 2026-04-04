@@ -1429,6 +1429,8 @@ components:
           type: ["string", "null"]
         title:
           type: string
+        description:
+          type: string
         content:
           type: string
         videoUrl:
@@ -1455,6 +1457,7 @@ components:
         - chapterId
         - chapterTitle
         - title
+        - description
         - content
         - videoUrl
         - imageUrl
@@ -1469,6 +1472,8 @@ components:
       type: object
       properties:
         title:
+          type: string
+        description:
           type: string
         content:
           type: string
@@ -1495,6 +1500,8 @@ components:
       type: object
       properties:
         title:
+          type: string
+        description:
           type: string
         content:
           type: string

@@ -24,6 +24,7 @@ async function lessonWithChapter(courseId: number, lessonId?: number) {
       chapterId: lessonsTable.chapterId,
       chapterTitle: chaptersTable.title,
       title: lessonsTable.title,
+      description: lessonsTable.description,
       content: lessonsTable.content,
       videoUrl: lessonsTable.videoUrl,
       imageUrl: lessonsTable.imageUrl,

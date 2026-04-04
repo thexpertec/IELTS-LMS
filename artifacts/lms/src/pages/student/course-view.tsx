@@ -267,6 +267,9 @@ export default function CourseView() {
                 )}
               </div>
               <h3 className="text-base font-bold">{lesson.title}</h3>
+              {(lesson as unknown as { description?: string }).description && (
+                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{(lesson as unknown as { description?: string }).description}</p>
+              )}
               {lesson.duration > 0 && (
                 <div className="flex items-center gap-1 mt-1.5">
                   <Clock className="w-3 h-3 text-muted-foreground" />
@@ -548,7 +551,7 @@ export default function CourseView() {
                   <>
                     {activeLessons.map((l, i) => renderLesson(l, i))}
                     {activeUnitQuizzes.map((quiz) => {
-                      const q = quiz as unknown as { id: number; title: string; questionCount: number; timeLimitMinutes?: number | null };
+                      const q = quiz as unknown as { id: number; title: string; description?: string | null; questionCount: number; timeLimitMinutes?: number | null };
                       return (
                         <div key={q.id} className="rounded-xl border border-violet-200/80 bg-violet-50/40 dark:bg-violet-950/10 shadow-sm p-3.5 flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-violet-100 dark:bg-violet-900/40">
@@ -560,6 +563,7 @@ export default function CourseView() {
                               {q.timeLimitMinutes && <span className="text-xs text-muted-foreground flex items-center gap-1"><Timer className="w-3 h-3" />{q.timeLimitMinutes} min</span>}
                             </div>
                             <p className="text-sm font-semibold truncate">{q.title}</p>
+                            {q.description && <p className="text-xs text-muted-foreground truncate">{q.description}</p>}
                             <p className="text-xs text-muted-foreground">{q.questionCount} question{q.questionCount !== 1 ? "s" : ""}</p>
                           </div>
                           <Link href={`/s/quiz/${q.id}`}>
@@ -571,7 +575,7 @@ export default function CourseView() {
                       );
                     })}
                     {activeUnitAssignments.map((a) => {
-                      const aTyped = a as unknown as { id: number; title: string; dueDate: string; maxScore: number };
+                      const aTyped = a as unknown as { id: number; title: string; description?: string | null; dueDate: string; maxScore: number };
                       return (
                         <div key={aTyped.id} className="rounded-xl border border-blue-200/80 bg-blue-50/40 dark:bg-blue-950/10 shadow-sm p-3.5 flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-blue-100 dark:bg-blue-900/40">
@@ -583,6 +587,7 @@ export default function CourseView() {
                               <span className="text-xs text-muted-foreground">Due: {new Date(aTyped.dueDate).toLocaleDateString()}</span>
                             </div>
                             <p className="text-sm font-semibold truncate">{aTyped.title}</p>
+                            {aTyped.description && <p className="text-xs text-muted-foreground truncate">{aTyped.description}</p>}
                             <p className="text-xs text-muted-foreground">Max score: {aTyped.maxScore}</p>
                           </div>
                         </div>
@@ -629,6 +634,9 @@ export default function CourseView() {
                         )}
                       </div>
                       <p className="text-sm font-bold">{quiz.title}</p>
+                      {(quiz as unknown as { description?: string }).description && (
+                        <p className="text-xs text-muted-foreground truncate">{(quiz as unknown as { description?: string }).description}</p>
+                      )}
                       <p className="text-xs text-muted-foreground">{quiz.questionCount} question{quiz.questionCount !== 1 ? "s" : ""}</p>
                     </div>
                     <Link href={`/student/quizzes/${quiz.id}`}>
@@ -672,6 +680,9 @@ export default function CourseView() {
                           )}
                         </div>
                         <p className="text-sm font-bold">{a.title}</p>
+                        {(a as unknown as { description?: string }).description && (
+                          <p className="text-xs text-muted-foreground truncate">{(a as unknown as { description?: string }).description}</p>
+                        )}
                         <p className="text-xs text-muted-foreground">Due: {format(new Date(a.dueDate), "MMM d, yyyy")} · Max: {a.maxScore}</p>
                       </div>
                       {!isSubmitted && !isWriting && (

@@ -182,6 +182,7 @@ export const ListLessonsResponseItem = zod.object({
   chapterId: zod.number().nullable(),
   chapterTitle: zod.string().nullable(),
   title: zod.string(),
+  description: zod.string(),
   content: zod.string(),
   videoUrl: zod.string().nullable(),
   imageUrl: zod.string().nullable(),
@@ -203,6 +204,7 @@ export const CreateLessonParams = zod.object({
 
 export const CreateLessonBody = zod.object({
   title: zod.string(),
+  description: zod.string().optional(),
   content: zod.string(),
   videoUrl: zod.string().nullish(),
   imageUrl: zod.string().nullish(),
@@ -227,6 +229,7 @@ export const GetLessonResponse = zod.object({
   chapterId: zod.number().nullable(),
   chapterTitle: zod.string().nullable(),
   title: zod.string(),
+  description: zod.string(),
   content: zod.string(),
   videoUrl: zod.string().nullable(),
   imageUrl: zod.string().nullable(),
@@ -248,6 +251,7 @@ export const UpdateLessonParams = zod.object({
 
 export const UpdateLessonBody = zod.object({
   title: zod.string().optional(),
+  description: zod.string().optional(),
   content: zod.string().optional(),
   videoUrl: zod.string().nullish(),
   imageUrl: zod.string().nullish(),
@@ -264,6 +268,7 @@ export const UpdateLessonResponse = zod.object({
   chapterId: zod.number().nullable(),
   chapterTitle: zod.string().nullable(),
   title: zod.string(),
+  description: zod.string(),
   content: zod.string(),
   videoUrl: zod.string().nullable(),
   imageUrl: zod.string().nullable(),

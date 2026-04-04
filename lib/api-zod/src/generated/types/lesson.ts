@@ -14,6 +14,7 @@ export interface Lesson {
   /** @nullable */
   chapterTitle: string | null;
   title: string;
+  description: string;
   content: string;
   /** @nullable */
   videoUrl: string | null;

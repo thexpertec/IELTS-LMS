@@ -8,6 +8,7 @@
 
 export interface CreateLessonBody {
   title: string;
+  description?: string;
   content: string;
   /** @nullable */
   videoUrl?: string | null;

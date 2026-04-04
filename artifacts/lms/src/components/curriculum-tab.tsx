@@ -94,6 +94,9 @@ function LessonCard({
       </div>
       <div className="flex-1 min-w-0">
         <h4 className="font-medium text-sm truncate">{lesson.title}</h4>
+        {(lesson as unknown as { description?: string }).description && (
+          <p className="text-xs text-muted-foreground truncate mt-0.5">{(lesson as unknown as { description?: string }).description}</p>
+        )}
         <div className="flex items-center gap-2.5 text-xs text-muted-foreground mt-0.5">
           {lesson.videoUrl && <span className="flex items-center gap-1"><Video className="w-3 h-3" /> Video</span>}
           {lesson.durationMinutes && <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {lesson.durationMinutes} min</span>}
@@ -127,8 +130,8 @@ function LessonCard({
 
 // ── UnitSection ──────────────────────────────────────────────────────────────
 
-type QuizItem = { id: number; title: string; questionCount: number; timeLimitMinutes?: number | null; chapterId?: number | null; lessonType?: string | null };
-type AssignmentItem = { id: number; title: string; dueDate: string; maxScore: number; chapterId?: number | null; lessonType?: string | null };
+type QuizItem = { id: number; title: string; description?: string | null; questionCount: number; timeLimitMinutes?: number | null; chapterId?: number | null; lessonType?: string | null };
+type AssignmentItem = { id: number; title: string; description?: string | null; dueDate: string; maxScore: number; chapterId?: number | null; lessonType?: string | null };
 
 function UnitSection({
   chapter, lessons, quizzes, assignments, courseId, onEditLesson, onDeleteLesson, onRenameChapter, onDeleteChapter,
@@ -246,6 +249,7 @@ function UnitSection({
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="font-medium text-sm truncate">{quiz.title}</h4>
+                      {quiz.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{quiz.description}</p>}
                       <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
                         <span>{quiz.questionCount} question{quiz.questionCount !== 1 ? "s" : ""}</span>
                         {quiz.timeLimitMinutes && <span className="flex items-center gap-1"><Timer className="w-3 h-3" />{quiz.timeLimitMinutes} min</span>}
@@ -266,6 +270,7 @@ function UnitSection({
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="font-medium text-sm truncate">{a.title}</h4>
+                      {a.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{a.description}</p>}
                       <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
                         <span>Due: {new Date(a.dueDate).toLocaleDateString()}</span>
                         <span>Max: {a.maxScore}</span>
@@ -587,6 +592,9 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
                 </div>
                 <div className="min-w-0">
                   <h4 className="font-semibold truncate">{quiz.title}</h4>
+                  {(quiz as unknown as { description?: string }).description && (
+                    <p className="text-xs text-muted-foreground truncate">{(quiz as unknown as { description?: string }).description}</p>
+                  )}
                   <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
                     <span>{quiz.questionCount} question{quiz.questionCount !== 1 ? "s" : ""}</span>
                     {quiz.timeLimitMinutes && (
@@ -648,6 +656,9 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
                 </div>
                 <div className="min-w-0">
                   <h4 className="font-semibold truncate">{a.title}</h4>
+                  {(a as unknown as { description?: string }).description && (
+                    <p className="text-xs text-muted-foreground truncate">{(a as unknown as { description?: string }).description}</p>
+                  )}
                   <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
                     <span>Due: {format(new Date(a.dueDate), "MMM d, yyyy")}</span>
                     <span>Max score: {a.maxScore}</span>

@@ -8,6 +8,7 @@
 
 export interface UpdateLessonBody {
   title?: string;
+  description?: string;
   content?: string;
   /** @nullable */
   videoUrl?: string | null;

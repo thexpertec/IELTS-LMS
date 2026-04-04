@@ -45,6 +45,7 @@ function stripHtml(html: string) {
 
 const formSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters."),
+  description: z.string().max(200, "Keep it under 200 characters.").optional().or(z.literal("")),
   lessonType: z.string().min(1),
   content: z.string().refine(
     (val) => stripHtml(val).length >= 10,
@@ -79,6 +80,7 @@ export default function LessonNew() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
+      description: "",
       lessonType: presetLessonType,
       content: "",
       videoUrl: "",
@@ -106,6 +108,7 @@ export default function LessonNew() {
       courseId,
       data: {
         title: values.title,
+        description: values.description || "",
         lessonType: values.lessonType,
         content: values.content,
         videoUrl: values.videoUrl || null,
@@ -175,6 +178,21 @@ export default function LessonNew() {
               )}
             />
           </div>
+
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Short Description <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                <FormControl>
+                  <Input placeholder="A brief summary shown on lesson cards…" {...field} data-testid="input-description" />
+                </FormControl>
+                <FormDescription>Up to 200 characters. Displayed as a preview below the lesson title.</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
           {chapters.length > 0 && (
             <FormField
