@@ -26,7 +26,7 @@ import {
   Unlink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 interface ToolbarButtonProps {
   onClick: () => void;
@@ -244,6 +244,8 @@ export function RichTextEditor({
   className,
   minHeight = "220px",
 }: RichTextEditorProps) {
+  const isProgrammaticUpdate = useRef(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -258,6 +260,7 @@ export function RichTextEditor({
     ],
     content: value,
     onUpdate: ({ editor }) => {
+      if (isProgrammaticUpdate.current) return;
       const html = editor.getHTML();
       onChange(html === "<p></p>" ? "" : html);
     },
@@ -268,6 +271,17 @@ export function RichTextEditor({
       },
     },
   });
+
+  useEffect(() => {
+    if (!editor) return;
+    const currentHtml = editor.getHTML();
+    const normalizedCurrent = currentHtml === "<p></p>" ? "" : currentHtml;
+    if (value !== normalizedCurrent) {
+      isProgrammaticUpdate.current = true;
+      editor.commands.setContent(value, false);
+      isProgrammaticUpdate.current = false;
+    }
+  }, [editor, value]);
 
   if (!editor) return null;
 
