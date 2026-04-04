@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useGetQuiz } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -13,17 +13,21 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, Clock, List } from "lucide-react";
+import {
+  DndContext, useDraggable, useDroppable, type DragEndEvent,
+} from "@dnd-kit/core";
 
 // ─────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────
-type QType = "fill_blank" | "fill_blank_dropdown" | "dropdown" | "choose_word" | "matching" | "matching_3col" | "short_answer" | "true_false_ng" | "multi_select" | "writing";
+type QType = "fill_blank" | "fill_blank_dropdown" | "dropdown" | "choose_word" | "matching" | "matching_3col" | "drag_match" | "short_answer" | "true_false_ng" | "multi_select" | "writing";
 interface FillBlankOpts         { sentence: string; blanks: string[] }
 interface FillBlankDropdownOpts { instruction: string; sentences: string[]; choices: string[]; correct: string[] }
 interface DropdownOpts          { stem: string; choices: string[]; correct: string }
 interface ChooseWordOpts        { instruction: string; wordLimit: number; passageText?: string; imageUrl?: string; correct: string }
 interface MatchingOpts          { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[]; instruction?: string }
 interface Matching3ColOpts      { columns: [string, string, string]; answerColIndex: 0 | 1 | 2; rows: Array<{ a: string; b: string; c: string }>; instruction?: string }
+interface DragMatchOpts         { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[]; instruction?: string }
 interface ShortAnswerOpts       { prompt: string; correct?: string; wordLimit?: number }
 interface TrueFalseNgOpts       { statement: string; correct: "TRUE" | "FALSE" | "NOT GIVEN" | "" }
 interface MultiSelectOpts       { instruction: string; options: string[]; maxSelect: number; correct: number[] }
@@ -35,14 +39,25 @@ function isAnswered(qId: number, qType: QType, answers: AnswerMap): boolean {
   const ans = answers[qId];
   if (ans === undefined || ans === null) return false;
   if (qType === "fill_blank") return Array.isArray(ans) && (ans as string[]).some(Boolean);
-  if (qType === "matching" || qType === "matching_3col") return Object.keys(ans as Record<number, string>).length > 0;
+  if (qType === "matching" || qType === "matching_3col" || qType === "drag_match") return Object.keys(ans as Record<number, string>).length > 0;
   if (qType === "fill_blank_dropdown") return Object.keys(ans as Record<number, string>).length > 0;
   if (qType === "multi_select") return Array.isArray(ans) && (ans as number[]).length > 0;
   return typeof ans === "string" && ans.trim() !== "";
 }
 
+function shuffleStable<T>(arr: T[], seed: number): T[] {
+  const a = [...arr];
+  let s = seed;
+  for (let i = a.length - 1; i > 0; i--) {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    const j = Math.abs(s) % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 function questionSlots(q: { type: string; options: unknown }): number {
-  if (q.type === "matching") {
+  if (q.type === "matching" || q.type === "drag_match") {
     const opts = q.options as MatchingOpts;
     return Math.max(1, (opts.leftItems ?? []).filter(Boolean).length);
   }
@@ -291,6 +306,150 @@ function MatchingQuestion({
         );
       })}
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Drag & Drop Matching helper components
+// ─────────────────────────────────────────────
+
+function DraggableChip({ value, isPlaced }: { value: string; isPlaced?: boolean }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `chip:${value}` });
+  const style = transform
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+    : undefined;
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={cn(
+        "px-3 py-1.5 rounded-full text-xs font-semibold cursor-grab active:cursor-grabbing select-none touch-none transition-all",
+        isDragging && "opacity-50 scale-105 shadow-xl z-50",
+        isPlaced
+          ? "bg-primary text-primary-foreground shadow-sm"
+          : "bg-background border border-border shadow-sm hover:border-primary hover:shadow-md"
+      )}
+    >
+      {value}
+    </div>
+  );
+}
+
+function PoolDropZone({ poolChips }: { poolChips: string[] }) {
+  const { setNodeRef, isOver } = useDroppable({ id: "pool" });
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "flex flex-wrap gap-2 p-3 rounded-xl border-2 border-dashed min-h-[54px] transition-colors",
+        isOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 bg-muted/20"
+      )}
+    >
+      {poolChips.length === 0 && (
+        <span className="text-xs text-muted-foreground/50 select-none self-center">
+          All answers placed — drag back to unplace
+        </span>
+      )}
+      {poolChips.map((chip) => (
+        <DraggableChip key={chip} value={chip} />
+      ))}
+    </div>
+  );
+}
+
+function RowDropZone({ rowIdx, placedValue }: { rowIdx: number; placedValue?: string }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `row:${rowIdx}` });
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "min-h-[36px] rounded-lg border-2 border-dashed flex items-center px-2.5 py-1 transition-colors",
+        isOver
+          ? "border-primary bg-primary/8 scale-[1.01]"
+          : placedValue
+          ? "border-primary/40 bg-primary/5"
+          : "border-muted-foreground/25 bg-muted/10"
+      )}
+    >
+      {placedValue ? (
+        <DraggableChip value={placedValue} isPlaced />
+      ) : (
+        <span className="text-xs text-muted-foreground/40 select-none">Drop answer here…</span>
+      )}
+    </div>
+  );
+}
+
+function DragMatchQuestion({
+  opts, qId, answers, setAnswers, startNum,
+}: { opts: DragMatchOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; startNum: number }) {
+  const current = (answers[qId] as Record<number, string>) ?? {};
+
+  const allChips = useMemo(
+    () => shuffleStable(opts.rightItems.filter(Boolean), qId),
+    [opts.rightItems, qId]
+  );
+  const usedValues = new Set(Object.values(current));
+  const poolChips = allChips.filter((v) => !usedValues.has(v));
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const chipValue = String(active.id).replace(/^chip:/, "");
+    const targetId = String(over.id);
+    const newCurrent = { ...current };
+
+    Object.keys(newCurrent).forEach((key) => {
+      if (newCurrent[Number(key)] === chipValue) delete newCurrent[Number(key)];
+    });
+
+    if (targetId.startsWith("row:")) {
+      const rowIdx = Number(targetId.replace("row:", ""));
+      newCurrent[rowIdx] = chipValue;
+    }
+
+    setAnswers({ ...answers, [qId]: newCurrent });
+  };
+
+  return (
+    <DndContext onDragEnd={handleDragEnd}>
+      <div id={`q-${qId}`} className="space-y-3">
+        {opts.instruction && (
+          <p className="text-sm text-muted-foreground italic mb-1">{opts.instruction}</p>
+        )}
+
+        <div className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wide mb-1">
+          Answer pool — drag to place
+        </div>
+        <PoolDropZone poolChips={poolChips} />
+
+        <div className="space-y-1.5 mt-3">
+          <div className="grid grid-cols-[24px_1fr_1fr] gap-2 text-xs font-semibold text-muted-foreground px-1 mb-1">
+            <span />
+            <span>Prompt</span>
+            <span>Your Answer</span>
+          </div>
+          {opts.leftItems.filter(Boolean).map((item, i) => {
+            const placed = current[i];
+            return (
+              <div key={i} className="grid grid-cols-[24px_1fr_1fr] gap-3 items-center">
+                <span className={cn(
+                  "text-xs font-bold shrink-0",
+                  placed ? "text-primary" : "text-primary/50"
+                )}>
+                  {startNum + i}
+                </span>
+                <p className="text-sm px-3 py-2 bg-muted/60 rounded">{item}</p>
+                <RowDropZone rowIdx={i} placedValue={placed} />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </DndContext>
   );
 }
 
@@ -887,6 +1046,9 @@ export default function StudentQuizTake() {
                             )}
                             {q.type === "matching" && (
                               <MatchingQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} startNum={slotStart} />
+                            )}
+                            {q.type === "drag_match" && (
+                              <DragMatchQuestion opts={opts as DragMatchOpts} qId={q.id} answers={answers} setAnswers={setAnswers} startNum={slotStart} />
                             )}
                             {q.type === "matching_3col" && (
                               <Matching3ColQuestion opts={opts as Matching3ColOpts} qId={q.id} answers={answers} setAnswers={setAnswers} startNum={slotStart} />

@@ -2225,7 +2225,7 @@ components:
           type: integer
         type:
           type: string
-          enum: [fill_blank, fill_blank_dropdown, dropdown, choose_word, matching, matching_3col, short_answer, true_false_ng, multi_select, writing]
+          enum: [fill_blank, fill_blank_dropdown, dropdown, choose_word, matching, matching_3col, drag_match, short_answer, true_false_ng, multi_select, writing]
         order:
           type: integer
         questionText:
@@ -2366,7 +2366,7 @@ components:
       properties:
         type:
           type: string
-          enum: [fill_blank, fill_blank_dropdown, dropdown, choose_word, matching, matching_3col, short_answer, true_false_ng, multi_select, writing]
+          enum: [fill_blank, fill_blank_dropdown, dropdown, choose_word, matching, matching_3col, drag_match, short_answer, true_false_ng, multi_select, writing]
         order:
           type: integer
         questionText:

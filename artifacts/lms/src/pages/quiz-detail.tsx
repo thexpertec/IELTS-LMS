@@ -75,7 +75,7 @@ import { cn } from "@/lib/utils";
 // ─────────────────────────────────────────────
 // Types for the eight question formats
 // ─────────────────────────────────────────────
-type QType = "fill_blank" | "fill_blank_dropdown" | "dropdown" | "choose_word" | "matching" | "matching_3col" | "short_answer" | "true_false_ng" | "multi_select" | "writing";
+type QType = "fill_blank" | "fill_blank_dropdown" | "dropdown" | "choose_word" | "matching" | "matching_3col" | "drag_match" | "short_answer" | "true_false_ng" | "multi_select" | "writing";
 
 interface FillBlankOpts          { sentence: string; blanks: string[] }
 interface FillBlankDropdownOpts  { instruction: string; sentences: string[]; choices: string[]; correct: string[] }
@@ -83,11 +83,12 @@ interface DropdownOpts           { stem: string; choices: string[]; correct: str
 interface ChooseWordOpts         { instruction: string; wordLimit: number; passageText?: string; imageUrl?: string; correct: string }
 interface MatchingOpts           { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[]; instruction?: string }
 interface Matching3ColOpts       { columns: [string, string, string]; answerColIndex: 0 | 1 | 2; rows: Array<{ a: string; b: string; c: string }>; instruction?: string }
+interface DragMatchOpts          { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[]; instruction?: string }
 interface ShortAnswerOpts        { prompt: string; correct?: string; wordLimit?: number }
 interface TrueFalseNgOpts        { statement: string; correct: "TRUE" | "FALSE" | "NOT GIVEN" | "" }
 interface MultiSelectOpts        { instruction: string; options: string[]; maxSelect: number; correct: number[] }
 interface WritingOpts            { taskTitle?: string; minWords?: number; modelAnswer?: string }
-type QOptions = FillBlankOpts | FillBlankDropdownOpts | DropdownOpts | ChooseWordOpts | MatchingOpts | Matching3ColOpts | ShortAnswerOpts | TrueFalseNgOpts | MultiSelectOpts | WritingOpts;
+type QOptions = FillBlankOpts | FillBlankDropdownOpts | DropdownOpts | ChooseWordOpts | MatchingOpts | Matching3ColOpts | DragMatchOpts | ShortAnswerOpts | TrueFalseNgOpts | MultiSelectOpts | WritingOpts;
 
 const Q_TYPE_LABELS: Record<QType, string> = {
   fill_blank:          "Fill Blanks — Text Input",
@@ -96,6 +97,7 @@ const Q_TYPE_LABELS: Record<QType, string> = {
   choose_word:         "Choose One Word",
   matching:            "Column Matching",
   matching_3col:       "3-Column Matching",
+  drag_match:          "Drag & Drop Matching",
   short_answer:        "Short Answer",
   true_false_ng:       "True / False / Not Given",
   multi_select:        "Multiple Selection",
@@ -109,6 +111,7 @@ const Q_TYPE_COLORS: Record<QType, string> = {
   choose_word:         "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
   matching:            "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
   matching_3col:       "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+  drag_match:          "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300",
   short_answer:        "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300",
   true_false_ng:       "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
   multi_select:        "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
@@ -126,6 +129,7 @@ function defaultOptions(type: QType): QOptions {
     case "choose_word":         return { instruction: "Choose ONE WORD from the passage below.", wordLimit: 1, passageText: "", imageUrl: "", correct: "" };
     case "matching":            return { leftItems: ["", ""], rightItems: ["", ""], pairs: [], instruction: "" };
     case "matching_3col":       return { columns: ["Column A", "Column B", "Column C"], answerColIndex: 2, rows: [{ a: "", b: "", c: "" }, { a: "", b: "", c: "" }], instruction: "" };
+    case "drag_match":          return { leftItems: ["", ""], rightItems: ["", ""], pairs: [], instruction: "" };
     case "short_answer":        return { prompt: "", correct: "", wordLimit: undefined };
     case "true_false_ng":       return { statement: "", correct: "" };
     case "multi_select":        return { instruction: "", options: ["", "", "", ""], maxSelect: 2, correct: [] };
@@ -440,6 +444,72 @@ function MatchingEditor({ opts, onChange }: { opts: MatchingOpts; onChange: (o: 
             />
             <Input
               placeholder={`Matches with...`}
+              value={opts.rightItems[i]}
+              onChange={(e) => updateRight(i, e.target.value)}
+            />
+            {opts.leftItems.length > 2 && (
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeRow(i)}>
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            )}
+          </div>
+        ))}
+        <Button variant="outline" size="sm" onClick={addRow} type="button">
+          <Plus className="w-3.5 h-3.5 mr-1" /> Add Row
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function DragMatchEditor({ opts, onChange }: { opts: DragMatchOpts; onChange: (o: DragMatchOpts) => void }) {
+  const updateLeft  = (i: number, val: string) => { const a = [...opts.leftItems]; a[i] = val; onChange({ ...opts, leftItems: a }); };
+  const updateRight = (i: number, val: string) => { const a = [...opts.rightItems]; a[i] = val; onChange({ ...opts, rightItems: a }); };
+  const addRow = () => onChange({ ...opts, leftItems: [...opts.leftItems, ""], rightItems: [...opts.rightItems, ""] });
+  const removeRow = (i: number) => onChange({
+    ...opts,
+    leftItems: opts.leftItems.filter((_, idx) => idx !== i),
+    rightItems: opts.rightItems.filter((_, idx) => idx !== i),
+    pairs: opts.pairs.filter((p) => p.left !== i && p.right !== i),
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start gap-3 p-3 rounded-lg bg-cyan-50 border border-cyan-200 text-sm text-cyan-800 dark:bg-cyan-900/20 dark:border-cyan-800 dark:text-cyan-200">
+        <span className="text-lg shrink-0">🖱️</span>
+        <div>
+          <p className="font-semibold">Drag & Drop Matching</p>
+          <p className="text-xs mt-0.5 text-cyan-700 dark:text-cyan-300">
+            Students will see the <strong>Left Column</strong> as fixed prompts. The <strong>Right Column</strong> items become a shuffled pool of draggable chips — they drag each chip onto the correct prompt row.
+          </p>
+        </div>
+      </div>
+      <div>
+        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+          Instruction <span className="font-normal normal-case">(optional)</span>
+        </Label>
+        <Input
+          placeholder="e.g. Drag each answer to the correct category."
+          value={opts.instruction ?? ""}
+          onChange={(e) => onChange({ ...opts, instruction: e.target.value })}
+          className="text-sm"
+        />
+      </div>
+      <div className="space-y-2">
+        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-xs font-medium text-muted-foreground px-1">
+          <span>Prompt (left column — fixed)</span>
+          <span>Answer (draggable chip)</span>
+          <span className="w-8" />
+        </div>
+        {opts.leftItems.map((_, i) => (
+          <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+            <Input
+              placeholder={`Prompt ${i + 1}`}
+              value={opts.leftItems[i]}
+              onChange={(e) => updateLeft(i, e.target.value)}
+            />
+            <Input
+              placeholder={`Answer for prompt ${i + 1}`}
               value={opts.rightItems[i]}
               onChange={(e) => updateRight(i, e.target.value)}
             />
@@ -785,6 +855,10 @@ function QuestionSummary({ type, options }: { type: QType; options: QOptions }) 
   if (type === "matching") {
     const o = options as MatchingOpts;
     return <p className="text-xs text-muted-foreground">{o.leftItems.filter(Boolean).length} pairs</p>;
+  }
+  if (type === "drag_match") {
+    const o = options as DragMatchOpts;
+    return <p className="text-xs text-muted-foreground">{o.leftItems.filter(Boolean).length} pairs · drag & drop</p>;
   }
   if (type === "matching_3col") {
     const o = options as Matching3ColOpts;
@@ -1543,6 +1617,9 @@ export default function QuizDetail() {
             )}
             {qType === "matching" && (
               <MatchingEditor opts={qOptions as MatchingOpts} onChange={(o) => setQOptions(o)} />
+            )}
+            {qType === "drag_match" && (
+              <DragMatchEditor opts={qOptions as DragMatchOpts} onChange={(o) => setQOptions(o)} />
             )}
             {qType === "matching_3col" && (
               <Matching3ColEditor opts={qOptions as Matching3ColOpts} onChange={(o) => setQOptions(o)} />
