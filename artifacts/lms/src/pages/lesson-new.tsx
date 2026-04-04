@@ -1,5 +1,5 @@
 import { useCreateLesson, useListChapters, getListLessonsQueryKey } from "@workspace/api-client-react";
-import { useLocation, useParams } from "wouter";
+import { useLocation, useParams, useSearch } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,12 +26,21 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 
+const LESSON_TYPES = [
+  { id: "reading",   label: "Reading" },
+  { id: "writing",   label: "Writing" },
+  { id: "listening", label: "Listening" },
+  { id: "speaking",  label: "Speaking" },
+  { id: "grammar",   label: "Grammar" },
+] as const;
+
 function stripHtml(html: string) {
   return html.replace(/<[^>]*>/g, "").trim();
 }
 
 const formSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters."),
+  lessonType: z.string().min(1),
   content: z.string().refine(
     (val) => stripHtml(val).length >= 10,
     "Content must be at least 10 characters."
@@ -48,8 +57,13 @@ export default function LessonNew() {
   const { id: idStr } = useParams();
   const courseId = Number(idStr);
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const params = new URLSearchParams(search);
+  const presetChapterId = params.get("chapterId") ?? "none";
+  const presetLessonType = params.get("lessonType") ?? "reading";
 
   const { data: chapters = [] } = useListChapters(courseId);
 
@@ -57,11 +71,12 @@ export default function LessonNew() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
+      lessonType: presetLessonType,
       content: "",
       videoUrl: "",
       durationMinutes: "",
       order: 1,
-      chapterId: "none",
+      chapterId: presetChapterId,
     },
   });
 
@@ -70,7 +85,7 @@ export default function LessonNew() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListLessonsQueryKey(courseId) });
         toast({ title: "Lesson created successfully" });
-        setLocation(`/courses/${courseId}`);
+        setLocation(`/courses/${courseId}?tab=curriculum&sub=units`);
       },
       onError: () => {
         toast({ title: "Failed to create lesson", variant: "destructive" });
@@ -83,6 +98,7 @@ export default function LessonNew() {
       courseId,
       data: {
         title: values.title,
+        lessonType: values.lessonType,
         content: values.content,
         videoUrl: values.videoUrl || null,
         durationMinutes: values.durationMinutes ? Number(values.durationMinutes) : null,
@@ -111,19 +127,44 @@ export default function LessonNew() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 bg-card border rounded-lg p-6">
-          <FormField
-            control={form.control}
-            name="title"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Lesson Title</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g. Introduction to Variables" {...field} data-testid="input-title" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Lesson Title</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. Introduction to Variables" {...field} data-testid="input-title" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="lessonType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Lesson Type</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-lesson-type">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {LESSON_TYPES.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
           {chapters.length > 0 && (
             <FormField
@@ -131,15 +172,15 @@ export default function LessonNew() {
               name="chapterId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Chapter</FormLabel>
+                  <FormLabel>Unit</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value ?? "none"}>
                     <FormControl>
                       <SelectTrigger data-testid="select-chapter">
-                        <SelectValue placeholder="No chapter" />
+                        <SelectValue placeholder="No unit" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="none">— No chapter —</SelectItem>
+                      <SelectItem value="none">— No unit —</SelectItem>
                       {chapters.map((ch) => (
                         <SelectItem key={ch.id} value={String(ch.id)}>{ch.title}</SelectItem>
                       ))}

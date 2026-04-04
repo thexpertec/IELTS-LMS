@@ -15,8 +15,9 @@ import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, CheckCircle, Circle, Play, FileText, BookOpen,
   Clock, ClipboardList, Timer, ChevronDown, ChevronUp, Send,
-  CheckCheck, GraduationCap, FolderOpen, Megaphone, MessageSquare,
-  Calendar, Award, User, Zap, Pencil, AlertCircle,
+  CheckCheck, GraduationCap, Megaphone, MessageSquare,
+  Calendar, Award, Zap, Pencil, AlertCircle,
+  Layers, BookText, PenLine, Headphones, Mic, AlignLeft,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -112,7 +113,7 @@ export default function CourseView() {
   const [expandedLesson, setExpandedLesson] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState<Record<number, string>>({});
   const [discussionText, setDiscussionText] = useState("");
-  const [curriculumSub, setCurriculumSub] = useState<"lessons" | "quizzes" | "assignments">("lessons");
+  const [unitTypeTabs, setUnitTypeTabs] = useState<Record<number, string>>({});
 
   // ── Queries ─────────────────────────────────────────────────────────────────
 
@@ -440,127 +441,168 @@ export default function CourseView() {
 
   // ── Curriculum tab ────────────────────────────────────────────────────────
 
+  const STUDENT_LESSON_TYPES = [
+    { id: "reading",   label: "Reading",   Icon: BookText,   color: "text-blue-600",   activeBg: "bg-blue-50 dark:bg-blue-950/30",   border: "border-blue-500" },
+    { id: "writing",   label: "Writing",   Icon: PenLine,    color: "text-purple-600", activeBg: "bg-purple-50 dark:bg-purple-950/30", border: "border-purple-500" },
+    { id: "listening", label: "Listening", Icon: Headphones, color: "text-green-600",  activeBg: "bg-green-50 dark:bg-green-950/30",  border: "border-green-500" },
+    { id: "speaking",  label: "Speaking",  Icon: Mic,        color: "text-orange-600", activeBg: "bg-orange-50 dark:bg-orange-950/30", border: "border-orange-500" },
+    { id: "grammar",   label: "Grammar",   Icon: AlignLeft,  color: "text-rose-600",   activeBg: "bg-rose-50 dark:bg-rose-950/30",    border: "border-rose-500" },
+  ];
+
   function CurriculumPanel() {
-    const subTabs: { id: typeof curriculumSub; label: string; count: number }[] = [
-      { id: "lessons",     label: "Lessons",     count: lessons.length },
-      { id: "quizzes",     label: "Quizzes",     count: quizzes.length },
-      { id: "assignments", label: "Assignments", count: assignments.length },
-    ];
+    if (lessons.length === 0) {
+      return <EmptyState icon={<BookOpen />} message="No lessons available yet." />;
+    }
+
+    const chapterIds = new Set(sortedChapters.map((c) => c.id));
+
+    // Units with lessons
+    const units = sortedChapters
+      .map((chapter) => ({
+        chapter,
+        lessons: lessons.filter((l) => l.chapterId === chapter.id),
+      }))
+      .filter((u) => u.lessons.length > 0);
+
+    const unassigned = lessons.filter((l) => !l.chapterId || !chapterIds.has(l.chapterId!));
 
     return (
       <div className="space-y-4">
-        {/* Sub-tabs */}
-        <div className="flex gap-1 border-b">
-          {subTabs.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setCurriculumSub(t.id)}
-              className={cn(
-                "px-4 py-2 text-sm font-medium border-b-2 -mb-[1px] transition-colors whitespace-nowrap",
-                curriculumSub === t.id ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {t.label}
-              {t.count > 0 && (
-                <span className={cn("ml-1.5 text-xs px-1.5 py-0.5 rounded-full",
-                  curriculumSub === t.id ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-                )}>{t.count}</span>
-              )}
-            </button>
-          ))}
-        </div>
+        {units.map(({ chapter, lessons: unitLessons }) => {
+          const activeType = unitTypeTabs[chapter.id] ?? "reading";
+          const setActiveType = (t: string) =>
+            setUnitTypeTabs((prev) => ({ ...prev, [chapter.id]: t }));
 
-        {/* Lessons */}
-        {curriculumSub === "lessons" && (
-          lessons.length === 0 ? (
-            <EmptyState icon={<BookOpen />} message="No lessons available yet." />
-          ) : sortedChapters.length > 0 ? (
-            <div className="space-y-4">
-              {sortedChapters.map((chapter) => {
-                const cl = lessons.filter((l) => l.chapterId === chapter.id);
-                if (!cl.length) return null;
-                return (
-                  <div key={chapter.id} className="space-y-2">
-                    <div className="flex items-center gap-2 px-1">
-                      <FolderOpen className="w-4 h-4 text-primary/70 shrink-0" />
-                      <h3 className="text-sm font-bold">{chapter.title}</h3>
-                      <span className="text-xs text-muted-foreground">{cl.filter((l) => l.isCompleted).length}/{cl.length} done</span>
-                    </div>
-                    <div className="space-y-2 pl-3 border-l-2 border-primary/20 ml-2">
-                      {cl.map((l, i) => renderLesson(l, i))}
-                    </div>
+          const completedCount = unitLessons.filter((l) => l.isCompleted).length;
+
+          const lessonsByType = STUDENT_LESSON_TYPES.map((t) => ({
+            ...t,
+            lessons: unitLessons.filter((l) => ((l as unknown as { lessonType?: string }).lessonType ?? "reading") === t.id),
+          }));
+
+          const activeLessons = lessonsByType.find((t) => t.id === activeType)?.lessons ?? [];
+
+          return (
+            <div key={chapter.id} className="border rounded-xl overflow-hidden shadow-sm">
+              {/* Unit header */}
+              <div className="flex items-center gap-2.5 px-4 py-3 bg-muted/40 border-b">
+                <Layers className="w-4 h-4 text-primary/70 shrink-0" />
+                <h3 className="text-sm font-bold flex-1">{chapter.title}</h3>
+                <span className="text-xs text-muted-foreground">
+                  {completedCount}/{unitLessons.length} done
+                </span>
+              </div>
+
+              {/* Lesson type tab bar */}
+              <div className="flex items-center gap-0 border-b overflow-x-auto bg-card">
+                {lessonsByType.map((t) => {
+                  const { Icon } = t;
+                  const isActive = activeType === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => setActiveType(t.id)}
+                      className={cn(
+                        "flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 -mb-[1px] transition-colors whitespace-nowrap shrink-0",
+                        isActive
+                          ? `${t.border} ${t.color}`
+                          : "border-transparent text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      {t.label}
+                      {t.lessons.length > 0 && (
+                        <span className={cn(
+                          "px-1.5 py-0.5 rounded-full text-[10px]",
+                          isActive ? cn(t.activeBg, t.color) : "bg-muted text-muted-foreground"
+                        )}>
+                          {t.lessons.length}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Active type lessons */}
+              <div className="bg-card p-3 space-y-2 min-h-[72px]">
+                {activeLessons.length === 0 ? (
+                  <div className="flex items-center justify-center h-12 text-xs text-muted-foreground/50 italic">
+                    No {activeType} lessons in this unit.
                   </div>
-                );
-              })}
-              {unassignedLessons.length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">Other Lessons</h3>
-                  <div className="space-y-2">{unassignedLessons.map((l, i) => renderLesson(l, i))}</div>
-                </div>
-              )}
+                ) : (
+                  activeLessons.map((l, i) => renderLesson(l, i))
+                )}
+              </div>
             </div>
-          ) : (
-            <div className="space-y-3">{lessons.map((l, i) => renderLesson(l, i))}</div>
-          )
+          );
+        })}
+
+        {/* Unassigned lessons (no unit) */}
+        {unassigned.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
+              Other Lessons
+            </h3>
+            <div className="space-y-2">
+              {unassigned.map((l, i) => renderLesson(l, i))}
+            </div>
+          </div>
         )}
 
-        {/* Quizzes */}
-        {curriculumSub === "quizzes" && (
-          quizzes.length === 0 ? (
-            <EmptyState icon={<ClipboardList />} message="No quizzes available for this course." />
-          ) : (
-            <div className="space-y-3">
+        {/* Course quizzes (all) */}
+        {quizzes.length > 0 && (
+          <div className="space-y-2 pt-2 border-t">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 flex items-center gap-1.5">
+              <ClipboardList className="w-3.5 h-3.5" />Quizzes
+            </h3>
+            <div className="space-y-2">
               {quizzes.map((quiz) => (
-                <div key={quiz.id} className="bg-card rounded-xl border shadow-sm p-4 sm:p-5">
-                  <div className="flex items-start justify-between gap-4">
+                <div key={quiz.id} className="bg-card rounded-xl border shadow-sm p-4">
+                  <div className="flex items-center justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <Badge variant="secondary" className="text-[10px] h-4 px-1.5 bg-violet-100 text-violet-700 border-0">
                           <Zap className="w-2.5 h-2.5 mr-0.5" />Quiz
                         </Badge>
-                      </div>
-                      <h3 className="text-base font-bold">{quiz.title}</h3>
-                      {quiz.description && <p className="text-sm text-muted-foreground mt-1">{quiz.description}</p>}
-                      <div className="flex items-center gap-3 mt-2">
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <ClipboardList className="w-3 h-3" />
-                          {quiz.questionCount} question{quiz.questionCount !== 1 ? "s" : ""}
-                        </div>
                         {quiz.timeLimitMinutes && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
                             <Timer className="w-3 h-3" />{quiz.timeLimitMinutes} min
-                          </div>
+                          </span>
                         )}
                       </div>
+                      <p className="text-sm font-bold">{quiz.title}</p>
+                      <p className="text-xs text-muted-foreground">{quiz.questionCount} question{quiz.questionCount !== 1 ? "s" : ""}</p>
                     </div>
                     <Link href={`/student/quizzes/${quiz.id}`}>
                       <Button size="sm" className="shrink-0 gap-1.5 text-xs h-8">
-                        <Play className="w-3 h-3" />Start Quiz
+                        <Play className="w-3 h-3" />Start
                       </Button>
                     </Link>
                   </div>
                 </div>
               ))}
             </div>
-          )
+          </div>
         )}
 
-        {/* Assignments */}
-        {curriculumSub === "assignments" && (
-          assignments.length === 0 ? (
-            <EmptyState icon={<FileText />} message="No assignments for this course." />
-          ) : (
-            <div className="space-y-3">
+        {/* Course assignments */}
+        {assignments.length > 0 && (
+          <div className="space-y-2 pt-2 border-t">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5" />Assignments
+            </h3>
+            <div className="space-y-2">
               {assignments.map((a) => {
                 const isSubmitted = !!a.submission;
                 const draftContent = submitting[a.id] ?? "";
                 const isWriting = a.id in submitting;
                 return (
                   <div key={a.id} className={cn(
-                    "bg-card rounded-xl border shadow-sm p-4 sm:p-5 space-y-3",
+                    "bg-card rounded-xl border shadow-sm p-4 space-y-3",
                     isSubmitted && "border-green-500/30 bg-green-50/40 dark:bg-green-950/10"
                   )}>
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <Badge variant="secondary" className="text-[10px] h-4 px-1.5 bg-blue-100 text-blue-700 border-0">
@@ -572,12 +614,8 @@ export default function CourseView() {
                             </Badge>
                           )}
                         </div>
-                        <h3 className="text-base font-bold">{a.title}</h3>
-                        {a.description && <p className="text-sm text-muted-foreground mt-1">{a.description}</p>}
-                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                          <span>Due: <span className="font-medium">{format(new Date(a.dueDate), "MMM d, yyyy")}</span></span>
-                          <span>Max score: <span className="font-medium">{a.maxScore}</span></span>
-                        </div>
+                        <p className="text-sm font-bold">{a.title}</p>
+                        <p className="text-xs text-muted-foreground">Due: {format(new Date(a.dueDate), "MMM d, yyyy")} · Max: {a.maxScore}</p>
                       </div>
                       {!isSubmitted && !isWriting && (
                         <Button size="sm" variant="outline" className="shrink-0 gap-1.5 text-xs h-8"
@@ -593,9 +631,6 @@ export default function CourseView() {
                         <p className="text-sm text-muted-foreground">{a.submission!.content}</p>
                         {a.submission!.score !== undefined && (
                           <p className="text-xs font-semibold text-green-700 mt-2">Score: {a.submission!.score} / {a.maxScore}</p>
-                        )}
-                        {a.submission!.feedback && (
-                          <p className="text-xs text-muted-foreground mt-1">Feedback: {a.submission!.feedback}</p>
                         )}
                       </div>
                     )}
@@ -621,7 +656,7 @@ export default function CourseView() {
                 );
               })}
             </div>
-          )
+          </div>
         )}
       </div>
     );

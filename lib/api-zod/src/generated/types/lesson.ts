@@ -19,6 +19,7 @@ export interface Lesson {
   videoUrl: string | null;
   /** @nullable */
   durationMinutes: number | null;
+  lessonType: string;
   order: number;
   createdAt: Date;
   updatedAt: Date;

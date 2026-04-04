@@ -13,6 +13,7 @@ export interface UpdateLessonBody {
   videoUrl?: string | null;
   /** @nullable */
   durationMinutes?: number | null;
+  lessonType?: string;
   order?: number;
   /** @nullable */
   chapterId?: number | null;

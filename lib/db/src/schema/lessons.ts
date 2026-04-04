@@ -12,6 +12,7 @@ export const lessonsTable = pgTable("lessons", {
   content: text("content").notNull().default(""),
   videoUrl: text("video_url"),
   durationMinutes: integer("duration_minutes"),
+  lessonType: text("lesson_type").notNull().default("reading"),
   order: integer("order").notNull().default(1),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

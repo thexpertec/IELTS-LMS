@@ -20,8 +20,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
   BookOpen, Plus, Video, Clock, GripVertical, Trash2, Edit,
-  ChevronDown, ChevronRight, FolderOpen, LayoutList, Pencil, Check, X,
-  ClipboardList, Timer, FileText, AlertCircle,
+  ChevronDown, ChevronRight, LayoutList, Pencil, Check, X,
+  ClipboardList, Timer, FileText, Layers,
+  Headphones, Mic, PenLine, BookText, AlignLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,12 +37,27 @@ import {
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
+// ── Lesson types ────────────────────────────────────────────────────────────
+
+const LESSON_TYPES = [
+  { id: "reading",   label: "Reading",   icon: BookText,  color: "text-blue-600",   bg: "bg-blue-50 dark:bg-blue-950/30" },
+  { id: "writing",   label: "Writing",   icon: PenLine,   color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/30" },
+  { id: "listening", label: "Listening", icon: Headphones, color: "text-green-600", bg: "bg-green-50 dark:bg-green-950/30" },
+  { id: "speaking",  label: "Speaking",  icon: Mic,        color: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-950/30" },
+  { id: "grammar",   label: "Grammar",   icon: AlignLeft,  color: "text-rose-600",  bg: "bg-rose-50 dark:bg-rose-950/30" },
+] as const;
+
+type LessonTypeId = typeof LESSON_TYPES[number]["id"];
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
 type Lesson = {
   id: number;
   title: string;
   videoUrl?: string | null;
   durationMinutes?: number | null;
   chapterId?: number | null;
+  lessonType?: string | null;
   order: number;
 };
 
@@ -51,35 +67,42 @@ type Chapter = {
   order: number;
 };
 
+// ── LessonCard ───────────────────────────────────────────────────────────────
+
 function LessonCard({
   lesson, index, courseId, onEdit, onDelete,
 }: {
   lesson: Lesson; index: number; courseId: number;
   onEdit: () => void; onDelete: () => void;
 }) {
+  const typeInfo = LESSON_TYPES.find((t) => t.id === lesson.lessonType) ?? LESSON_TYPES[0];
+  const TypeIcon = typeInfo.icon;
   return (
-    <Card className="flex flex-row items-center p-4 hover:border-primary/50 transition-colors">
-      <div className="text-muted-foreground cursor-grab mr-4">
-        <GripVertical className="w-5 h-5" />
+    <Card className="flex flex-row items-center p-3.5 hover:border-primary/50 transition-colors gap-3">
+      <div className="text-muted-foreground cursor-grab">
+        <GripVertical className="w-4 h-4" />
       </div>
-      <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center mr-4 font-semibold text-primary text-sm flex-shrink-0">
+      <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0", typeInfo.bg)}>
+        <TypeIcon className={cn("w-3.5 h-3.5", typeInfo.color)} />
+      </div>
+      <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0 text-xs font-semibold text-muted-foreground">
         {index + 1}
       </div>
       <div className="flex-1 min-w-0">
-        <h4 className="font-medium truncate">{lesson.title}</h4>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+        <h4 className="font-medium text-sm truncate">{lesson.title}</h4>
+        <div className="flex items-center gap-2.5 text-xs text-muted-foreground mt-0.5">
           {lesson.videoUrl && <span className="flex items-center gap-1"><Video className="w-3 h-3" /> Video</span>}
           {lesson.durationMinutes && <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {lesson.durationMinutes} min</span>}
         </div>
       </div>
-      <div className="flex items-center gap-2 ml-4">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
-          <Edit className="w-4 h-4" />
+      <div className="flex items-center gap-1 ml-2">
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
+          <Edit className="w-3.5 h-3.5" />
         </Button>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-              <Trash2 className="w-4 h-4" />
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
+              <Trash2 className="w-3.5 h-3.5" />
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
@@ -98,7 +121,9 @@ function LessonCard({
   );
 }
 
-function ChapterSection({
+// ── UnitSection ──────────────────────────────────────────────────────────────
+
+function UnitSection({
   chapter, lessons, courseId, onEditLesson, onDeleteLesson, onRenameChapter, onDeleteChapter,
 }: {
   chapter: Chapter; lessons: Lesson[]; courseId: number;
@@ -106,15 +131,28 @@ function ChapterSection({
   onRenameChapter: (c: Chapter) => void; onDeleteChapter: (c: Chapter) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [activeType, setActiveType] = useState<LessonTypeId>("reading");
+
+  const lessonsByType = LESSON_TYPES.map((t) => ({
+    ...t,
+    lessons: lessons.filter((l) => (l.lessonType ?? "reading") === t.id).sort((a, b) => a.order - b.order),
+  }));
+
+  const activeLessons = lessonsByType.find((t) => t.id === activeType)?.lessons ?? [];
+
   return (
-    <div className="border rounded-lg overflow-hidden">
-      <div className="flex items-center gap-3 px-4 py-3 bg-muted/40 border-b">
-        <button onClick={() => setCollapsed(!collapsed)} className="text-muted-foreground hover:text-foreground transition-colors">
+    <div className="border rounded-xl overflow-hidden shadow-sm">
+      {/* Unit header */}
+      <div className="flex items-center gap-2.5 px-4 py-3 bg-muted/40 border-b">
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+        >
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
-        <FolderOpen className="w-4 h-4 text-primary/70" />
+        <Layers className="w-4 h-4 text-primary/70 shrink-0" />
         <span className="font-semibold text-sm flex-1">{chapter.title}</span>
-        <span className="text-xs text-muted-foreground mr-2">{lessons.length} lesson{lessons.length !== 1 ? "s" : ""}</span>
+        <span className="text-xs text-muted-foreground mr-1">{lessons.length} lesson{lessons.length !== 1 ? "s" : ""}</span>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onRenameChapter(chapter)}>
           <Pencil className="w-3.5 h-3.5" />
         </Button>
@@ -126,7 +164,7 @@ function ChapterSection({
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Chapter</AlertDialogTitle>
+              <AlertDialogTitle>Delete Unit</AlertDialogTitle>
               <AlertDialogDescription>Delete "{chapter.title}"? Lessons will become unassigned.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -136,27 +174,76 @@ function ChapterSection({
           </AlertDialogContent>
         </AlertDialog>
       </div>
+
       {!collapsed && (
-        <div className="p-3 space-y-2 bg-card">
-          {lessons.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-4 italic">No lessons in this chapter yet.</p>
-          ) : (
-            lessons.map((lesson, idx) => (
-              <LessonCard
-                key={lesson.id}
-                lesson={lesson}
-                index={idx}
-                courseId={courseId}
-                onEdit={() => onEditLesson(lesson.id)}
-                onDelete={() => onDeleteLesson(lesson.id)}
-              />
-            ))
-          )}
+        <div className="bg-card">
+          {/* Lesson type tab bar */}
+          <div className="flex items-center gap-0 border-b overflow-x-auto">
+            {lessonsByType.map((t) => {
+              const Icon = t.icon;
+              const isActive = activeType === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveType(t.id as LessonTypeId)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 -mb-[1px] transition-colors whitespace-nowrap shrink-0",
+                    isActive
+                      ? `border-current ${t.color}`
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {t.label}
+                  {t.lessons.length > 0 && (
+                    <span className={cn(
+                      "px-1.5 py-0.5 rounded-full text-[10px]",
+                      isActive ? cn(t.bg, t.color) : "bg-muted text-muted-foreground"
+                    )}>
+                      {t.lessons.length}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Lesson list for active type */}
+          <div className="p-3 space-y-2 min-h-[80px]">
+            {activeLessons.length === 0 ? (
+              <div className="flex items-center justify-center h-16 text-xs text-muted-foreground/60 italic">
+                No {activeType} lessons in this unit yet.
+              </div>
+            ) : (
+              activeLessons.map((lesson, idx) => (
+                <LessonCard
+                  key={lesson.id}
+                  lesson={lesson}
+                  index={idx}
+                  courseId={courseId}
+                  onEdit={() => onEditLesson(lesson.id)}
+                  onDelete={() => onDeleteLesson(lesson.id)}
+                />
+              ))
+            )}
+          </div>
+
+          {/* Add lesson in this type */}
+          <div className="px-3 pb-3">
+            <Link href={`/courses/${courseId}/lessons/new?chapterId=${chapter.id}&lessonType=${activeType}`}>
+              <Button size="sm" variant="outline" className="w-full text-xs gap-1.5 h-8 border-dashed">
+                <Plus className="w-3.5 h-3.5" />
+                Add {LESSON_TYPES.find((t) => t.id === activeType)?.label} Lesson
+              </Button>
+            </Link>
+          </div>
         </div>
       )}
     </div>
   );
 }
+
+// ── Main CurriculumTab ───────────────────────────────────────────────────────
 
 export function CurriculumTab({ courseId }: { courseId: number }) {
   const [, setLocation] = useLocation();
@@ -164,8 +251,8 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const [addingChapter, setAddingChapter] = useState(false);
-  const [newChapterTitle, setNewChapterTitle] = useState("");
+  const [addingUnit, setAddingUnit] = useState(false);
+  const [newUnitTitle, setNewUnitTitle] = useState("");
   const [renamingChapter, setRenamingChapter] = useState<Chapter | null>(null);
   const [renameTitle, setRenameTitle] = useState("");
 
@@ -206,9 +293,9 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListChaptersQueryKey(courseId) });
-        toast({ title: "Chapter created" });
-        setAddingChapter(false);
-        setNewChapterTitle("");
+        toast({ title: "Unit created" });
+        setAddingUnit(false);
+        setNewUnitTitle("");
       },
     }
   });
@@ -216,7 +303,7 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListChaptersQueryKey(courseId) });
-        toast({ title: "Chapter renamed" });
+        toast({ title: "Unit renamed" });
         setRenamingChapter(null);
         setRenameTitle("");
       },
@@ -227,16 +314,16 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListChaptersQueryKey(courseId) });
         queryClient.invalidateQueries({ queryKey: getListLessonsQueryKey(courseId) });
-        toast({ title: "Chapter deleted" });
+        toast({ title: "Unit deleted" });
       },
     }
   });
 
   const sortedChapters = [...chapters].sort((a, b) => a.order - b.order);
   const chapterIds = new Set(chapters.map((c) => c.id));
-  const unassignedLessons = lessons.filter((l: Lesson) => !l.chapterId || !chapterIds.has(l.chapterId!));
+  const unassignedLessons = (lessons as Lesson[]).filter((l) => !l.chapterId || !chapterIds.has(l.chapterId!));
 
-  const subTab = new URLSearchParams(search).get("sub") ?? "lessons";
+  const subTab = new URLSearchParams(search).get("sub") ?? "units";
 
   function setSubTab(v: string) {
     setLocation(`/courses/${courseId}?tab=curriculum&sub=${v}`);
@@ -246,10 +333,10 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
     <Tabs value={subTab} onValueChange={setSubTab} className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <TabsList>
-          <TabsTrigger value="lessons">
-            <BookOpen className="w-3.5 h-3.5 mr-1.5" />
-            Lessons
-            {lessons.length > 0 && <span className="ml-1.5 text-xs bg-muted rounded-full px-1.5">{lessons.length}</span>}
+          <TabsTrigger value="units">
+            <Layers className="w-3.5 h-3.5 mr-1.5" />
+            Units
+            {chapters.length > 0 && <span className="ml-1.5 text-xs bg-muted rounded-full px-1.5">{chapters.length}</span>}
           </TabsTrigger>
           <TabsTrigger value="quizzes">
             <ClipboardList className="w-3.5 h-3.5 mr-1.5" />
@@ -264,10 +351,10 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
         </TabsList>
 
         <div className="flex gap-2">
-          {subTab === "lessons" && (
+          {subTab === "units" && (
             <>
-              <Button size="sm" variant="outline" onClick={() => { setAddingChapter(true); setNewChapterTitle(""); }}>
-                <FolderOpen className="w-4 h-4 mr-2" />Add Chapter
+              <Button size="sm" variant="outline" onClick={() => { setAddingUnit(true); setNewUnitTitle(""); }}>
+                <Layers className="w-4 h-4 mr-2" />Add Unit
               </Button>
               <Link href={`/courses/${courseId}/lessons/new`}>
                 <Button size="sm"><Plus className="w-4 h-4 mr-2" />Add Lesson</Button>
@@ -287,46 +374,48 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
         </div>
       </div>
 
-      {/* ── LESSONS ── */}
-      <TabsContent value="lessons" className="space-y-4 mt-0">
+      {/* ── UNITS ── */}
+      <TabsContent value="units" className="space-y-4 mt-0">
         <div>
           <h3 className="text-sm font-medium text-muted-foreground">
             {chapters.length > 0
-              ? `${chapters.length} chapter${chapters.length !== 1 ? "s" : ""} · ${lessons.length} lesson${lessons.length !== 1 ? "s" : ""}`
+              ? `${chapters.length} unit${chapters.length !== 1 ? "s" : ""} · ${lessons.length} lesson${lessons.length !== 1 ? "s" : ""}`
               : `${lessons.length} lesson${lessons.length !== 1 ? "s" : ""}`}
           </h3>
         </div>
 
-        {addingChapter && (
-          <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
-            <FolderOpen className="w-4 h-4 text-primary/70 flex-shrink-0" />
+        {/* Add unit inline */}
+        {addingUnit && (
+          <div className="flex items-center gap-2 p-3 border rounded-xl bg-muted/30">
+            <Layers className="w-4 h-4 text-primary/70 flex-shrink-0" />
             <Input
-              autoFocus placeholder="Chapter title…" value={newChapterTitle}
-              onChange={(e) => setNewChapterTitle(e.target.value)}
+              autoFocus placeholder="Unit name…" value={newUnitTitle}
+              onChange={(e) => setNewUnitTitle(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") { if (newChapterTitle.trim()) createChapter.mutate({ courseId, data: { title: newChapterTitle.trim(), order: chapters.length + 1 } }); }
-                if (e.key === "Escape") setAddingChapter(false);
+                if (e.key === "Enter" && newUnitTitle.trim()) createChapter.mutate({ courseId, data: { title: newUnitTitle.trim(), order: chapters.length + 1 } });
+                if (e.key === "Escape") setAddingUnit(false);
               }}
               className="h-8 text-sm"
             />
-            <Button size="icon" className="h-8 w-8 shrink-0" onClick={() => { if (newChapterTitle.trim()) createChapter.mutate({ courseId, data: { title: newChapterTitle.trim(), order: chapters.length + 1 } }); }} disabled={createChapter.isPending}>
+            <Button size="icon" className="h-8 w-8 shrink-0" onClick={() => { if (newUnitTitle.trim()) createChapter.mutate({ courseId, data: { title: newUnitTitle.trim(), order: chapters.length + 1 } }); }} disabled={createChapter.isPending}>
               <Check className="w-4 h-4" />
             </Button>
-            <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => setAddingChapter(false)}>
+            <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => setAddingUnit(false)}>
               <X className="w-4 h-4" />
             </Button>
           </div>
         )}
 
+        {/* Rename unit inline */}
         {renamingChapter && (
-          <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
+          <div className="flex items-center gap-2 p-3 border rounded-xl bg-muted/30">
             <Pencil className="w-4 h-4 text-primary/70 flex-shrink-0" />
             <span className="text-xs text-muted-foreground mr-1">Renaming:</span>
             <Input
               autoFocus value={renameTitle}
               onChange={(e) => setRenameTitle(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") { if (renameTitle.trim()) updateChapter.mutate({ courseId, chapterId: renamingChapter.id, data: { title: renameTitle.trim(), order: renamingChapter.order } }); }
+                if (e.key === "Enter" && renameTitle.trim()) updateChapter.mutate({ courseId, chapterId: renamingChapter.id, data: { title: renameTitle.trim(), order: renamingChapter.order } });
                 if (e.key === "Escape") setRenamingChapter(null);
               }}
               className="h-8 text-sm"
@@ -342,17 +431,16 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
 
         {lessonsLoading ? (
           <div className="space-y-3">
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-40 w-full rounded-xl" />
+            <Skeleton className="h-40 w-full rounded-xl" />
           </div>
         ) : (
           <div className="space-y-3">
             {sortedChapters.map((chapter) => {
-              const chapterLessons = lessons
-                .filter((l: Lesson) => l.chapterId === chapter.id)
-                .sort((a: Lesson, b: Lesson) => a.order - b.order);
+              const chapterLessons = (lessons as Lesson[])
+                .filter((l) => l.chapterId === chapter.id);
               return (
-                <ChapterSection
+                <UnitSection
                   key={chapter.id}
                   chapter={chapter}
                   lessons={chapterLessons}
@@ -364,8 +452,10 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
                 />
               );
             })}
+
+            {/* Unassigned lessons */}
             {unassignedLessons.length > 0 && (
-              <div className={cn("border rounded-lg overflow-hidden", chapters.length > 0 && "border-dashed")}>
+              <div className={cn("border rounded-xl overflow-hidden", chapters.length > 0 && "border-dashed")}>
                 {chapters.length > 0 && (
                   <div className="flex items-center gap-2 px-4 py-3 bg-muted/20 border-b">
                     <LayoutList className="w-4 h-4 text-muted-foreground" />
@@ -373,10 +463,10 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
                     <span className="text-xs text-muted-foreground ml-auto">{unassignedLessons.length}</span>
                   </div>
                 )}
-                <div className={cn("space-y-2", chapters.length > 0 ? "p-3 bg-card" : "space-y-3")}>
-                  {unassignedLessons
-                    .sort((a: Lesson, b: Lesson) => a.order - b.order)
-                    .map((lesson: Lesson, index: number) => (
+                <div className="p-3 space-y-2 bg-card">
+                  {[...unassignedLessons]
+                    .sort((a, b) => a.order - b.order)
+                    .map((lesson, index) => (
                       <LessonCard
                         key={lesson.id}
                         lesson={lesson}
@@ -389,10 +479,15 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
                 </div>
               </div>
             )}
-            {lessons.length === 0 && (
+
+            {chapters.length === 0 && lessons.length === 0 && (
               <div className="border-2 border-dashed rounded-xl p-12 text-center">
-                <BookOpen className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground text-sm">No lessons yet. Add your first lesson to get started.</p>
+                <Layers className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                <p className="font-medium text-sm mb-1">No units yet</p>
+                <p className="text-muted-foreground text-sm mb-4">Create a unit first, then add lessons to it.</p>
+                <Button size="sm" onClick={() => { setAddingUnit(true); setNewUnitTitle(""); }}>
+                  <Plus className="w-4 h-4 mr-2" />Add First Unit
+                </Button>
               </div>
             )}
           </div>

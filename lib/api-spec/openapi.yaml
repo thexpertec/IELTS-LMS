@@ -1435,6 +1435,8 @@ components:
           type: ["string", "null"]
         durationMinutes:
           type: ["integer", "null"]
+        lessonType:
+          type: string
         order:
           type: integer
         createdAt:
@@ -1452,6 +1454,7 @@ components:
         - content
         - videoUrl
         - durationMinutes
+        - lessonType
         - order
         - createdAt
         - updatedAt
@@ -1467,6 +1470,8 @@ components:
           type: ["string", "null"]
         durationMinutes:
           type: ["integer", "null"]
+        lessonType:
+          type: string
         order:
           type: integer
         chapterId:
@@ -1487,6 +1492,8 @@ components:
           type: ["string", "null"]
         durationMinutes:
           type: ["integer", "null"]
+        lessonType:
+          type: string
         order:
           type: integer
         chapterId:

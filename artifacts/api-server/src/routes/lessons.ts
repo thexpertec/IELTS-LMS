@@ -27,6 +27,7 @@ async function lessonWithChapter(courseId: number, lessonId?: number) {
       content: lessonsTable.content,
       videoUrl: lessonsTable.videoUrl,
       durationMinutes: lessonsTable.durationMinutes,
+      lessonType: lessonsTable.lessonType,
       order: lessonsTable.order,
       createdAt: lessonsTable.createdAt,
       updatedAt: lessonsTable.updatedAt,

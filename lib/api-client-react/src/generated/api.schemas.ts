@@ -107,6 +107,7 @@ export interface Lesson {
   videoUrl: string | null;
   /** @nullable */
   durationMinutes: number | null;
+  lessonType: string;
   order: number;
   createdAt: string;
   updatedAt: string;
@@ -119,6 +120,7 @@ export interface CreateLessonBody {
   videoUrl?: string | null;
   /** @nullable */
   durationMinutes?: number | null;
+  lessonType?: string;
   order: number;
   /** @nullable */
   chapterId?: number | null;
@@ -131,6 +133,7 @@ export interface UpdateLessonBody {
   videoUrl?: string | null;
   /** @nullable */
   durationMinutes?: number | null;
+  lessonType?: string;
   order?: number;
   /** @nullable */
   chapterId?: number | null;
