@@ -1,6 +1,7 @@
 import { useCreateAssignment, useListCourses, getListAssignmentsQueryKey } from "@workspace/api-client-react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -28,14 +29,18 @@ type FormValues = z.infer<typeof formSchema>;
 
 export default function AssignmentNew() {
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: courses } = useListCourses();
 
+  const params = new URLSearchParams(search);
+  const prefilledCourseId = params.get("courseId") ?? "";
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      courseId: "",
+      courseId: prefilledCourseId,
       title: "",
       description: "",
       type: "assignment",
@@ -44,6 +49,12 @@ export default function AssignmentNew() {
       maxScore: 100,
     },
   });
+
+  useEffect(() => {
+    if (prefilledCourseId) {
+      form.setValue("courseId", prefilledCourseId);
+    }
+  }, [prefilledCourseId]);
 
   const createAssignment = useCreateAssignment({
     mutation: {

@@ -232,12 +232,24 @@ function UnitSection({
             )}
           </div>
 
-          {/* Add lesson in this type */}
-          <div className="px-3 pb-3">
+          {/* Action buttons */}
+          <div className="px-3 pb-3 grid grid-cols-3 gap-2">
             <Link href={`/courses/${courseId}/lessons/new?chapterId=${chapter.id}&lessonType=${activeType}`}>
-              <Button size="sm" variant="outline" className="w-full text-xs gap-1.5 h-8 border-dashed">
-                <Plus className="w-3.5 h-3.5" />
-                Add {LESSON_TYPES.find((t) => t.id === activeType)?.label} Lesson
+              <Button size="sm" variant="outline" className="w-full text-xs gap-1 h-8 border-dashed">
+                <Plus className="w-3 h-3" />
+                Add {LESSON_TYPES.find((t) => t.id === activeType)?.label}
+              </Button>
+            </Link>
+            <Link href={`/quizzes/new?courseId=${courseId}&chapterId=${chapter.id}`}>
+              <Button size="sm" variant="outline" className="w-full text-xs gap-1 h-8 border-dashed text-violet-600 border-violet-300 hover:bg-violet-50 hover:border-violet-400">
+                <ClipboardList className="w-3 h-3" />
+                New Quiz
+              </Button>
+            </Link>
+            <Link href={`/assignments/new?courseId=${courseId}&chapterId=${chapter.id}`}>
+              <Button size="sm" variant="outline" className="w-full text-xs gap-1 h-8 border-dashed text-blue-600 border-blue-300 hover:bg-blue-50 hover:border-blue-400">
+                <FileText className="w-3 h-3" />
+                New Assignment
               </Button>
             </Link>
           </div>
