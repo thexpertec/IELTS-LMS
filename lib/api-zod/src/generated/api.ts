@@ -671,6 +671,8 @@ export const GetStudentAssignmentsResponseItem = zod.object({
   id: zod.number(),
   courseId: zod.number(),
   courseTitle: zod.string(),
+  chapterId: zod.number().nullish(),
+  lessonType: zod.string().nullish(),
   title: zod.string(),
   description: zod.string(),
   type: zod.enum(["assignment", "quiz"]),
@@ -755,6 +757,8 @@ export const ListQuizzesResponseItem = zod.object({
   description: zod.string(),
   passageText: zod.string().nullish(),
   courseId: zod.number().nullish(),
+  chapterId: zod.number().nullish(),
+  lessonType: zod.string().nullish(),
   timeLimitMinutes: zod.number().nullish(),
   isPublished: zod.boolean(),
   questionCount: zod.number(),
@@ -784,6 +788,8 @@ export const CreateQuizBody = zod.object({
     )
     .optional(),
   courseId: zod.number().optional(),
+  chapterId: zod.number().nullish(),
+  lessonType: zod.string().nullish(),
   timeLimitMinutes: zod.number().optional(),
   isPublished: zod.boolean().optional(),
 });
@@ -858,6 +864,8 @@ export const UpdateQuizBody = zod.object({
     )
     .optional(),
   courseId: zod.number().optional(),
+  chapterId: zod.number().nullish(),
+  lessonType: zod.string().nullish(),
   timeLimitMinutes: zod.number().optional(),
   isPublished: zod.boolean().optional(),
 });
@@ -868,6 +876,8 @@ export const UpdateQuizResponse = zod.object({
   description: zod.string(),
   passageText: zod.string().nullish(),
   courseId: zod.number().nullish(),
+  chapterId: zod.number().nullish(),
+  lessonType: zod.string().nullish(),
   timeLimitMinutes: zod.number().nullish(),
   isPublished: zod.boolean(),
   questionCount: zod.number(),
@@ -991,6 +1001,8 @@ export const ListAssignmentsResponse = zod.array(ListAssignmentsResponseItem);
  */
 export const CreateAssignmentBody = zod.object({
   courseId: zod.number(),
+  chapterId: zod.number().nullish(),
+  lessonType: zod.string().nullish(),
   title: zod.string(),
   description: zod.string().optional(),
   type: zod.enum(["assignment", "quiz"]).optional(),
@@ -1040,6 +1052,8 @@ export const UpdateAssignmentParams = zod.object({
 
 export const UpdateAssignmentBody = zod.object({
   courseId: zod.number().optional(),
+  chapterId: zod.number().nullish(),
+  lessonType: zod.string().nullish(),
   title: zod.string().optional(),
   description: zod.string().optional(),
   type: zod.enum(["assignment", "quiz"]).optional(),

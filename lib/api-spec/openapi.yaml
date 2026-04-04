@@ -1990,6 +1990,12 @@ components:
       properties:
         courseId:
           type: integer
+        chapterId:
+          type: integer
+          nullable: true
+        lessonType:
+          type: string
+          nullable: true
         title:
           type: string
         description:
@@ -2012,6 +2018,12 @@ components:
       properties:
         courseId:
           type: integer
+        chapterId:
+          type: integer
+          nullable: true
+        lessonType:
+          type: string
+          nullable: true
         title:
           type: string
         description:
@@ -2044,6 +2056,12 @@ components:
           type: integer
         courseTitle:
           type: string
+        chapterId:
+          type: integer
+          nullable: true
+        lessonType:
+          type: string
+          nullable: true
         title:
           type: string
         description:
@@ -2201,6 +2219,12 @@ components:
         courseId:
           type: integer
           nullable: true
+        chapterId:
+          type: integer
+          nullable: true
+        lessonType:
+          type: string
+          nullable: true
         timeLimitMinutes:
           type: integer
           nullable: true
@@ -2330,6 +2354,12 @@ components:
             $ref: "#/components/schemas/QuizPart"
         courseId:
           type: integer
+        chapterId:
+          type: integer
+          nullable: true
+        lessonType:
+          type: string
+          nullable: true
         timeLimitMinutes:
           type: integer
         isPublished:

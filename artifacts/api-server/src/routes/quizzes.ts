@@ -30,6 +30,8 @@ router.get("/quizzes", async (req, res): Promise<void> => {
       title: quizzesTable.title,
       description: quizzesTable.description,
       courseId: quizzesTable.courseId,
+      chapterId: quizzesTable.chapterId,
+      lessonType: quizzesTable.lessonType,
       timeLimitMinutes: quizzesTable.timeLimitMinutes,
       isPublished: quizzesTable.isPublished,
       createdAt: quizzesTable.createdAt,
@@ -56,6 +58,8 @@ router.post("/quizzes", async (req, res): Promise<void> => {
     passageText: parsed.data.passageText ?? null,
     parts: parsed.data.parts ?? null,
     courseId: parsed.data.courseId ?? null,
+    chapterId: parsed.data.chapterId ?? null,
+    lessonType: parsed.data.lessonType ?? null,
     timeLimitMinutes: parsed.data.timeLimitMinutes ?? null,
     isPublished: parsed.data.isPublished ?? false,
   }).returning();
@@ -106,6 +110,8 @@ router.put("/quizzes/:id", async (req, res): Promise<void> => {
       ...(parsed.data.passageText !== undefined && { passageText: parsed.data.passageText || null }),
       ...(parsed.data.parts !== undefined && { parts: parsed.data.parts ?? null }),
       ...(parsed.data.courseId !== undefined && { courseId: parsed.data.courseId }),
+      ...(parsed.data.chapterId !== undefined && { chapterId: parsed.data.chapterId }),
+      ...(parsed.data.lessonType !== undefined && { lessonType: parsed.data.lessonType }),
       ...(parsed.data.timeLimitMinutes !== undefined && { timeLimitMinutes: parsed.data.timeLimitMinutes }),
       ...(parsed.data.isPublished !== undefined && { isPublished: parsed.data.isPublished }),
     })

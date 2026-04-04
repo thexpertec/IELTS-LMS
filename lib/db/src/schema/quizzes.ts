@@ -2,6 +2,7 @@ import { pgTable, text, serial, timestamp, integer, boolean, jsonb } from "drizz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { coursesTable } from "./courses";
+import { chaptersTable } from "./chapters";
 
 export const quizzesTable = pgTable("quizzes", {
   id: serial("id").primaryKey(),
@@ -10,6 +11,8 @@ export const quizzesTable = pgTable("quizzes", {
   passageText: text("passage_text"),
   parts: jsonb("parts").$type<Array<{ name: string; from: number; to: number }>>(),
   courseId: integer("course_id").references(() => coursesTable.id, { onDelete: "set null" }),
+  chapterId: integer("chapter_id").references(() => chaptersTable.id, { onDelete: "set null" }),
+  lessonType: text("lesson_type"),
   timeLimitMinutes: integer("time_limit_minutes"),
   isPublished: boolean("is_published").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

@@ -460,19 +460,24 @@ export default function CourseView() {
 
     const chapterIds = new Set(sortedChapters.map((c) => c.id));
 
+    const unitQuizzes = (quizzes ?? []).filter((q) => !!q.chapterId);
+    const unitAssignments = (assignments ?? []).filter((a) => !!(a as unknown as { chapterId?: number | null }).chapterId);
+
     // Units with lessons
     const units = sortedChapters
       .map((chapter) => ({
         chapter,
         lessons: lessons.filter((l) => l.chapterId === chapter.id),
+        quizzes: unitQuizzes.filter((q) => q.chapterId === chapter.id),
+        assignments: unitAssignments.filter((a) => (a as unknown as { chapterId?: number | null }).chapterId === chapter.id),
       }))
-      .filter((u) => u.lessons.length > 0);
+      .filter((u) => u.lessons.length > 0 || u.quizzes.length > 0 || u.assignments.length > 0);
 
     const unassigned = lessons.filter((l) => !l.chapterId || !chapterIds.has(l.chapterId!));
 
     return (
       <div className="space-y-4">
-        {units.map(({ chapter, lessons: unitLessons }) => {
+        {units.map(({ chapter, lessons: unitLessons, quizzes: unitChapQuizzes, assignments: unitChapAssignments }) => {
           const activeType = unitTypeTabs[chapter.id] ?? "reading";
           const setActiveType = (t: string) =>
             setUnitTypeTabs((prev) => ({ ...prev, [chapter.id]: t }));
@@ -482,9 +487,14 @@ export default function CourseView() {
           const lessonsByType = STUDENT_LESSON_TYPES.map((t) => ({
             ...t,
             lessons: unitLessons.filter((l) => ((l as unknown as { lessonType?: string }).lessonType ?? "reading") === t.id),
+            quizzes: unitChapQuizzes.filter((q) => ((q as unknown as { lessonType?: string | null }).lessonType ?? "reading") === t.id),
+            assignments: unitChapAssignments.filter((a) => ((a as unknown as { lessonType?: string | null }).lessonType ?? "reading") === t.id),
           }));
 
-          const activeLessons = lessonsByType.find((t) => t.id === activeType)?.lessons ?? [];
+          const activeTypeData = lessonsByType.find((t) => t.id === activeType);
+          const activeLessons = activeTypeData?.lessons ?? [];
+          const activeUnitQuizzes = activeTypeData?.quizzes ?? [];
+          const activeUnitAssignments = activeTypeData?.assignments ?? [];
 
           return (
             <div key={chapter.id} className="border rounded-xl overflow-hidden shadow-sm">
@@ -515,12 +525,12 @@ export default function CourseView() {
                     >
                       <Icon className="w-3.5 h-3.5" />
                       {t.label}
-                      {t.lessons.length > 0 && (
+                      {(t.lessons.length + t.quizzes.length + t.assignments.length) > 0 && (
                         <span className={cn(
                           "px-1.5 py-0.5 rounded-full text-[10px]",
                           isActive ? cn(t.activeBg, t.color) : "bg-muted text-muted-foreground"
                         )}>
-                          {t.lessons.length}
+                          {t.lessons.length + t.quizzes.length + t.assignments.length}
                         </span>
                       )}
                     </button>
@@ -528,14 +538,57 @@ export default function CourseView() {
                 })}
               </div>
 
-              {/* Active type lessons */}
+              {/* Active type content */}
               <div className="bg-card p-3 space-y-2 min-h-[72px]">
-                {activeLessons.length === 0 ? (
+                {activeLessons.length === 0 && activeUnitQuizzes.length === 0 && activeUnitAssignments.length === 0 ? (
                   <div className="flex items-center justify-center h-12 text-xs text-muted-foreground/50 italic">
-                    No {activeType} lessons in this unit.
+                    No {activeType} content in this unit.
                   </div>
                 ) : (
-                  activeLessons.map((l, i) => renderLesson(l, i))
+                  <>
+                    {activeLessons.map((l, i) => renderLesson(l, i))}
+                    {activeUnitQuizzes.map((quiz) => {
+                      const q = quiz as unknown as { id: number; title: string; questionCount: number; timeLimitMinutes?: number | null };
+                      return (
+                        <div key={q.id} className="rounded-xl border border-violet-200/80 bg-violet-50/40 dark:bg-violet-950/10 shadow-sm p-3.5 flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-violet-100 dark:bg-violet-900/40">
+                            <ClipboardList className="w-4 h-4 text-violet-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <Badge variant="secondary" className="text-[10px] h-4 px-1.5 bg-violet-100 text-violet-700 border-0"><Zap className="w-2.5 h-2.5 mr-0.5" />Quiz</Badge>
+                              {q.timeLimitMinutes && <span className="text-xs text-muted-foreground flex items-center gap-1"><Timer className="w-3 h-3" />{q.timeLimitMinutes} min</span>}
+                            </div>
+                            <p className="text-sm font-semibold truncate">{q.title}</p>
+                            <p className="text-xs text-muted-foreground">{q.questionCount} question{q.questionCount !== 1 ? "s" : ""}</p>
+                          </div>
+                          <Link href={`/s/quiz/${q.id}`}>
+                            <Button size="sm" className="h-8 px-3 text-xs bg-violet-600 hover:bg-violet-700">
+                              Start
+                            </Button>
+                          </Link>
+                        </div>
+                      );
+                    })}
+                    {activeUnitAssignments.map((a) => {
+                      const aTyped = a as unknown as { id: number; title: string; dueDate: string; maxScore: number };
+                      return (
+                        <div key={aTyped.id} className="rounded-xl border border-blue-200/80 bg-blue-50/40 dark:bg-blue-950/10 shadow-sm p-3.5 flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-blue-100 dark:bg-blue-900/40">
+                            <FileText className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <Badge variant="secondary" className="text-[10px] h-4 px-1.5 bg-blue-100 text-blue-700 border-0">Assignment</Badge>
+                              <span className="text-xs text-muted-foreground">Due: {new Date(aTyped.dueDate).toLocaleDateString()}</span>
+                            </div>
+                            <p className="text-sm font-semibold truncate">{aTyped.title}</p>
+                            <p className="text-xs text-muted-foreground">Max score: {aTyped.maxScore}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
                 )}
               </div>
             </div>

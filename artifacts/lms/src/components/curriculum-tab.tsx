@@ -127,10 +127,13 @@ function LessonCard({
 
 // ── UnitSection ──────────────────────────────────────────────────────────────
 
+type QuizItem = { id: number; title: string; questionCount: number; timeLimitMinutes?: number | null; chapterId?: number | null; lessonType?: string | null };
+type AssignmentItem = { id: number; title: string; dueDate: string; maxScore: number; chapterId?: number | null; lessonType?: string | null };
+
 function UnitSection({
-  chapter, lessons, courseId, onEditLesson, onDeleteLesson, onRenameChapter, onDeleteChapter,
+  chapter, lessons, quizzes, assignments, courseId, onEditLesson, onDeleteLesson, onRenameChapter, onDeleteChapter,
 }: {
-  chapter: Chapter; lessons: Lesson[]; courseId: number;
+  chapter: Chapter; lessons: Lesson[]; quizzes: QuizItem[]; assignments: AssignmentItem[]; courseId: number;
   onEditLesson: (id: number) => void; onDeleteLesson: (id: number) => void;
   onRenameChapter: (c: Chapter) => void; onDeleteChapter: (c: Chapter) => void;
 }) {
@@ -140,9 +143,14 @@ function UnitSection({
   const lessonsByType = LESSON_TYPES.map((t) => ({
     ...t,
     lessons: lessons.filter((l) => (l.lessonType ?? "reading") === t.id).sort((a, b) => a.order - b.order),
+    quizzes: quizzes.filter((q) => (q.lessonType ?? "reading") === t.id),
+    assignments: assignments.filter((a) => (a.lessonType ?? "reading") === t.id),
   }));
 
-  const activeLessons = lessonsByType.find((t) => t.id === activeType)?.lessons ?? [];
+  const activeTypeData = lessonsByType.find((t) => t.id === activeType);
+  const activeLessons = activeTypeData?.lessons ?? [];
+  const activeQuizzes = activeTypeData?.quizzes ?? [];
+  const activeAssignments = activeTypeData?.assignments ?? [];
 
   return (
     <div className="border rounded-xl overflow-hidden shadow-sm">
@@ -199,12 +207,12 @@ function UnitSection({
                 >
                   <Icon className="w-3.5 h-3.5" />
                   {t.label}
-                  {t.lessons.length > 0 && (
+                  {(t.lessons.length + t.quizzes.length + t.assignments.length) > 0 && (
                     <span className={cn(
                       "px-1.5 py-0.5 rounded-full text-[10px]",
                       isActive ? cn(t.bg, t.color) : "bg-muted text-muted-foreground"
                     )}>
-                      {t.lessons.length}
+                      {t.lessons.length + t.quizzes.length + t.assignments.length}
                     </span>
                   )}
                 </button>
@@ -213,22 +221,64 @@ function UnitSection({
           </div>
 
           {/* Lesson list for active type */}
-          <div className="p-3 space-y-2 min-h-[80px]">
-            {activeLessons.length === 0 ? (
-              <div className="flex items-center justify-center h-16 text-xs text-muted-foreground/60 italic">
-                No {activeType} lessons in this unit yet.
+          <div className="p-3 space-y-2 min-h-[64px]">
+            {activeLessons.length === 0 && activeQuizzes.length === 0 && activeAssignments.length === 0 ? (
+              <div className="flex items-center justify-center h-12 text-xs text-muted-foreground/60 italic">
+                No {activeType} content in this unit yet.
               </div>
             ) : (
-              activeLessons.map((lesson, idx) => (
-                <LessonCard
-                  key={lesson.id}
-                  lesson={lesson}
-                  index={idx}
-                  courseId={courseId}
-                  onEdit={() => onEditLesson(lesson.id)}
-                  onDelete={() => onDeleteLesson(lesson.id)}
-                />
-              ))
+              <>
+                {activeLessons.map((lesson, idx) => (
+                  <LessonCard
+                    key={lesson.id}
+                    lesson={lesson}
+                    index={idx}
+                    courseId={courseId}
+                    onEdit={() => onEditLesson(lesson.id)}
+                    onDelete={() => onDeleteLesson(lesson.id)}
+                  />
+                ))}
+                {/* Inline Quizzes */}
+                {activeQuizzes.map((quiz) => (
+                  <Card key={quiz.id} className="flex flex-row items-center p-3.5 hover:border-violet-400/60 transition-colors gap-3 border-violet-200/80 bg-violet-50/40 dark:bg-violet-950/10">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 bg-violet-100 dark:bg-violet-900/40">
+                      <ClipboardList className="w-3.5 h-3.5 text-violet-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-sm truncate">{quiz.title}</h4>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                        <span>{quiz.questionCount} question{quiz.questionCount !== 1 ? "s" : ""}</span>
+                        {quiz.timeLimitMinutes && <span className="flex items-center gap-1"><Timer className="w-3 h-3" />{quiz.timeLimitMinutes} min</span>}
+                      </div>
+                    </div>
+                    <Link href={`/quizzes/${quiz.id}`}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7">
+                        <Edit className="w-3.5 h-3.5" />
+                      </Button>
+                    </Link>
+                  </Card>
+                ))}
+                {/* Inline Assignments */}
+                {activeAssignments.map((a) => (
+                  <Card key={a.id} className="flex flex-row items-center p-3.5 hover:border-blue-400/60 transition-colors gap-3 border-blue-200/80 bg-blue-50/40 dark:bg-blue-950/10">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 bg-blue-100 dark:bg-blue-900/40">
+                      <FileText className="w-3.5 h-3.5 text-blue-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-sm truncate">{a.title}</h4>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                        <span>Due: {new Date(a.dueDate).toLocaleDateString()}</span>
+                        <span>Max: {a.maxScore}</span>
+                      </div>
+                    </div>
+                    <Link href={`/assignments/${a.id}`}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7">
+                        <Edit className="w-3.5 h-3.5" />
+                      </Button>
+                    </Link>
+                  </Card>
+                ))}
+              </>
             )}
           </div>
 
@@ -240,13 +290,13 @@ function UnitSection({
                 Add {LESSON_TYPES.find((t) => t.id === activeType)?.label}
               </Button>
             </Link>
-            <Link href={`/quizzes/new?courseId=${courseId}&chapterId=${chapter.id}`}>
+            <Link href={`/quizzes/new?courseId=${courseId}&chapterId=${chapter.id}&lessonType=${activeType}`}>
               <Button size="sm" variant="outline" className="w-full text-xs gap-1 h-8 border-dashed text-violet-600 border-violet-300 hover:bg-violet-50 hover:border-violet-400">
                 <ClipboardList className="w-3 h-3" />
                 New Quiz
               </Button>
             </Link>
-            <Link href={`/assignments/new?courseId=${courseId}&chapterId=${chapter.id}`}>
+            <Link href={`/assignments/new?courseId=${courseId}&chapterId=${chapter.id}&lessonType=${activeType}`}>
               <Button size="sm" variant="outline" className="w-full text-xs gap-1 h-8 border-dashed text-blue-600 border-blue-300 hover:bg-blue-50 hover:border-blue-400">
                 <FileText className="w-3 h-3" />
                 New Assignment
@@ -455,11 +505,17 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
             {sortedChapters.map((chapter) => {
               const chapterLessons = (lessons as Lesson[])
                 .filter((l) => l.chapterId === chapter.id);
+              const chapterQuizzes = (quizzes as QuizItem[])
+                .filter((q) => q.chapterId === chapter.id);
+              const chapterAssignments = (assignments as AssignmentItem[])
+                .filter((a) => a.chapterId === chapter.id);
               return (
                 <UnitSection
                   key={chapter.id}
                   chapter={chapter}
                   lessons={chapterLessons}
+                  quizzes={chapterQuizzes}
+                  assignments={chapterAssignments}
                   courseId={courseId}
                   onEditLesson={(lessonId) => setLocation(`/courses/${courseId}/lessons/${lessonId}/edit`)}
                   onDeleteLesson={(lessonId) => deleteLesson.mutate({ courseId, id: lessonId })}

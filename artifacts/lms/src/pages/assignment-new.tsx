@@ -36,6 +36,8 @@ export default function AssignmentNew() {
 
   const params = new URLSearchParams(search);
   const prefilledCourseId = params.get("courseId") ?? "";
+  const prefilledChapterId = params.get("chapterId") ?? undefined;
+  const prefilledLessonType = params.get("lessonType") ?? undefined;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -72,6 +74,8 @@ export default function AssignmentNew() {
     createAssignment.mutate({
       data: {
         courseId: Number(values.courseId),
+        chapterId: prefilledChapterId ? Number(prefilledChapterId) : undefined,
+        lessonType: prefilledLessonType ?? undefined,
         title: values.title,
         description: values.description ?? "",
         type: values.type,

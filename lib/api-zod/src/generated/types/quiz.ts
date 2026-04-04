@@ -12,6 +12,8 @@ export interface Quiz {
   description: string;
   passageText?: string | null;
   courseId?: number | null;
+  chapterId?: number | null;
+  lessonType?: string | null;
   timeLimitMinutes?: number | null;
   isPublished: boolean;
   questionCount: number;

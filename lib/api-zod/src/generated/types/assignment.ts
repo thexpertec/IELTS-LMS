@@ -12,6 +12,8 @@ export interface Assignment {
   id: number;
   courseId: number;
   courseTitle: string;
+  chapterId?: number | null;
+  lessonType?: string | null;
   title: string;
   description: string;
   type: AssignmentType;

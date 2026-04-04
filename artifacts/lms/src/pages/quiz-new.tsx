@@ -40,6 +40,8 @@ export default function QuizNew() {
 
   const params = new URLSearchParams(search);
   const prefilledCourseId = params.get("courseId") ?? undefined;
+  const prefilledChapterId = params.get("chapterId") ?? undefined;
+  const prefilledLessonType = params.get("lessonType") ?? undefined;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -78,6 +80,8 @@ export default function QuizNew() {
         passageText: values.passageText || undefined,
         parts: parts.length > 0 ? parts : undefined,
         courseId: values.courseId && values.courseId !== "none" ? Number(values.courseId) : undefined,
+        chapterId: prefilledChapterId ? Number(prefilledChapterId) : undefined,
+        lessonType: prefilledLessonType ?? undefined,
         timeLimitMinutes: values.timeLimitMinutes ? Number(values.timeLimitMinutes) : undefined,
         isPublished: values.isPublished,
       },

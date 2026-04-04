@@ -11,6 +11,8 @@ router.get("/assignments", async (req, res): Promise<void> => {
     .select({
       id: assignmentsTable.id,
       courseId: assignmentsTable.courseId,
+      chapterId: assignmentsTable.chapterId,
+      lessonType: assignmentsTable.lessonType,
       title: assignmentsTable.title,
       description: assignmentsTable.description,
       type: assignmentsTable.type,
@@ -31,7 +33,7 @@ router.get("/assignments", async (req, res): Promise<void> => {
 });
 
 router.post("/assignments", async (req, res): Promise<void> => {
-  const { courseId, title, description, type, dueDate, maxScore } = req.body;
+  const { courseId, chapterId, lessonType, title, description, type, dueDate, maxScore } = req.body;
   if (!courseId || !title || !dueDate) {
     res.status(400).json({ error: "courseId, title, and dueDate are required" });
     return;
@@ -39,6 +41,8 @@ router.post("/assignments", async (req, res): Promise<void> => {
 
   const [row] = await db.insert(assignmentsTable).values({
     courseId: Number(courseId),
+    chapterId: chapterId ? Number(chapterId) : null,
+    lessonType: lessonType ?? null,
     title,
     description: description ?? "",
     type: type ?? "assignment",
@@ -95,7 +99,7 @@ router.put("/assignments/:id", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  const { title, description, type, dueDate, maxScore, courseId } = req.body;
+  const { title, description, type, dueDate, maxScore, courseId, chapterId, lessonType } = req.body;
   const update: Record<string, unknown> = {};
   if (title !== undefined) update.title = title;
   if (description !== undefined) update.description = description;
@@ -103,6 +107,8 @@ router.put("/assignments/:id", async (req, res): Promise<void> => {
   if (dueDate !== undefined) update.dueDate = new Date(dueDate);
   if (maxScore !== undefined) update.maxScore = Number(maxScore);
   if (courseId !== undefined) update.courseId = Number(courseId);
+  if (chapterId !== undefined) update.chapterId = chapterId ? Number(chapterId) : null;
+  if (lessonType !== undefined) update.lessonType = lessonType ?? null;
 
   const [row] = await db.update(assignmentsTable).set(update).where(eq(assignmentsTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }

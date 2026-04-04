@@ -13,6 +13,8 @@ export interface CreateQuizBody {
   passageText?: string;
   parts?: QuizPart[];
   courseId?: number;
+  chapterId?: number | null;
+  lessonType?: string | null;
   timeLimitMinutes?: number;
   isPublished?: boolean;
 }

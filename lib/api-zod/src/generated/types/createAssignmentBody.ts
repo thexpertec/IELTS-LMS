@@ -9,6 +9,8 @@ import type { CreateAssignmentBodyType } from "./createAssignmentBodyType";
 
 export interface CreateAssignmentBody {
   courseId: number;
+  chapterId?: number | null;
+  lessonType?: string | null;
   title: string;
   description?: string;
   type?: CreateAssignmentBodyType;
