@@ -3,7 +3,7 @@ import { useLocation, useParams } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { MediaUploadField } from "@/components/ui/media-upload-field";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
@@ -69,6 +70,9 @@ export default function LessonEdit() {
   const { data: lesson, isLoading, isError } = useGetLesson(courseId, lessonId);
   const { data: chapters = [] } = useListChapters(courseId);
 
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -84,15 +88,22 @@ export default function LessonEdit() {
 
   useEffect(() => {
     if (lesson) {
+      const l = lesson as unknown as {
+        lessonType?: string;
+        imageUrl?: string | null;
+        audioUrl?: string | null;
+      };
       form.reset({
         title: lesson.title,
-        lessonType: (lesson as unknown as { lessonType?: string }).lessonType ?? "reading",
+        lessonType: l.lessonType ?? "reading",
         content: lesson.content ?? "",
         videoUrl: lesson.videoUrl ?? "",
         durationMinutes: lesson.durationMinutes ?? "",
         order: lesson.order,
         chapterId: lesson.chapterId != null ? String(lesson.chapterId) : "none",
       });
+      setImageUrl(l.imageUrl ?? null);
+      setAudioUrl(l.audioUrl ?? null);
     }
   }, [lesson]);
 
@@ -118,6 +129,8 @@ export default function LessonEdit() {
         lessonType: values.lessonType,
         content: values.content,
         videoUrl: values.videoUrl || null,
+        imageUrl: imageUrl || null,
+        audioUrl: audioUrl || null,
         durationMinutes: values.durationMinutes ? Number(values.durationMinutes) : null,
         order: Number(values.order),
         chapterId: values.chapterId && values.chapterId !== "none" ? Number(values.chapterId) : null,
@@ -245,50 +258,66 @@ export default function LessonEdit() {
             )}
           />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Media uploads */}
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Media</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+              <MediaUploadField
+                type="image"
+                label="Image"
+                value={imageUrl}
+                onChange={setImageUrl}
+              />
+              <FormField
+                control={form.control}
+                name="videoUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Video URL</FormLabel>
+                    <FormControl>
+                      <Input placeholder="https://youtube.com/..." {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <MediaUploadField
+                type="audio"
+                label="Audio"
+                value={audioUrl}
+                onChange={setAudioUrl}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
-              name="videoUrl"
+              name="durationMinutes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Video Embed URL</FormLabel>
+                  <FormLabel>Duration (Min)</FormLabel>
                   <FormControl>
-                    <Input placeholder="https://youtube.com/..." {...field} />
+                    <Input type="number" placeholder="e.g. 15" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="durationMinutes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Duration (Min)</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="e.g. 15" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="order"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Sequence Order</FormLabel>
-                    <FormControl>
-                      <Input type="number" min="1" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="order"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Sequence Order</FormLabel>
+                  <FormControl>
+                    <Input type="number" min="1" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
 
           <div className="flex justify-end pt-4 border-t">

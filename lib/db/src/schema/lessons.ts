@@ -11,6 +11,8 @@ export const lessonsTable = pgTable("lessons", {
   title: text("title").notNull(),
   content: text("content").notNull().default(""),
   videoUrl: text("video_url"),
+  imageUrl: text("image_url"),
+  audioUrl: text("audio_url"),
   durationMinutes: integer("duration_minutes"),
   lessonType: text("lesson_type").notNull().default("reading"),
   order: integer("order").notNull().default(1),

@@ -106,6 +106,10 @@ export interface Lesson {
   /** @nullable */
   videoUrl: string | null;
   /** @nullable */
+  imageUrl: string | null;
+  /** @nullable */
+  audioUrl: string | null;
+  /** @nullable */
   durationMinutes: number | null;
   lessonType: string;
   order: number;
@@ -119,6 +123,10 @@ export interface CreateLessonBody {
   /** @nullable */
   videoUrl?: string | null;
   /** @nullable */
+  imageUrl?: string | null;
+  /** @nullable */
+  audioUrl?: string | null;
+  /** @nullable */
   durationMinutes?: number | null;
   lessonType?: string;
   order: number;
@@ -131,6 +139,10 @@ export interface UpdateLessonBody {
   content?: string;
   /** @nullable */
   videoUrl?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
+  /** @nullable */
+  audioUrl?: string | null;
   /** @nullable */
   durationMinutes?: number | null;
   lessonType?: string;

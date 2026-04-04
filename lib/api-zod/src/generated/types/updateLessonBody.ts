@@ -12,6 +12,10 @@ export interface UpdateLessonBody {
   /** @nullable */
   videoUrl?: string | null;
   /** @nullable */
+  imageUrl?: string | null;
+  /** @nullable */
+  audioUrl?: string | null;
+  /** @nullable */
   durationMinutes?: number | null;
   lessonType?: string;
   order?: number;
