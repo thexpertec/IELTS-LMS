@@ -23,6 +23,7 @@ import {
   ChevronDown, ChevronRight, LayoutList, Pencil, Check, X,
   ClipboardList, Timer, FileText, Layers,
   Headphones, Mic, PenLine, BookText, AlignLeft,
+  BookMarked, Volume2, Languages,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,11 +41,14 @@ import { cn } from "@/lib/utils";
 // ── Lesson types ────────────────────────────────────────────────────────────
 
 const LESSON_TYPES = [
-  { id: "reading",   label: "Reading",   icon: BookText,  color: "text-blue-600",   bg: "bg-blue-50 dark:bg-blue-950/30" },
-  { id: "writing",   label: "Writing",   icon: PenLine,   color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/30" },
-  { id: "listening", label: "Listening", icon: Headphones, color: "text-green-600", bg: "bg-green-50 dark:bg-green-950/30" },
-  { id: "speaking",  label: "Speaking",  icon: Mic,        color: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-950/30" },
-  { id: "grammar",   label: "Grammar",   icon: AlignLeft,  color: "text-rose-600",  bg: "bg-rose-50 dark:bg-rose-950/30" },
+  { id: "reading",       label: "Reading",       icon: BookText,   color: "text-blue-600",   bg: "bg-blue-50 dark:bg-blue-950/30" },
+  { id: "writing",       label: "Writing",       icon: PenLine,    color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/30" },
+  { id: "listening",     label: "Listening",     icon: Headphones, color: "text-green-600",  bg: "bg-green-50 dark:bg-green-950/30" },
+  { id: "speaking",      label: "Speaking",      icon: Mic,        color: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-950/30" },
+  { id: "grammar",       label: "Grammar",       icon: AlignLeft,  color: "text-rose-600",   bg: "bg-rose-50 dark:bg-rose-950/30" },
+  { id: "vocabulary",    label: "Vocabulary",    icon: BookMarked, color: "text-amber-600",  bg: "bg-amber-50 dark:bg-amber-950/30" },
+  { id: "pronunciation", label: "Pronunciation", icon: Volume2,    color: "text-sky-600",    bg: "bg-sky-50 dark:bg-sky-950/30" },
+  { id: "translation",   label: "Translation",   icon: Languages,  color: "text-teal-600",   bg: "bg-teal-50 dark:bg-teal-950/30" },
 ] as const;
 
 type LessonTypeId = typeof LESSON_TYPES[number]["id"];

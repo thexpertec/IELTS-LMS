@@ -18,6 +18,7 @@ import {
   CheckCheck, GraduationCap, Megaphone, MessageSquare,
   Calendar, Award, Zap, Pencil, AlertCircle,
   Layers, BookText, PenLine, Headphones, Mic, AlignLeft,
+  BookMarked, Volume2, Languages,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -442,11 +443,14 @@ export default function CourseView() {
   // ── Curriculum tab ────────────────────────────────────────────────────────
 
   const STUDENT_LESSON_TYPES = [
-    { id: "reading",   label: "Reading",   Icon: BookText,   color: "text-blue-600",   activeBg: "bg-blue-50 dark:bg-blue-950/30",   border: "border-blue-500" },
-    { id: "writing",   label: "Writing",   Icon: PenLine,    color: "text-purple-600", activeBg: "bg-purple-50 dark:bg-purple-950/30", border: "border-purple-500" },
-    { id: "listening", label: "Listening", Icon: Headphones, color: "text-green-600",  activeBg: "bg-green-50 dark:bg-green-950/30",  border: "border-green-500" },
-    { id: "speaking",  label: "Speaking",  Icon: Mic,        color: "text-orange-600", activeBg: "bg-orange-50 dark:bg-orange-950/30", border: "border-orange-500" },
-    { id: "grammar",   label: "Grammar",   Icon: AlignLeft,  color: "text-rose-600",   activeBg: "bg-rose-50 dark:bg-rose-950/30",    border: "border-rose-500" },
+    { id: "reading",       label: "Reading",       Icon: BookText,   color: "text-blue-600",   activeBg: "bg-blue-50 dark:bg-blue-950/30",    border: "border-blue-500" },
+    { id: "writing",       label: "Writing",       Icon: PenLine,    color: "text-purple-600", activeBg: "bg-purple-50 dark:bg-purple-950/30", border: "border-purple-500" },
+    { id: "listening",     label: "Listening",     Icon: Headphones, color: "text-green-600",  activeBg: "bg-green-50 dark:bg-green-950/30",   border: "border-green-500" },
+    { id: "speaking",      label: "Speaking",      Icon: Mic,        color: "text-orange-600", activeBg: "bg-orange-50 dark:bg-orange-950/30", border: "border-orange-500" },
+    { id: "grammar",       label: "Grammar",       Icon: AlignLeft,  color: "text-rose-600",   activeBg: "bg-rose-50 dark:bg-rose-950/30",     border: "border-rose-500" },
+    { id: "vocabulary",    label: "Vocabulary",    Icon: BookMarked, color: "text-amber-600",  activeBg: "bg-amber-50 dark:bg-amber-950/30",   border: "border-amber-500" },
+    { id: "pronunciation", label: "Pronunciation", Icon: Volume2,    color: "text-sky-600",    activeBg: "bg-sky-50 dark:bg-sky-950/30",       border: "border-sky-500" },
+    { id: "translation",   label: "Translation",   Icon: Languages,  color: "text-teal-600",   activeBg: "bg-teal-50 dark:bg-teal-950/30",     border: "border-teal-500" },
   ];
 
   function CurriculumPanel() {
