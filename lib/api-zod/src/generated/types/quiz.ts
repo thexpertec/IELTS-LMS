@@ -13,6 +13,7 @@ export interface Quiz {
   passageText?: string | null;
   courseId?: number | null;
   chapterId?: number | null;
+  lessonId?: number | null;
   lessonType?: string | null;
   timeLimitMinutes?: number | null;
   isPublished: boolean;

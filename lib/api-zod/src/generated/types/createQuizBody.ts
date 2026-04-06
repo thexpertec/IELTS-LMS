@@ -14,6 +14,7 @@ export interface CreateQuizBody {
   parts?: QuizPart[];
   courseId?: number;
   chapterId?: number | null;
+  lessonId?: number | null;
   lessonType?: string | null;
   timeLimitMinutes?: number;
   isPublished?: boolean;

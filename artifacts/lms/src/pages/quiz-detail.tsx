@@ -29,8 +29,8 @@ import {
   useUpdateQuizQuestion,
   useDeleteQuizQuestion,
   getGetQuizQueryKey,
-  useListCourses,
 } from "@workspace/api-client-react";
+import { CourseLessonPicker } from "@/components/ui/course-lesson-picker";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -1001,11 +1001,9 @@ export default function QuizDetail() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { data: courses } = useListCourses({});
-
   // ── Quiz settings edit state
   const [editSettings, setEditSettings] = useState(false);
-  const [settingsForm, setSettingsForm] = useState({ title: "", description: "", courseId: "", timeLimitMinutes: "", isPublished: false });
+  const [settingsForm, setSettingsForm] = useState({ title: "", description: "", courseId: "none", chapterId: "none", lessonId: "none", lessonType: "", timeLimitMinutes: "", isPublished: false });
 
   // ── Question dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -1281,10 +1279,14 @@ export default function QuizDetail() {
 
   function openSettingsEdit() {
     if (!quiz) return;
+    const q = quiz as typeof quiz & { chapterId?: number | null; lessonId?: number | null; lessonType?: string | null };
     setSettingsForm({
       title: quiz.title,
       description: quiz.description,
       courseId: quiz.courseId ? String(quiz.courseId) : "none",
+      chapterId: q.chapterId ? String(q.chapterId) : "none",
+      lessonId: q.lessonId ? String(q.lessonId) : "none",
+      lessonType: q.lessonType ?? "",
       timeLimitMinutes: quiz.timeLimitMinutes ? String(quiz.timeLimitMinutes) : "",
       isPublished: quiz.isPublished,
     });
@@ -1300,6 +1302,9 @@ export default function QuizDetail() {
         description: settingsForm.description,
         parts: currentParts,
         courseId: settingsForm.courseId && settingsForm.courseId !== "none" ? Number(settingsForm.courseId) : undefined,
+        chapterId: settingsForm.chapterId && settingsForm.chapterId !== "none" ? Number(settingsForm.chapterId) : null,
+        lessonId: settingsForm.lessonId && settingsForm.lessonId !== "none" ? Number(settingsForm.lessonId) : null,
+        lessonType: settingsForm.lessonType || null,
         timeLimitMinutes: settingsForm.timeLimitMinutes ? Number(settingsForm.timeLimitMinutes) : undefined,
         isPublished: settingsForm.isPublished,
       },
@@ -1517,34 +1522,26 @@ export default function QuizDetail() {
                 onChange={(e) => setSettingsForm({ ...settingsForm, description: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Linked Course</Label>
-                <Select
-                  value={settingsForm.courseId || "none"}
-                  onValueChange={(val) => setSettingsForm({ ...settingsForm, courseId: val })}
-                >
-                  <SelectTrigger className="mt-1.5">
-                    <SelectValue placeholder="No course" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No course</SelectItem>
-                    {courses?.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Time Limit (min)</Label>
-                <Input
-                  className="mt-1.5"
-                  type="number"
-                  placeholder="No limit"
-                  value={settingsForm.timeLimitMinutes}
-                  onChange={(e) => setSettingsForm({ ...settingsForm, timeLimitMinutes: e.target.value })}
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label>Link to Course / Unit / Lesson</Label>
+              <CourseLessonPicker
+                courseId={settingsForm.courseId}
+                chapterId={settingsForm.chapterId}
+                lessonId={settingsForm.lessonId}
+                onCourseChange={(val) => setSettingsForm({ ...settingsForm, courseId: val, chapterId: "none", lessonId: "none" })}
+                onChapterChange={(val) => setSettingsForm({ ...settingsForm, chapterId: val, lessonId: "none" })}
+                onLessonChange={(val, type) => setSettingsForm({ ...settingsForm, lessonId: val, lessonType: type ?? "" })}
+              />
+            </div>
+            <div>
+              <Label>Time Limit (min)</Label>
+              <Input
+                className="mt-1.5"
+                type="number"
+                placeholder="No limit"
+                value={settingsForm.timeLimitMinutes}
+                onChange={(e) => setSettingsForm({ ...settingsForm, timeLimitMinutes: e.target.value })}
+              />
             </div>
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>

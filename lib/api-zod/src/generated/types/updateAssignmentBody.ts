@@ -10,6 +10,7 @@ import type { UpdateAssignmentBodyType } from "./updateAssignmentBodyType";
 export interface UpdateAssignmentBody {
   courseId?: number;
   chapterId?: number | null;
+  lessonId?: number | null;
   lessonType?: string | null;
   title?: string;
   description?: string;

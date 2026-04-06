@@ -411,6 +411,7 @@ export const CreateAssignmentBodyType = {
 export interface CreateAssignmentBody {
   courseId: number;
   chapterId?: number | null;
+  lessonId?: number | null;
   lessonType?: string | null;
   title: string;
   description?: string;
@@ -430,6 +431,7 @@ export const UpdateAssignmentBodyType = {
 export interface UpdateAssignmentBody {
   courseId?: number;
   chapterId?: number | null;
+  lessonId?: number | null;
   lessonType?: string | null;
   title?: string;
   description?: string;
@@ -465,6 +467,7 @@ export interface Assignment {
   courseId: number;
   courseTitle: string;
   chapterId?: number | null;
+  lessonId?: number | null;
   lessonType?: string | null;
   title: string;
   description: string;
@@ -523,6 +526,7 @@ export interface Quiz {
   passageText?: string | null;
   courseId?: number | null;
   chapterId?: number | null;
+  lessonId?: number | null;
   lessonType?: string | null;
   timeLimitMinutes?: number | null;
   isPublished: boolean;
@@ -594,6 +598,7 @@ export interface CreateQuizBody {
   parts?: QuizPart[];
   courseId?: number;
   chapterId?: number | null;
+  lessonId?: number | null;
   lessonType?: string | null;
   timeLimitMinutes?: number;
   isPublished?: boolean;

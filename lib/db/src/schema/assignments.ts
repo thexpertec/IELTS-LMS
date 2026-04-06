@@ -3,12 +3,14 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { coursesTable } from "./courses";
 import { chaptersTable } from "./chapters";
+import { lessonsTable } from "./lessons";
 import { enrollmentsTable } from "./enrollments";
 
 export const assignmentsTable = pgTable("assignments", {
   id: serial("id").primaryKey(),
   courseId: integer("course_id").notNull().references(() => coursesTable.id, { onDelete: "cascade" }),
   chapterId: integer("chapter_id").references(() => chaptersTable.id, { onDelete: "set null" }),
+  lessonId: integer("lesson_id").references(() => lessonsTable.id, { onDelete: "set null" }),
   lessonType: text("lesson_type"),
   title: text("title").notNull(),
   description: text("description").notNull().default(""),

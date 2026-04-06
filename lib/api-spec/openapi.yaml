@@ -2014,6 +2014,9 @@ components:
         chapterId:
           type: integer
           nullable: true
+        lessonId:
+          type: integer
+          nullable: true
         lessonType:
           type: string
           nullable: true
@@ -2040,6 +2043,9 @@ components:
         courseId:
           type: integer
         chapterId:
+          type: integer
+          nullable: true
+        lessonId:
           type: integer
           nullable: true
         lessonType:
@@ -2078,6 +2084,9 @@ components:
         courseTitle:
           type: string
         chapterId:
+          type: integer
+          nullable: true
+        lessonId:
           type: integer
           nullable: true
         lessonType:
@@ -2243,6 +2252,9 @@ components:
         chapterId:
           type: integer
           nullable: true
+        lessonId:
+          type: integer
+          nullable: true
         lessonType:
           type: string
           nullable: true
@@ -2376,6 +2388,9 @@ components:
         courseId:
           type: integer
         chapterId:
+          type: integer
+          nullable: true
+        lessonId:
           type: integer
           nullable: true
         lessonType:

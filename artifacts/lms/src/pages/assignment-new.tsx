@@ -1,7 +1,6 @@
-import { useCreateAssignment, useListCourses, getListAssignmentsQueryKey } from "@workspace/api-client-react";
+import { useCreateAssignment, getListAssignmentsQueryKey } from "@workspace/api-client-react";
 import { useLocation, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -14,9 +13,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CourseLessonPicker } from "@/components/ui/course-lesson-picker";
 
 const formSchema = z.object({
   courseId: z.string().min(1, "Please select a course"),
+  chapterId: z.string().optional().default("none"),
+  lessonId: z.string().optional().default("none"),
+  lessonType: z.string().optional(),
   title: z.string().min(2, "Title must be at least 2 characters"),
   description: z.string().optional(),
   type: z.enum(["assignment", "quiz"]),
@@ -32,17 +35,19 @@ export default function AssignmentNew() {
   const search = useSearch();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { data: courses } = useListCourses();
 
   const params = new URLSearchParams(search);
   const prefilledCourseId = params.get("courseId") ?? "";
-  const prefilledChapterId = params.get("chapterId") ?? undefined;
+  const prefilledChapterId = params.get("chapterId") ?? "none";
   const prefilledLessonType = params.get("lessonType") ?? undefined;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       courseId: prefilledCourseId,
+      chapterId: prefilledChapterId,
+      lessonId: "none",
+      lessonType: prefilledLessonType,
       title: "",
       description: "",
       type: "assignment",
@@ -51,12 +56,6 @@ export default function AssignmentNew() {
       maxScore: 100,
     },
   });
-
-  useEffect(() => {
-    if (prefilledCourseId) {
-      form.setValue("courseId", prefilledCourseId);
-    }
-  }, [prefilledCourseId]);
 
   const createAssignment = useCreateAssignment({
     mutation: {
@@ -74,8 +73,9 @@ export default function AssignmentNew() {
     createAssignment.mutate({
       data: {
         courseId: Number(values.courseId),
-        chapterId: prefilledChapterId ? Number(prefilledChapterId) : undefined,
-        lessonType: prefilledLessonType ?? undefined,
+        chapterId: values.chapterId && values.chapterId !== "none" ? Number(values.chapterId) : undefined,
+        lessonId: values.lessonId && values.lessonId !== "none" ? Number(values.lessonId) : undefined,
+        lessonType: values.lessonType ?? undefined,
         title: values.title,
         description: values.description ?? "",
         type: values.type,
@@ -103,28 +103,23 @@ export default function AssignmentNew() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 bg-card border rounded-lg p-6">
-          <FormField
-            control={form.control}
-            name="courseId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Course</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a course…" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {(courses ?? []).map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium leading-none">Link to Course / Unit / Lesson</p>
+            <CourseLessonPicker
+              courseId={form.watch("courseId") || "none"}
+              chapterId={form.watch("chapterId") || "none"}
+              lessonId={form.watch("lessonId") || "none"}
+              onCourseChange={(val) => form.setValue("courseId", val === "none" ? "" : val)}
+              onChapterChange={(val) => form.setValue("chapterId", val)}
+              onLessonChange={(val, type) => {
+                form.setValue("lessonId", val);
+                if (type) form.setValue("lessonType", type);
+              }}
+            />
+            {form.formState.errors.courseId && (
+              <p className="text-sm text-destructive">{form.formState.errors.courseId.message}</p>
             )}
-          />
+          </div>
 
           <FormField
             control={form.control}

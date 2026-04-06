@@ -1,4 +1,4 @@
-import { useCreateQuiz, useListCourses, getListQuizzesQueryKey } from "@workspace/api-client-react";
+import { useCreateQuiz, getListQuizzesQueryKey } from "@workspace/api-client-react";
 import { useLocation, useSearch } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -10,20 +10,21 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { PartsEditor, type QuizPart } from "@/components/quiz/parts-editor";
+import { CourseLessonPicker } from "@/components/ui/course-lesson-picker";
 
 const formSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters."),
   description: z.string().optional().default(""),
   passageText: z.string().optional().default(""),
-  courseId: z.string().optional(),
+  courseId: z.string().optional().default("none"),
+  chapterId: z.string().optional().default("none"),
+  lessonId: z.string().optional().default("none"),
+  lessonType: z.string().optional(),
   timeLimitMinutes: z.coerce.number().min(1).optional().or(z.literal("")),
   isPublished: z.boolean().default(false),
 });
@@ -36,11 +37,10 @@ export default function QuizNew() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [parts, setParts] = useState<QuizPart[]>([]);
-  const { data: courses } = useListCourses({});
 
   const params = new URLSearchParams(search);
-  const prefilledCourseId = params.get("courseId") ?? undefined;
-  const prefilledChapterId = params.get("chapterId") ?? undefined;
+  const prefilledCourseId = params.get("courseId") ?? "none";
+  const prefilledChapterId = params.get("chapterId") ?? "none";
   const prefilledLessonType = params.get("lessonType") ?? undefined;
 
   const form = useForm<FormValues>({
@@ -50,16 +50,13 @@ export default function QuizNew() {
       description: "",
       passageText: "",
       courseId: prefilledCourseId,
+      chapterId: prefilledChapterId,
+      lessonId: "none",
+      lessonType: prefilledLessonType,
       timeLimitMinutes: "",
       isPublished: false,
     },
   });
-
-  useEffect(() => {
-    if (prefilledCourseId) {
-      form.setValue("courseId", prefilledCourseId);
-    }
-  }, [prefilledCourseId]);
 
   const createQuiz = useCreateQuiz({
     mutation: {
@@ -80,8 +77,9 @@ export default function QuizNew() {
         passageText: values.passageText || undefined,
         parts: parts.length > 0 ? parts : undefined,
         courseId: values.courseId && values.courseId !== "none" ? Number(values.courseId) : undefined,
-        chapterId: prefilledChapterId ? Number(prefilledChapterId) : undefined,
-        lessonType: prefilledLessonType ?? undefined,
+        chapterId: values.chapterId && values.chapterId !== "none" ? Number(values.chapterId) : undefined,
+        lessonId: values.lessonId && values.lessonId !== "none" ? Number(values.lessonId) : undefined,
+        lessonType: values.lessonType ?? undefined,
         timeLimitMinutes: values.timeLimitMinutes ? Number(values.timeLimitMinutes) : undefined,
         isPublished: values.isPublished,
       },
@@ -165,29 +163,20 @@ export default function QuizNew() {
               <PartsEditor value={parts} onChange={setParts} />
             </div>
 
-            <FormField
-              control={form.control}
-              name="courseId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Linked Course (optional)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-course">
-                        <SelectValue placeholder="Select course..." />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="none">No course</SelectItem>
-                      {courses?.map((c) => (
-                        <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="md:col-span-2 space-y-1.5">
+              <p className="text-sm font-medium leading-none">Link to Course / Unit / Lesson <span className="text-muted-foreground font-normal">(optional)</span></p>
+              <CourseLessonPicker
+                courseId={form.watch("courseId") ?? "none"}
+                chapterId={form.watch("chapterId") ?? "none"}
+                lessonId={form.watch("lessonId") ?? "none"}
+                onCourseChange={(val) => form.setValue("courseId", val)}
+                onChapterChange={(val) => form.setValue("chapterId", val)}
+                onLessonChange={(val, type) => {
+                  form.setValue("lessonId", val);
+                  if (type) form.setValue("lessonType", type);
+                }}
+              />
+            </div>
 
             <FormField
               control={form.control}

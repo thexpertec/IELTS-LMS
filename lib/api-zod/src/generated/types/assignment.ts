@@ -13,6 +13,7 @@ export interface Assignment {
   courseId: number;
   courseTitle: string;
   chapterId?: number | null;
+  lessonId?: number | null;
   lessonType?: string | null;
   title: string;
   description: string;
