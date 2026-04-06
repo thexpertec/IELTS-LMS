@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { coursesTable } from "./courses";
@@ -14,6 +14,8 @@ export const lessonsTable = pgTable("lessons", {
   videoUrl: text("video_url"),
   imageUrl: text("image_url"),
   audioUrl: text("audio_url"),
+  imageUrls: json("image_urls").$type<string[]>(),
+  audioUrls: json("audio_urls").$type<string[]>(),
   durationMinutes: integer("duration_minutes"),
   lessonType: text("lesson_type").notNull().default("reading"),
   order: integer("order").notNull().default(1),

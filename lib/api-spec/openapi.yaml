@@ -1439,6 +1439,16 @@ components:
           type: ["string", "null"]
         audioUrl:
           type: ["string", "null"]
+        imageUrls:
+          type: array
+          items:
+            type: string
+          nullable: true
+        audioUrls:
+          type: array
+          items:
+            type: string
+          nullable: true
         durationMinutes:
           type: ["integer", "null"]
         lessonType:
@@ -1462,6 +1472,8 @@ components:
         - videoUrl
         - imageUrl
         - audioUrl
+        - imageUrls
+        - audioUrls
         - durationMinutes
         - lessonType
         - order
@@ -1483,6 +1495,16 @@ components:
           type: ["string", "null"]
         audioUrl:
           type: ["string", "null"]
+        imageUrls:
+          type: array
+          items:
+            type: string
+          nullable: true
+        audioUrls:
+          type: array
+          items:
+            type: string
+          nullable: true
         durationMinutes:
           type: ["integer", "null"]
         lessonType:
@@ -1511,6 +1533,16 @@ components:
           type: ["string", "null"]
         audioUrl:
           type: ["string", "null"]
+        imageUrls:
+          type: array
+          items:
+            type: string
+          nullable: true
+        audioUrls:
+          type: array
+          items:
+            type: string
+          nullable: true
         durationMinutes:
           type: ["integer", "null"]
         lessonType:

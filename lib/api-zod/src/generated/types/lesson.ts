@@ -22,6 +22,8 @@ export interface Lesson {
   imageUrl: string | null;
   /** @nullable */
   audioUrl: string | null;
+  imageUrls: string[] | null;
+  audioUrls: string[] | null;
   /** @nullable */
   durationMinutes: number | null;
   lessonType: string;

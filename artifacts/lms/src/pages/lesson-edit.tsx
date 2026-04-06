@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
-import { MediaUploadField } from "@/components/ui/media-upload-field";
+import { MultiMediaUploadField } from "@/components/ui/multi-media-upload-field";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
@@ -71,8 +71,8 @@ export default function LessonEdit() {
   const { data: lesson, isLoading, isError } = useGetLesson(courseId, lessonId);
   const { data: chapters = [] } = useListChapters(courseId);
 
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [audioUrls, setAudioUrls] = useState<string[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -95,6 +95,8 @@ export default function LessonEdit() {
         description?: string;
         imageUrl?: string | null;
         audioUrl?: string | null;
+        imageUrls?: string[] | null;
+        audioUrls?: string[] | null;
       };
       form.reset({
         title: lesson.title,
@@ -106,8 +108,21 @@ export default function LessonEdit() {
         order: lesson.order,
         chapterId: lesson.chapterId != null ? String(lesson.chapterId) : "none",
       });
-      setImageUrl(l.imageUrl ?? null);
-      setAudioUrl(l.audioUrl ?? null);
+      // Migrate: prefer arrays, fall back to legacy single-url fields
+      if (l.imageUrls && l.imageUrls.length > 0) {
+        setImageUrls(l.imageUrls);
+      } else if (l.imageUrl) {
+        setImageUrls([l.imageUrl]);
+      } else {
+        setImageUrls([]);
+      }
+      if (l.audioUrls && l.audioUrls.length > 0) {
+        setAudioUrls(l.audioUrls);
+      } else if (l.audioUrl) {
+        setAudioUrls([l.audioUrl]);
+      } else {
+        setAudioUrls([]);
+      }
     }
   }, [lesson]);
 
@@ -134,8 +149,10 @@ export default function LessonEdit() {
         lessonType: values.lessonType,
         content: values.content,
         videoUrl: values.videoUrl || null,
-        imageUrl: imageUrl || null,
-        audioUrl: audioUrl || null,
+        imageUrl: imageUrls[0] || null,
+        audioUrl: audioUrls[0] || null,
+        imageUrls: imageUrls.length > 0 ? imageUrls : null,
+        audioUrls: audioUrls.length > 0 ? audioUrls : null,
         durationMinutes: values.durationMinutes ? Number(values.durationMinutes) : null,
         order: Number(values.order),
         chapterId: values.chapterId && values.chapterId !== "none" ? Number(values.chapterId) : null,
@@ -282,11 +299,11 @@ export default function LessonEdit() {
           <div className="space-y-1">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Media</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-              <MediaUploadField
+              <MultiMediaUploadField
                 type="image"
-                label="Image"
-                value={imageUrl}
-                onChange={setImageUrl}
+                label="Images"
+                values={imageUrls}
+                onChange={setImageUrls}
               />
               <FormField
                 control={form.control}
@@ -301,11 +318,11 @@ export default function LessonEdit() {
                   </FormItem>
                 )}
               />
-              <MediaUploadField
+              <MultiMediaUploadField
                 type="audio"
-                label="Audio"
-                value={audioUrl}
-                onChange={setAudioUrl}
+                label="Audio Files"
+                values={audioUrls}
+                onChange={setAudioUrls}
               />
             </div>
           </div>
