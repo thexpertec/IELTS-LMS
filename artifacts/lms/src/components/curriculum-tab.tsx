@@ -43,7 +43,7 @@ import {
   ChevronDown, ChevronRight, LayoutList, Pencil, Check, X,
   ClipboardList, Timer, FileText, Layers,
   Headphones, Mic, PenLine, BookText, AlignLeft,
-  BookMarked, Volume2, Languages,
+  BookMarked, Volume2, Languages, ArrowUpDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +51,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -194,10 +195,41 @@ function SortableLessonCard({
 type QuizItem = { id: number; title: string; description?: string | null; questionCount: number; timeLimitMinutes?: number | null; chapterId?: number | null; lessonType?: string | null };
 type AssignmentItem = { id: number; title: string; description?: string | null; dueDate: string; maxScore: number; chapterId?: number | null; lessonType?: string | null };
 
+function SortableTypeRow({
+  id, label, Icon, color, count,
+}: {
+  id: string; label: string; Icon: React.ComponentType<{ className?: string }>; color: string; count: number;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
+      className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-background border select-none"
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground shrink-0"
+      >
+        <GripVertical className="w-4 h-4" />
+      </div>
+      <Icon className={cn("w-3.5 h-3.5 shrink-0", color)} />
+      <span className="text-sm font-medium flex-1">{label}</span>
+      {count > 0 && (
+        <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-muted text-muted-foreground">{count}</span>
+      )}
+    </div>
+  );
+}
+
 function UnitSection({
-  chapter, lessons, quizzes, assignments, courseId, onEditLesson, onDeleteLesson, onRenameChapter, onDeleteChapter,
+  chapter, lessons, quizzes, assignments, courseId,
+  typeOrder, onTypeReorder,
+  onEditLesson, onDeleteLesson, onRenameChapter, onDeleteChapter,
 }: {
   chapter: Chapter; lessons: Lesson[]; quizzes: QuizItem[]; assignments: AssignmentItem[]; courseId: number;
+  typeOrder: LessonTypeId[]; onTypeReorder: (order: LessonTypeId[]) => void;
   onEditLesson: (id: number) => void; onDeleteLesson: (id: number) => void;
   onRenameChapter: (c: Chapter) => void; onDeleteChapter: (c: Chapter) => void;
 }) {
@@ -206,6 +238,7 @@ function UnitSection({
   const [collapsed, setCollapsed] = useState(false);
   const [activeType, setActiveType] = useState<LessonTypeId>("reading");
   const [activeDragId, setActiveDragId] = useState<number | null>(null);
+  const [typePopoverOpen, setTypePopoverOpen] = useState(false);
 
   const lessonsByType = LESSON_TYPES.map((t) => ({
     ...t,
@@ -213,6 +246,24 @@ function UnitSection({
     quizzes: quizzes.filter((q) => (q.lessonType ?? "reading") === t.id),
     assignments: assignments.filter((a) => (a.lessonType ?? "reading") === t.id),
   }));
+
+  // Apply typeOrder to sort the tabs
+  const orderedLessonsByType = typeOrder
+    .map((id) => lessonsByType.find((t) => t.id === id))
+    .filter((t): t is NonNullable<typeof t> => t != null);
+
+  const typeSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+
+  function handleTypeDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = typeOrder.indexOf(active.id as LessonTypeId);
+    const newIdx = typeOrder.indexOf(over.id as LessonTypeId);
+    if (oldIdx === -1 || newIdx === -1) return;
+    onTypeReorder(arrayMove([...typeOrder], oldIdx, newIdx));
+  }
 
   const activeTypeData = lessonsByType.find((t) => t.id === activeType);
   const serverLessons = activeTypeData?.lessons ?? [];
@@ -320,34 +371,78 @@ function UnitSection({
       {!collapsed && (
         <div className="bg-card">
           {/* Lesson type tab bar */}
-          <div className="flex items-center gap-0 border-b overflow-x-auto">
-            {lessonsByType.map((t) => {
-              const Icon = t.icon;
-              const isActive = activeType === t.id;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => setActiveType(t.id as LessonTypeId)}
+          <div className="flex items-center gap-0 border-b">
+            <div className="flex items-center gap-0 flex-1 overflow-x-auto">
+              {orderedLessonsByType.map((t) => {
+                const Icon = t.icon;
+                const isActive = activeType === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setActiveType(t.id as LessonTypeId)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 -mb-[1px] transition-colors whitespace-nowrap shrink-0",
+                      isActive
+                        ? `border-current ${t.color}`
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {t.label}
+                    {(t.lessons.length + t.quizzes.length + t.assignments.length) > 0 && (
+                      <span className={cn(
+                        "px-1.5 py-0.5 rounded-full text-[10px]",
+                        isActive ? cn(t.bg, t.color) : "bg-muted text-muted-foreground"
+                      )}>
+                        {t.lessons.length + t.quizzes.length + t.assignments.length}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Reorder tabs button */}
+            <Popover open={typePopoverOpen} onOpenChange={setTypePopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className={cn(
-                    "flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 -mb-[1px] transition-colors whitespace-nowrap shrink-0",
-                    isActive
-                      ? `border-current ${t.color}`
-                      : "border-transparent text-muted-foreground hover:text-foreground"
+                    "h-8 w-8 shrink-0 mr-1",
+                    typePopoverOpen && "bg-muted text-foreground"
                   )}
+                  title="Reorder lesson type tabs"
                 >
-                  <Icon className="w-3.5 h-3.5" />
-                  {t.label}
-                  {(t.lessons.length + t.quizzes.length + t.assignments.length) > 0 && (
-                    <span className={cn(
-                      "px-1.5 py-0.5 rounded-full text-[10px]",
-                      isActive ? cn(t.bg, t.color) : "bg-muted text-muted-foreground"
-                    )}>
-                      {t.lessons.length + t.quizzes.length + t.assignments.length}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+                  <ArrowUpDown className="w-3.5 h-3.5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-56 p-3">
+                <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+                  Drag to reorder tabs
+                </p>
+                <DndContext
+                  sensors={typeSensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleTypeDragEnd}
+                >
+                  <SortableContext items={typeOrder} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-1">
+                      {orderedLessonsByType.map((t) => (
+                        <SortableTypeRow
+                          key={t.id}
+                          id={t.id}
+                          label={t.label}
+                          Icon={t.icon}
+                          color={t.color}
+                          count={t.lessons.length + t.quizzes.length + t.assignments.length}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Lesson list for active type */}
@@ -478,6 +573,28 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
   const [newUnitTitle, setNewUnitTitle] = useState("");
   const [renamingChapter, setRenamingChapter] = useState<Chapter | null>(null);
   const [renameTitle, setRenameTitle] = useState("");
+
+  const defaultTypeOrder = LESSON_TYPES.map((t) => t.id) as LessonTypeId[];
+  const [typeOrder, setTypeOrder] = useState<LessonTypeId[]>(() => {
+    try {
+      const saved = localStorage.getItem(`lesson-type-order-${courseId}`);
+      if (saved) {
+        const parsed = JSON.parse(saved) as LessonTypeId[];
+        if (
+          parsed.length === defaultTypeOrder.length &&
+          defaultTypeOrder.every((id) => parsed.includes(id))
+        ) return parsed;
+      }
+    } catch {}
+    return defaultTypeOrder;
+  });
+
+  function handleTypeReorder(newOrder: LessonTypeId[]) {
+    setTypeOrder(newOrder);
+    try {
+      localStorage.setItem(`lesson-type-order-${courseId}`, JSON.stringify(newOrder));
+    } catch {}
+  }
 
   const { data: lessons = [], isLoading: lessonsLoading } = useListLessons(courseId, {
     query: { enabled: !!courseId, queryKey: getListLessonsQueryKey(courseId) }
@@ -674,6 +791,8 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
                   quizzes={chapterQuizzes}
                   assignments={chapterAssignments}
                   courseId={courseId}
+                  typeOrder={typeOrder}
+                  onTypeReorder={handleTypeReorder}
                   onEditLesson={(lessonId) => setLocation(`/courses/${courseId}/lessons/${lessonId}/edit`)}
                   onDeleteLesson={(lessonId) => deleteLesson.mutate({ courseId, id: lessonId })}
                   onRenameChapter={(c) => { setRenamingChapter(c); setRenameTitle(c.title); }}
