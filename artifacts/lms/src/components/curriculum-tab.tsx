@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import {
   useListLessons,
   useDeleteLesson,
+  useUpdateLesson,
   useListChapters,
   useCreateChapter,
   useUpdateChapter,
@@ -16,6 +17,25 @@ import {
   getListQuizzesQueryKey,
   getListAssignmentsQueryKey,
 } from "@workspace/api-client-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  type DragStartEvent,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  arrayMove,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -73,17 +93,27 @@ type Chapter = {
 
 // ── LessonCard ───────────────────────────────────────────────────────────────
 
-function LessonCard({
-  lesson, index, courseId, onEdit, onDelete,
+function LessonCardInner({
+  lesson, index, onEdit, onDelete, dragHandleProps, isDragging = false,
 }: {
-  lesson: Lesson; index: number; courseId: number;
+  lesson: Lesson; index: number;
   onEdit: () => void; onDelete: () => void;
+  dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
+  isDragging?: boolean;
 }) {
   const typeInfo = LESSON_TYPES.find((t) => t.id === lesson.lessonType) ?? LESSON_TYPES[0];
   const TypeIcon = typeInfo.icon;
   return (
-    <Card className="flex flex-row items-center p-3.5 hover:border-primary/50 transition-colors gap-3">
-      <div className="text-muted-foreground cursor-grab">
+    <Card className={cn(
+      "flex flex-row items-center p-3.5 transition-colors gap-3",
+      isDragging
+        ? "shadow-xl ring-2 ring-primary/30 opacity-90 bg-card"
+        : "hover:border-primary/50"
+    )}>
+      <div
+        className="text-muted-foreground cursor-grab active:cursor-grabbing touch-none"
+        {...dragHandleProps}
+      >
         <GripVertical className="w-4 h-4" />
       </div>
       <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0", typeInfo.bg)}>
@@ -128,6 +158,37 @@ function LessonCard({
   );
 }
 
+function SortableLessonCard({
+  lesson, index, courseId, onEdit, onDelete,
+}: {
+  lesson: Lesson; index: number; courseId: number;
+  onEdit: () => void; onDelete: () => void;
+}) {
+  const {
+    attributes, listeners, setNodeRef, transform, transition, isDragging,
+  } = useSortable({ id: lesson.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : undefined,
+    position: isDragging ? "relative" : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <LessonCardInner
+        lesson={lesson}
+        index={index}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        dragHandleProps={{ ...attributes, ...listeners }}
+        isDragging={isDragging}
+      />
+    </div>
+  );
+}
+
 // ── UnitSection ──────────────────────────────────────────────────────────────
 
 type QuizItem = { id: number; title: string; description?: string | null; questionCount: number; timeLimitMinutes?: number | null; chapterId?: number | null; lessonType?: string | null };
@@ -140,8 +201,11 @@ function UnitSection({
   onEditLesson: (id: number) => void; onDeleteLesson: (id: number) => void;
   onRenameChapter: (c: Chapter) => void; onDeleteChapter: (c: Chapter) => void;
 }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [collapsed, setCollapsed] = useState(false);
   const [activeType, setActiveType] = useState<LessonTypeId>("reading");
+  const [activeDragId, setActiveDragId] = useState<number | null>(null);
 
   const lessonsByType = LESSON_TYPES.map((t) => ({
     ...t,
@@ -151,9 +215,72 @@ function UnitSection({
   }));
 
   const activeTypeData = lessonsByType.find((t) => t.id === activeType);
-  const activeLessons = activeTypeData?.lessons ?? [];
+  const serverLessons = activeTypeData?.lessons ?? [];
   const activeQuizzes = activeTypeData?.quizzes ?? [];
   const activeAssignments = activeTypeData?.assignments ?? [];
+
+  // Local optimistic order — reset when tab switches or server data changes
+  const [localLessons, setLocalLessons] = useState<Lesson[]>(serverLessons);
+  const prevKey = useRef(`${activeType}-${serverLessons.map(l => l.id).join(",")}`);
+  useEffect(() => {
+    const key = `${activeType}-${serverLessons.map(l => l.id).join(",")}`;
+    if (key !== prevKey.current) {
+      prevKey.current = key;
+      setLocalLessons(serverLessons);
+    }
+  }, [activeType, serverLessons]);
+
+  const activeLessons = localLessons;
+
+  const updateLesson = useUpdateLesson({
+    mutation: {
+      onError: () => {
+        toast({ title: "Failed to save order", variant: "destructive" });
+        setLocalLessons(serverLessons);
+      },
+    },
+  });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveDragId(event.active.id as number);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setActiveDragId(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = localLessons.findIndex((l) => l.id === active.id);
+    const newIndex = localLessons.findIndex((l) => l.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(localLessons, oldIndex, newIndex);
+    setLocalLessons(reordered);
+
+    // Persist each lesson whose order number changed
+    reordered.forEach((lesson, idx) => {
+      const newOrder = idx + 1;
+      if (lesson.order !== newOrder) {
+        updateLesson.mutate(
+          { courseId, id: lesson.id, data: { order: newOrder } },
+          {
+            onSuccess: () => {
+              queryClient.invalidateQueries({ queryKey: getListLessonsQueryKey(courseId) });
+            },
+          }
+        );
+      }
+    });
+  }
+
+  const activeDragLesson = activeDragId != null
+    ? localLessons.find((l) => l.id === activeDragId) ?? null
+    : null;
 
   return (
     <div className="border rounded-xl overflow-hidden shadow-sm">
@@ -231,16 +358,41 @@ function UnitSection({
               </div>
             ) : (
               <>
-                {activeLessons.map((lesson, idx) => (
-                  <LessonCard
-                    key={lesson.id}
-                    lesson={lesson}
-                    index={idx}
-                    courseId={courseId}
-                    onEdit={() => onEditLesson(lesson.id)}
-                    onDelete={() => onDeleteLesson(lesson.id)}
-                  />
-                ))}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={activeLessons.map((l) => l.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-2">
+                      {activeLessons.map((lesson, idx) => (
+                        <SortableLessonCard
+                          key={lesson.id}
+                          lesson={lesson}
+                          index={idx}
+                          courseId={courseId}
+                          onEdit={() => onEditLesson(lesson.id)}
+                          onDelete={() => onDeleteLesson(lesson.id)}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                  <DragOverlay>
+                    {activeDragLesson && (
+                      <LessonCardInner
+                        lesson={activeDragLesson}
+                        index={localLessons.findIndex((l) => l.id === activeDragLesson.id)}
+                        onEdit={() => {}}
+                        onDelete={() => {}}
+                        isDragging
+                      />
+                    )}
+                  </DragOverlay>
+                </DndContext>
                 {/* Inline Quizzes */}
                 {activeQuizzes.map((quiz) => (
                   <Card key={quiz.id} className="flex flex-row items-center p-3.5 hover:border-violet-400/60 transition-colors gap-3 border-violet-200/80 bg-violet-50/40 dark:bg-violet-950/10">
@@ -544,11 +696,10 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
                   {[...unassignedLessons]
                     .sort((a, b) => a.order - b.order)
                     .map((lesson, index) => (
-                      <LessonCard
+                      <LessonCardInner
                         key={lesson.id}
                         lesson={lesson}
                         index={index}
-                        courseId={courseId}
                         onEdit={() => setLocation(`/courses/${courseId}/lessons/${lesson.id}/edit`)}
                         onDelete={() => deleteLesson.mutate({ courseId, id: lesson.id })}
                       />
