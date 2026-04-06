@@ -688,7 +688,10 @@ function WritingQuestion({
 type QuizPartFull = {
   name: string; from: number; to: number;
   instructions?: string[];
-  passageText?: string; imageUrl?: string; audioUrl?: string;
+  passageText?: string;
+  imageUrls?: string[]; audioUrls?: string[];
+  /** @deprecated */ imageUrl?: string;
+  /** @deprecated */ audioUrl?: string;
 };
 
 export default function StudentQuizTake() {
@@ -722,8 +725,21 @@ export default function StudentQuizTake() {
     label: string;
     from: number; to: number;
     instructions?: string[];
-    passageText?: string; imageUrl?: string; audioUrl?: string;
+    passageText?: string;
+    imageUrls: string[];
+    audioUrls: string[];
   };
+
+  function resolveImageUrls(p: QuizPartFull): string[] {
+    if (p.imageUrls && p.imageUrls.length > 0) return p.imageUrls.filter(Boolean);
+    if (p.imageUrl) return [p.imageUrl];
+    return [];
+  }
+  function resolveAudioUrls(p: QuizPartFull): string[] {
+    if (p.audioUrls && p.audioUrls.length > 0) return p.audioUrls.filter(Boolean);
+    if (p.audioUrl) return [p.audioUrl];
+    return [];
+  }
 
   const tabs: Tab[] = [
     ...activeParts.map((p) => ({
@@ -731,19 +747,21 @@ export default function StudentQuizTake() {
       from: p.from, to: p.to,
       instructions: p.instructions,
       passageText: p.passageText,
-      imageUrl: p.imageUrl,
-      audioUrl: p.audioUrl,
+      imageUrls: resolveImageUrls(p),
+      audioUrls: resolveAudioUrls(p),
     })),
     ...(ungroupedQs.length > 0 ? [{
       label: "QUESTIONS",
       from: maxTo + 1, to: sortedQs.length,
-      instructions: undefined, passageText: undefined, imageUrl: undefined, audioUrl: undefined,
+      instructions: undefined, passageText: undefined, imageUrls: [] as string[], audioUrls: [] as string[],
     }] : []),
   ];
 
   const allTabs: Tab[] = tabs.length > 0 ? tabs : [{
     label: "QUESTIONS",
     from: 1, to: sortedQs.length,
+    imageUrls: [],
+    audioUrls: [],
   }];
 
   const clampedPart = Math.min(activePart, allTabs.length - 1);
@@ -752,9 +770,9 @@ export default function StudentQuizTake() {
   // Left panel: current tab media OR quiz-level passageText
   const quizPassage = (quiz as { passageText?: string })?.passageText;
   const tabPassage = currentTab.passageText;
-  const tabImage = currentTab.imageUrl;
-  const tabAudio = currentTab.audioUrl;
-  const hasLeftPanel = !!(tabPassage || tabImage || tabAudio || quizPassage);
+  const tabImages = currentTab.imageUrls ?? [];
+  const tabAudios = currentTab.audioUrls ?? [];
+  const hasLeftPanel = !!(tabPassage || tabImages.length > 0 || tabAudios.length > 0 || quizPassage);
   const leftPassage = tabPassage || quizPassage;
 
   // Slot-aware numbering
@@ -961,12 +979,12 @@ export default function StudentQuizTake() {
         {hasLeftPanel && (
           <div className="w-1/2 overflow-y-auto border-r bg-card">
             <div className="p-6 max-w-2xl mx-auto">
-              {tabImage && (
-                <img src={tabImage} alt="Reading image" className="rounded-lg border mb-5 w-full object-contain max-h-72" />
-              )}
-              {tabAudio && (
-                <audio controls src={tabAudio} className="w-full mb-5" />
-              )}
+              {tabImages.map((src, i) => (
+                <img key={i} src={src} alt={`Reading image ${i + 1}`} className="rounded-lg border mb-4 w-full object-contain max-h-72" />
+              ))}
+              {tabAudios.map((src, i) => (
+                <audio key={i} controls src={src} className="w-full mb-4" />
+              ))}
               {leftPassage && (
                 <>
                   {currentTab.label !== "QUESTIONS" && currentTab.label && (

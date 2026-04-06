@@ -11,7 +11,11 @@ export interface QuizPart {
   to: number;
   instructions: string[];
   passageText?: string;
+  imageUrls?: string[];
+  audioUrls?: string[];
+  /** @deprecated use imageUrls */
   imageUrl?: string;
+  /** @deprecated use audioUrls */
   audioUrl?: string;
 }
 
