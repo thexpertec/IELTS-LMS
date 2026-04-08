@@ -489,7 +489,7 @@ export default function CourseView() {
 
           const lessonsByType = STUDENT_LESSON_TYPES.map((t) => ({
             ...t,
-            lessons: unitLessons.filter((l) => ((l as unknown as { lessonType?: string }).lessonType ?? "reading") === t.id),
+            lessons: unitLessons.filter((l) => (l.type ?? "reading") === t.id),
             quizzes: unitChapQuizzes.filter((q) => ((q as unknown as { lessonType?: string | null }).lessonType ?? "reading") === t.id),
             assignments: unitChapAssignments.filter((a) => ((a as unknown as { lessonType?: string | null }).lessonType ?? "reading") === t.id),
           }));
