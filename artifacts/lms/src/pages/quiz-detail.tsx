@@ -1335,6 +1335,7 @@ export default function QuizDetail() {
   const [activeId, setActiveId] = useState<number | null>(null);
   const isReordering = useRef(false);
   const skipPositionalSync = useRef(false);
+  const targetGroupKey = useRef<string>("ungrouped");
 
   // ── Admin tab
   const [adminTab, setAdminTab] = useState<"questions" | "submissions">("questions");
@@ -1592,7 +1593,19 @@ export default function QuizDetail() {
 
   const addQuestion = useAddQuizQuestion({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (data) => {
+        const newId = (data as { id?: number })?.id;
+        if (newId) {
+          // Place the new question into the section where "Add Question" was clicked.
+          skipPositionalSync.current = true;
+          setGroups((prev) =>
+            prev.map((g) =>
+              g.key === targetGroupKey.current
+                ? { ...g, questionIds: [...g.questionIds, newId] }
+                : g
+            )
+          );
+        }
         queryClient.invalidateQueries({ queryKey: getGetQuizQueryKey(quizId) });
         toast({ title: "Question added" });
         closeDialog();
@@ -1631,7 +1644,8 @@ export default function QuizDetail() {
     },
   });
 
-  function openAddDialog() {
+  function openAddDialog(groupKey = "ungrouped") {
+    targetGroupKey.current = groupKey;
     setEditingQuestion(null);
     setQType("fill_blank");
     setQText("");
@@ -2037,9 +2051,18 @@ export default function QuizDetail() {
                     if (group.questionIds.length === 0) return null;
                     return (
                       <div key="ungrouped" className="space-y-3">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
-                          Ungrouped Questions
-                        </p>
+                        <div className="flex items-center justify-between px-1">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            Ungrouped Questions
+                          </p>
+                          <button
+                            onClick={() => openAddDialog("ungrouped")}
+                            className="flex items-center gap-1 px-2 py-1 rounded border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Add Question
+                          </button>
+                        </div>
                         <UngroupedDropArea groupKey="ungrouped">
                           <SortableContext items={group.questionIds} strategy={verticalListSortingStrategy}>
                             {group.questionIds.map((id, qi) => {
@@ -2070,6 +2093,7 @@ export default function QuizDetail() {
                       onPartChange={(updates) => updateInlinePart(group.key, updates)}
                       onPartBlur={() => saveInlinePart(group.key)}
                       onDeletePart={() => deleteInlinePart(group.key)}
+                      onAddQuestion={() => openAddDialog(group.key)}
                     >
                       {group.questionIds.map((id, qi) => {
                         const q = questionMap.get(id);

@@ -17,6 +17,7 @@ interface InlinePartSectionProps {
   onPartChange: (updates: Partial<QuizPart>) => void;
   onPartBlur: () => void;
   onDeletePart: () => void;
+  onAddQuestion?: () => void;
 }
 
 type MediaTab = "passage" | "image" | "audio" | null;
@@ -110,6 +111,7 @@ export function InlinePartSection({
   onPartChange,
   onPartBlur,
   onDeletePart,
+  onAddQuestion,
 }: InlinePartSectionProps) {
   const [expanded, setExpanded] = useState(false);
   const [activeMedia, setActiveMedia] = useState<MediaTab>(null);
@@ -218,6 +220,16 @@ export function InlinePartSection({
             <span className="text-xs text-white/70">{instrCount} instr.</span>
           )}
           <span className="text-xs text-white/60">{questionIds.length} Q</span>
+          {onAddQuestion && (
+            <button
+              onClick={onAddQuestion}
+              className="flex items-center gap-1 px-2 py-1 rounded text-white/80 hover:text-white hover:bg-white/20 transition-colors text-xs font-medium"
+              title="Add new question to this section"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add Question
+            </button>
+          )}
           <button
             onClick={onDeletePart}
             className="flex items-center justify-center w-6 h-6 rounded text-white/60 hover:text-white hover:bg-white/20 transition-colors"
