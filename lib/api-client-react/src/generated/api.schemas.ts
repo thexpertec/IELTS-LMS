@@ -556,6 +556,7 @@ export const QuizQuestionType = {
   true_false_ng: "true_false_ng",
   multi_select: "multi_select",
   writing: "writing",
+  table_fill_blank: "table_fill_blank",
 } as const;
 
 /**
@@ -644,6 +645,7 @@ export const CreateQuizQuestionBodyType = {
   true_false_ng: "true_false_ng",
   multi_select: "multi_select",
   writing: "writing",
+  table_fill_blank: "table_fill_blank",
 } as const;
 
 export type CreateQuizQuestionBodyOptions = { [key: string]: unknown };

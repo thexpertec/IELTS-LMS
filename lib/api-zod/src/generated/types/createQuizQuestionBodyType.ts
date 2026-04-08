@@ -21,4 +21,5 @@ export const CreateQuizQuestionBodyType = {
   true_false_ng: "true_false_ng",
   multi_select: "multi_select",
   writing: "writing",
+  table_fill_blank: "table_fill_blank",
 } as const;
