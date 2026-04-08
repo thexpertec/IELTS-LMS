@@ -1024,15 +1024,20 @@ export default function StudentQuizTake() {
                     ref={(el) => { sectionRefs.current[tabIdx] = el; }}
                     className="space-y-5"
                   >
-                    {/* Part section header */}
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-bold text-foreground">
+                    {/* Part section separator + header */}
+                    {tabIdx > 0 && (
+                      <div className="flex items-center gap-3 pt-2">
+                        <div className="flex-1 h-[3px] rounded-full bg-border" />
+                      </div>
+                    )}
+                    <div className="space-y-3">
+                      <h3 className="text-base font-extrabold tracking-wide text-foreground uppercase">
                         {tab.label !== "QUESTIONS"
                           ? `${tab.label}: Questions ${slotRange?.min ?? tab.from}–${slotRange?.max ?? tab.to}`
                           : `Questions ${slotRange?.min ?? tab.from}–${slotRange?.max ?? tab.to}`}
                       </h3>
                       {tab.instructions?.some(Boolean) && (
-                        <div className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed border-l-4 border-primary pl-3">
+                        <div className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed border-l-4 border-primary pl-3">
                           {tab.instructions.filter(Boolean).join("\n")}
                         </div>
                       )}
