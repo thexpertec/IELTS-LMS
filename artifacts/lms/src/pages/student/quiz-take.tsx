@@ -20,7 +20,7 @@ import {
 // ─────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────
-type QType = "fill_blank" | "fill_blank_dropdown" | "dropdown" | "choose_word" | "matching" | "matching_3col" | "drag_match" | "short_answer" | "true_false_ng" | "multi_select" | "writing";
+type QType = "fill_blank" | "fill_blank_dropdown" | "dropdown" | "choose_word" | "matching" | "matching_3col" | "drag_match" | "short_answer" | "true_false_ng" | "multi_select" | "writing" | "table_fill_blank";
 interface FillBlankOpts         { sentence: string; blanks: string[] }
 interface FillBlankDropdownOpts { instruction: string; sentences: string[]; choices: string[]; correct: string[] }
 interface DropdownOpts          { stem: string; choices: string[]; correct: string }
@@ -32,6 +32,7 @@ interface ShortAnswerOpts       { prompt: string; correct?: string; wordLimit?: 
 interface TrueFalseNgOpts       { statement: string; correct: "TRUE" | "FALSE" | "NOT GIVEN" | "" }
 interface MultiSelectOpts       { instruction: string; options: string[]; maxSelect: number; correct: number[] }
 interface WritingOpts           { taskTitle?: string; minWords?: number; modelAnswer?: string }
+interface TableFillBlankOpts   { instruction?: string; headers: string[]; rows: string[][]; correct?: string[] }
 
 type AnswerMap = Record<number, string | string[] | Record<number, string>>;
 
@@ -42,6 +43,7 @@ function isAnswered(qId: number, qType: QType, answers: AnswerMap): boolean {
   if (qType === "matching" || qType === "matching_3col" || qType === "drag_match") return Object.keys(ans as Record<number, string>).length > 0;
   if (qType === "fill_blank_dropdown") return Object.keys(ans as Record<number, string>).length > 0;
   if (qType === "multi_select") return Array.isArray(ans) && (ans as number[]).length > 0;
+  if (qType === "table_fill_blank") return Array.isArray(ans) && (ans as string[]).some(Boolean);
   return typeof ans === "string" && ans.trim() !== "";
 }
 
@@ -72,6 +74,11 @@ function questionSlots(q: { type: string; options: unknown }): number {
   if (q.type === "fill_blank_dropdown") {
     const opts = q.options as FillBlankDropdownOpts;
     return Math.max(1, (opts.sentences ?? []).filter(Boolean).length);
+  }
+  if (q.type === "table_fill_blank") {
+    const opts = q.options as TableFillBlankOpts;
+    const blanks = (opts.rows ?? []).flat().reduce((acc, cell) => acc + (cell.match(/_{3,}/g) || []).length, 0);
+    return Math.max(1, blanks);
   }
   return 1;
 }
@@ -683,6 +690,97 @@ function WritingQuestion({
 }
 
 // ─────────────────────────────────────────────
+// Table Fill-in-the-Blank question
+// ─────────────────────────────────────────────
+function TableFillBlankQuestion({
+  opts, qId, answers, setAnswers, slotStart,
+}: { opts: TableFillBlankOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number }) {
+  // Pre-compute a flat map: for each [r][c] cell, which blank indices it owns
+  const cellBlankMap: number[][][] = [];
+  let globalIdx = 0;
+  for (const row of opts.rows) {
+    const rowMap: number[][] = [];
+    for (const cell of row) {
+      const count = (cell.match(/_{3,}/g) || []).length;
+      rowMap.push(Array.from({ length: count }, (_, i) => globalIdx + i));
+      globalIdx += count;
+    }
+    cellBlankMap.push(rowMap);
+  }
+  const totalBlanks = globalIdx;
+  const current = (answers[qId] as string[] | undefined) ?? Array(Math.max(1, totalBlanks)).fill("");
+
+  function update(i: number, val: string) {
+    const next = [...current];
+    while (next.length <= i) next.push("");
+    next[i] = val;
+    setAnswers({ ...answers, [qId]: next });
+  }
+
+  function renderCell(cell: string, r: number, c: number) {
+    const blankIndices = cellBlankMap[r]?.[c] ?? [];
+    const parts = cell.split(/_{3,}/);
+    return (
+      <>
+        {parts.map((part, i) => (
+          <span key={i}>
+            {part}
+            {i < parts.length - 1 && blankIndices[i] !== undefined && (
+              <span className="inline-flex items-baseline gap-0.5 mx-0.5">
+                <span className="text-[9px] font-bold text-primary/50 leading-none">{slotStart + blankIndices[i]}</span>
+                <input
+                  type="text"
+                  className="inline-block border-0 border-b-2 border-primary/40 px-1 text-sm w-28 bg-transparent focus:outline-none focus:border-primary"
+                  placeholder="answer"
+                  value={current[blankIndices[i]] ?? ""}
+                  onChange={(e) => update(blankIndices[i], e.target.value)}
+                />
+              </span>
+            )}
+          </span>
+        ))}
+      </>
+    );
+  }
+
+  const answered = current.some(Boolean);
+
+  return (
+    <div id={`q-${qId}`} className="space-y-3">
+      {opts.instruction && (
+        <p className="text-xs text-muted-foreground italic border-l-4 border-primary pl-3">{opts.instruction}</p>
+      )}
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full border-collapse text-sm">
+          {opts.headers.some(Boolean) && (
+            <thead>
+              <tr className="bg-muted/60">
+                {opts.headers.map((h, ci) => (
+                  <th key={ci} className="border-b border-border px-4 py-2 text-xs font-semibold text-left whitespace-nowrap">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+          )}
+          <tbody>
+            {opts.rows.map((row, ri) => (
+              <tr key={ri} className={ri % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                {row.map((cell, ci) => (
+                  <td key={ci} className="border border-border/30 px-4 py-2 align-middle leading-7">
+                    {renderCell(cell, ri, ci)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // Main page
 // ─────────────────────────────────────────────
 type QuizPartFull = {
@@ -826,6 +924,13 @@ export default function StudentQuizTake() {
       const current = (answers[q.id] as Record<number, string> | undefined) ?? {};
       const rows = (opts.sentences ?? []).filter(Boolean).length;
       for (let i = 0; i < rows; i++) if (current[i]) sum++;
+      return sum;
+    }
+    if (q.type === "table_fill_blank") {
+      const opts = q.options as TableFillBlankOpts;
+      const totalBlanks = (opts.rows ?? []).flat().reduce((acc, cell) => acc + (cell.match(/_{3,}/g) || []).length, 0);
+      const current = (answers[q.id] as string[] | undefined) ?? [];
+      for (let i = 0; i < totalBlanks; i++) if (current[i]) sum++;
       return sum;
     }
     return sum + (answeredIds.has(q.id) ? 1 : 0);
@@ -1087,6 +1192,9 @@ export default function StudentQuizTake() {
                             )}
                             {q.type === "writing" && (
                               <WritingQuestion opts={opts as WritingOpts} qId={q.id} answers={answers} setAnswers={setAnswers} />
+                            )}
+                            {q.type === "table_fill_blank" && (
+                              <TableFillBlankQuestion opts={opts as TableFillBlankOpts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
                             )}
                           </div>
                         );

@@ -68,14 +68,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  ArrowLeft, Plus, Trash2, Edit, ClipboardList, Timer, Eye, EyeOff, X, GripVertical, ExternalLink,
+  ArrowLeft, Plus, Trash2, Edit, ClipboardList, Timer, Eye, EyeOff, X, GripVertical, ExternalLink, Minus, Table2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ─────────────────────────────────────────────
 // Types for the eight question formats
 // ─────────────────────────────────────────────
-type QType = "fill_blank" | "fill_blank_dropdown" | "dropdown" | "choose_word" | "matching" | "matching_3col" | "drag_match" | "short_answer" | "true_false_ng" | "multi_select" | "writing";
+type QType = "fill_blank" | "fill_blank_dropdown" | "dropdown" | "choose_word" | "matching" | "matching_3col" | "drag_match" | "short_answer" | "true_false_ng" | "multi_select" | "writing" | "table_fill_blank";
 
 interface FillBlankOpts          { sentence: string; blanks: string[] }
 interface FillBlankDropdownOpts  { instruction: string; sentences: string[]; choices: string[]; correct: string[] }
@@ -88,7 +88,8 @@ interface ShortAnswerOpts        { prompt: string; correct?: string; wordLimit?:
 interface TrueFalseNgOpts        { statement: string; correct: "TRUE" | "FALSE" | "NOT GIVEN" | "" }
 interface MultiSelectOpts        { instruction: string; options: string[]; maxSelect: number; correct: number[] }
 interface WritingOpts            { taskTitle?: string; minWords?: number; modelAnswer?: string }
-type QOptions = FillBlankOpts | FillBlankDropdownOpts | DropdownOpts | ChooseWordOpts | MatchingOpts | Matching3ColOpts | DragMatchOpts | ShortAnswerOpts | TrueFalseNgOpts | MultiSelectOpts | WritingOpts;
+interface TableFillBlankOpts    { instruction?: string; headers: string[]; rows: string[][]; correct?: string[] }
+type QOptions = FillBlankOpts | FillBlankDropdownOpts | DropdownOpts | ChooseWordOpts | MatchingOpts | Matching3ColOpts | DragMatchOpts | ShortAnswerOpts | TrueFalseNgOpts | MultiSelectOpts | WritingOpts | TableFillBlankOpts;
 
 const Q_TYPE_LABELS: Record<QType, string> = {
   fill_blank:          "Fill Blanks — Text Input",
@@ -102,6 +103,7 @@ const Q_TYPE_LABELS: Record<QType, string> = {
   true_false_ng:       "True / False / Not Given",
   multi_select:        "Multiple Selection",
   writing:             "Writing Task (Essay)",
+  table_fill_blank:    "Table — Fill in the Blank",
 };
 
 const Q_TYPE_COLORS: Record<QType, string> = {
@@ -116,6 +118,7 @@ const Q_TYPE_COLORS: Record<QType, string> = {
   true_false_ng:       "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
   multi_select:        "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
   writing:             "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300",
+  table_fill_blank:    "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
 };
 
 // ─────────────────────────────────────────────
@@ -134,6 +137,7 @@ function defaultOptions(type: QType): QOptions {
     case "true_false_ng":       return { statement: "", correct: "" };
     case "multi_select":        return { instruction: "", options: ["", "", "", ""], maxSelect: 2, correct: [] };
     case "writing":             return { taskTitle: "", minWords: 150, modelAnswer: "" };
+    case "table_fill_blank":   return { instruction: "", headers: ["Column 1", "Column 2"], rows: [["", ""], ["", ""], ["", ""]], correct: [] };
   }
 }
 
@@ -837,6 +841,163 @@ function WritingEditor({ opts, onChange }: { opts: WritingOpts; onChange: (o: Wr
 }
 
 // ─────────────────────────────────────────────
+// Table Fill-in-the-Blank editor
+// ─────────────────────────────────────────────
+function TableFillBlankEditor({ opts, onChange }: { opts: TableFillBlankOpts; onChange: (o: TableFillBlankOpts) => void }) {
+  const colCount = opts.headers.length;
+  const rowCount = opts.rows.length;
+
+  function setColCount(n: number) {
+    const clamp = Math.max(1, Math.min(8, n));
+    const newHeaders = Array(clamp).fill("").map((_, i) => opts.headers[i] ?? `Column ${i + 1}`);
+    const newRows = opts.rows.map((row) => Array(clamp).fill("").map((_, i) => row[i] ?? ""));
+    // Recalculate correct answers (reset since blank count changes)
+    onChange({ ...opts, headers: newHeaders, rows: newRows, correct: [] });
+  }
+
+  function setRowCount(n: number) {
+    const clamp = Math.max(1, Math.min(20, n));
+    let newRows = [...opts.rows];
+    while (newRows.length < clamp) newRows.push(Array(colCount).fill(""));
+    newRows = newRows.slice(0, clamp);
+    onChange({ ...opts, rows: newRows, correct: [] });
+  }
+
+  function updateHeader(i: number, val: string) {
+    const headers = [...opts.headers];
+    headers[i] = val;
+    onChange({ ...opts, headers });
+  }
+
+  function updateCell(r: number, c: number, val: string) {
+    const rows = opts.rows.map((row) => [...row]);
+    rows[r][c] = val;
+    onChange({ ...opts, rows, correct: [] });
+  }
+
+  function updateCorrect(i: number, val: string) {
+    const correct = [...(opts.correct ?? [])];
+    correct[i] = val;
+    onChange({ ...opts, correct });
+  }
+
+  const allCells = opts.rows.flatMap((row) => row);
+  const totalBlanks = allCells.reduce((acc, cell) => acc + (cell.match(/_{3,}/g) || []).length, 0);
+  const correct = opts.correct ?? [];
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>Instruction <span className="text-muted-foreground text-xs">(optional)</span></Label>
+        <Input
+          className="mt-1.5"
+          placeholder="e.g. Complete the table using NO MORE THAN TWO WORDS."
+          value={opts.instruction ?? ""}
+          onChange={(e) => onChange({ ...opts, instruction: e.target.value })}
+        />
+      </div>
+
+      {/* Grid size controls */}
+      <div className="flex items-end gap-6">
+        <div>
+          <Label className="text-xs">Columns</Label>
+          <div className="flex items-center gap-1.5 mt-1">
+            <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => setColCount(colCount - 1)}>
+              <Minus className="w-3 h-3" />
+            </Button>
+            <span className="w-6 text-center text-sm font-mono font-semibold">{colCount}</span>
+            <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => setColCount(colCount + 1)}>
+              <Plus className="w-3 h-3" />
+            </Button>
+          </div>
+        </div>
+        <div>
+          <Label className="text-xs">Rows</Label>
+          <div className="flex items-center gap-1.5 mt-1">
+            <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => setRowCount(rowCount - 1)}>
+              <Minus className="w-3 h-3" />
+            </Button>
+            <span className="w-6 text-center text-sm font-mono font-semibold">{rowCount}</span>
+            <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => setRowCount(rowCount + 1)}>
+              <Plus className="w-3 h-3" />
+            </Button>
+          </div>
+        </div>
+        <div className="pb-0.5">
+          <span className={cn(
+            "text-xs font-medium px-2 py-1 rounded-full",
+            totalBlanks > 0 ? "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300" : "bg-muted text-muted-foreground"
+          )}>
+            {totalBlanks} blank{totalBlanks !== 1 ? "s" : ""} detected
+          </span>
+        </div>
+      </div>
+
+      {/* Table editor */}
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-muted/60">
+              {opts.headers.map((h, ci) => (
+                <th key={ci} className="border-b border-border p-1.5">
+                  <input
+                    className="w-full bg-transparent px-2 py-0.5 text-xs font-semibold text-center focus:outline-none placeholder:text-muted-foreground/40"
+                    placeholder={`Header ${ci + 1}`}
+                    value={h}
+                    onChange={(e) => updateHeader(ci, e.target.value)}
+                  />
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {opts.rows.map((row, ri) => (
+              <tr key={ri} className={ri % 2 === 0 ? "" : "bg-muted/20"}>
+                {row.map((cell, ci) => (
+                  <td key={ci} className="border border-border/40 p-1">
+                    <textarea
+                      rows={2}
+                      className="w-full resize-none bg-transparent px-2 py-1 text-xs focus:outline-none focus:bg-primary/5 rounded placeholder:text-muted-foreground/30"
+                      placeholder="Cell text — type ___ for a blank"
+                      value={cell}
+                      onChange={(e) => updateCell(ri, ci, e.target.value)}
+                    />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+        <Table2 className="w-3.5 h-3.5 shrink-0" />
+        Type <code className="bg-muted px-1 rounded">___</code> (3+ underscores) anywhere in a cell to create a blank input for students.
+      </p>
+
+      {/* Correct answers per blank */}
+      {totalBlanks > 0 && (
+        <div className="space-y-2">
+          <Label>Correct Answers <span className="text-muted-foreground text-xs">(in order: left-to-right, row by row)</span></Label>
+          <div className="space-y-1.5">
+            {Array(totalBlanks).fill(null).map((_, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground w-6 shrink-0">#{i + 1}</span>
+                <Input
+                  placeholder={`Answer for blank ${i + 1}`}
+                  value={correct[i] ?? ""}
+                  onChange={(e) => updateCorrect(i, e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // Question summary preview
 // ─────────────────────────────────────────────
 function QuestionSummary({ type, options }: { type: QType; options: QOptions }) {
@@ -885,6 +1046,11 @@ function QuestionSummary({ type, options }: { type: QType; options: QOptions }) 
   if (type === "writing") {
     const o = options as WritingOpts;
     return <p className="text-xs text-muted-foreground truncate">{o.taskTitle || "Writing task"}{o.minWords ? ` · min ${o.minWords} words` : ""}</p>;
+  }
+  if (type === "table_fill_blank") {
+    const o = options as TableFillBlankOpts;
+    const blanks = o.rows.flat().reduce((acc, cell) => acc + (cell.match(/_{3,}/g) || []).length, 0);
+    return <p className="text-xs text-muted-foreground">{o.rows.length} rows × {o.headers.length} cols · {blanks} blank{blanks !== 1 ? "s" : ""}{o.instruction ? ` · ${o.instruction}` : ""}</p>;
   }
   return null;
 }
@@ -1632,6 +1798,9 @@ export default function QuizDetail() {
             )}
             {qType === "writing" && (
               <WritingEditor opts={qOptions as WritingOpts} onChange={(o) => setQOptions(o)} />
+            )}
+            {qType === "table_fill_blank" && (
+              <TableFillBlankEditor opts={qOptions as TableFillBlankOpts} onChange={(o) => setQOptions(o)} />
             )}
           </div>
 
