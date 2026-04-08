@@ -1334,6 +1334,7 @@ export default function QuizDetail() {
   const [groups, setGroups] = useState<InlineGroup[]>([{ key: "ungrouped", questionIds: [] }]);
   const [activeId, setActiveId] = useState<number | null>(null);
   const isReordering = useRef(false);
+  const skipPositionalSync = useRef(false);
 
   // ── Admin tab
   const [adminTab, setAdminTab] = useState<"questions" | "submissions">("questions");
@@ -1409,6 +1410,18 @@ export default function QuizDetail() {
     if (isReordering.current || !quiz) return;
     const qs = (((quiz as { questions?: unknown[] })?.questions ?? []) as QuestionRow[]).sort((a, b) => a.order - b.order);
     const parts = ((quiz as { parts?: QuizPart[] | null }).parts ?? []) as QuizPart[];
+    const liveIds = new Set(qs.map((q) => q.id));
+
+    // After a deletion, preserve existing group membership — only remove the
+    // deleted question ID. Skip the full positional re-assignment so that
+    // questions in later sections don't get shifted into earlier sections.
+    if (skipPositionalSync.current) {
+      skipPositionalSync.current = false;
+      setGroups((prev) =>
+        prev.map((g) => ({ ...g, questionIds: g.questionIds.filter((id) => liveIds.has(id)) }))
+      );
+      return;
+    }
 
     if (parts.length === 0) {
       setGroups([{ key: "ungrouped", questionIds: qs.map((q) => q.id) }]);
@@ -1601,7 +1614,16 @@ export default function QuizDetail() {
 
   const deleteQuestion = useDeleteQuizQuestion({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (_data, variables) => {
+        // Preserve group membership on deletion — don't let the positional
+        // re-sync shift questions from lower sections into upper sections.
+        skipPositionalSync.current = true;
+        setGroups((prev) =>
+          prev.map((g) => ({
+            ...g,
+            questionIds: g.questionIds.filter((id) => id !== variables.questionId),
+          }))
+        );
         queryClient.invalidateQueries({ queryKey: getGetQuizQueryKey(quizId) });
         toast({ title: "Question deleted" });
       },
