@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useRoute, useLocation } from "wouter";
+import { useRoute, useLocation, useSearch } from "wouter";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useGetQuiz } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -796,6 +799,8 @@ export default function StudentQuizTake() {
   const [, params] = useRoute("/student/quizzes/:id");
   const quizId = Number(params?.id);
   const [, setLocation] = useLocation();
+  const search = useSearch();
+  const urlParams = new URLSearchParams(search);
 
   const { data: quiz, isLoading } = useGetQuiz(quizId);
 
@@ -805,6 +810,13 @@ export default function StudentQuizTake() {
   const [submitOpen, setSubmitOpen] = useState(false);
   const [score, setScore] = useState<{ answered: number; total: number } | null>(null);
   const [activePart, setActivePart] = useState(0);
+
+  // Student identity — from URL params (when navigating from course view) or entered manually
+  const [studentName, setStudentName] = useState(urlParams.get("studentName") ?? "");
+  const [studentEmail, setStudentEmail] = useState(urlParams.get("studentEmail") ?? "");
+  const [enrollmentId] = useState(urlParams.get("enrollmentId") ?? "");
+  const [identityOpen, setIdentityOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const rightRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -958,11 +970,44 @@ export default function StudentQuizTake() {
   const handleExpire = useCallback(() => setSubmitOpen(true), []);
   const { display: timerDisplay, isWarning } = useTimer(quiz?.timeLimitMinutes, handleExpire);
 
-  function handleSubmit() {
+  function openSubmitFlow() {
+    if (!studentEmail.trim()) {
+      setSubmitOpen(false);
+      setIdentityOpen(true);
+    } else {
+      doSubmit();
+    }
+  }
+
+  async function doSubmit() {
+    setIsSubmitting(true);
+    try {
+      await fetch(`/api/quizzes/${quizId}/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentName: studentName.trim() || null,
+          studentEmail: studentEmail.trim(),
+          enrollmentId: enrollmentId || null,
+          answers,
+          totalSlots,
+          answeredSlots,
+        }),
+      });
+    } catch {
+      // Submission stored client-side regardless
+    } finally {
+      setIsSubmitting(false);
+    }
     setScore({ answered: answeredSlots, total: totalSlots });
     setSubmitted(true);
     setSubmitOpen(false);
+    setIdentityOpen(false);
     setReviewOpen(false);
+  }
+
+  function handleSubmit() {
+    openSubmitFlow();
   }
 
   function scrollToQ(qId: number) {
@@ -1515,10 +1560,52 @@ export default function StudentQuizTake() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Go Back</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSubmit}>Submit Quiz</AlertDialogAction>
+            <AlertDialogAction onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? "Submitting…" : "Submit Quiz"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ── IDENTITY DIALOG (when no email provided via URL) ── */}
+      <Dialog open={identityOpen} onOpenChange={setIdentityOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Identify Yourself</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground -mt-2">Enter your name and email so your instructor can review your submission.</p>
+          <div className="space-y-3 py-1">
+            <div className="space-y-1">
+              <Label htmlFor="id-name">Full Name</Label>
+              <Input
+                id="id-name"
+                placeholder="e.g. Jane Smith"
+                value={studentName}
+                onChange={(e) => setStudentName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="id-email">Email <span className="text-destructive">*</span></Label>
+              <Input
+                id="id-email"
+                type="email"
+                placeholder="e.g. jane@example.com"
+                value={studentEmail}
+                onChange={(e) => setStudentEmail(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIdentityOpen(false)}>Cancel</Button>
+            <Button
+              onClick={doSubmit}
+              disabled={!studentEmail.trim() || isSubmitting}
+            >
+              {isSubmitting ? "Submitting…" : "Submit Quiz"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

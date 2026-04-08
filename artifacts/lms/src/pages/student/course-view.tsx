@@ -639,7 +639,7 @@ export default function CourseView() {
                       )}
                       <p className="text-xs text-muted-foreground">{quiz.questionCount} question{quiz.questionCount !== 1 ? "s" : ""}</p>
                     </div>
-                    <Link href={`/student/quizzes/${quiz.id}`}>
+                    <Link href={`/student/quizzes/${quiz.id}?enrollmentId=${course.enrollmentId}&studentEmail=${encodeURIComponent(email)}&studentName=${encodeURIComponent(student?.name ?? email)}`}>
                       <Button size="sm" className="shrink-0 gap-1.5 text-xs h-8">
                         <Play className="w-3 h-3" />Start
                       </Button>

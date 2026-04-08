@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   DndContext,
   DragOverlay,
@@ -69,6 +70,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   ArrowLeft, Plus, Trash2, Edit, ClipboardList, Timer, Eye, EyeOff, X, GripVertical, ExternalLink, Minus, Table2,
+  Users, ChevronRight, CheckCircle2, AlertCircle, Save,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -1159,6 +1161,155 @@ function SortableQuestionCard({
 }
 
 // ─────────────────────────────────────────────
+// Submission review helpers
+// ─────────────────────────────────────────────
+function renderAnswerValue(val: unknown): string {
+  if (val === undefined || val === null) return "(No answer)";
+  if (typeof val === "string") return val || "(No answer)";
+  if (typeof val === "number") return String(val);
+  if (Array.isArray(val)) return val.map(String).join(", ") || "(No answer)";
+  if (typeof val === "object") return JSON.stringify(val);
+  return String(val);
+}
+
+function AnswerDisplay({ qType, opts, studentAns }: { qType: string; opts: Record<string, unknown>; studentAns: unknown }) {
+  if (studentAns === undefined || studentAns === null) {
+    return <p className="text-xs italic text-muted-foreground">(Not answered)</p>;
+  }
+  if (qType === "matching" || qType === "drag_match") {
+    const lefts = (opts.leftItems as string[]) ?? [];
+    const rights = (opts.rightItems as string[]) ?? [];
+    const map = (studentAns as Record<string, string>) ?? {};
+    return (
+      <div className="text-xs space-y-1">
+        {lefts.map((l, i) => (
+          <div key={i} className="flex gap-1">
+            <span className="font-medium">{l}</span>
+            <span className="text-muted-foreground">→</span>
+            <span>{rights[Number(map[i])] ?? map[i] ?? "(—)"}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (qType === "matching_3col") {
+    const cols = (opts.columns as string[]) ?? [];
+    const rows = (opts.rows as Array<{a:string;b:string;c:string}>) ?? [];
+    const ans = (studentAns as Record<string, string>) ?? {};
+    const ansColIdx = (opts.answerColIndex as number) ?? 2;
+    const colKey = ansColIdx === 0 ? "a" : ansColIdx === 1 ? "b" : "c";
+    const otherCols = cols.filter((_, i) => i !== ansColIdx);
+    return (
+      <div className="text-xs space-y-1">
+        {rows.map((row, i) => (
+          <div key={i} className="flex gap-1">
+            <span className="font-medium">{row[otherCols[0] === cols[0] ? "a" : "b"]}</span>
+            <span className="text-muted-foreground">→</span>
+            <span>{row[otherCols[1] === cols[1] ? "b" : "c"]}</span>
+            <span className="text-muted-foreground">→</span>
+            <span>{ans[i] ?? row[colKey as "a"|"b"|"c"] ?? "(—)"}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (qType === "fill_blank" || qType === "table_fill_blank") {
+    const arr = (studentAns as string[]) ?? [];
+    return (
+      <div className="text-xs space-y-0.5">
+        {arr.map((v, i) => <div key={i}><span className="text-muted-foreground">Blank {i+1}:</span> {v || "(—)"}</div>)}
+        {arr.length === 0 && <p className="italic text-muted-foreground">(Not answered)</p>}
+      </div>
+    );
+  }
+  if (qType === "fill_blank_dropdown") {
+    const map = (studentAns as Record<string, string>) ?? {};
+    const sents = (opts.sentences as string[]) ?? [];
+    return (
+      <div className="text-xs space-y-0.5">
+        {sents.map((_, i) => <div key={i}><span className="text-muted-foreground">Blank {i+1}:</span> {map[i] ?? "(—)"}</div>)}
+      </div>
+    );
+  }
+  if (qType === "multi_select") {
+    const sel = (studentAns as number[]) ?? [];
+    const options = (opts.options as string[]) ?? [];
+    return (
+      <div className="text-xs space-y-0.5">
+        {sel.length === 0 ? <p className="italic text-muted-foreground">(Not answered)</p> : sel.map((idx) => <div key={idx}>• {options[idx] ?? idx}</div>)}
+      </div>
+    );
+  }
+  return <p className="text-xs">{renderAnswerValue(studentAns)}</p>;
+}
+
+function CorrectAnswerDisplay({ qType, opts }: { qType: string; opts: Record<string, unknown> }) {
+  if (qType === "true_false_ng") {
+    return <p className="text-xs font-medium">{String(opts.correct ?? "(—)")}</p>;
+  }
+  if (qType === "fill_blank") {
+    const blanks = (opts.blanks as string[]) ?? [];
+    return (
+      <div className="text-xs space-y-0.5">
+        {blanks.map((b, i) => <div key={i}><span className="text-muted-foreground">Blank {i+1}:</span> {b}</div>)}
+      </div>
+    );
+  }
+  if (qType === "table_fill_blank") {
+    const correct = (opts.correct as string[]) ?? [];
+    return (
+      <div className="text-xs space-y-0.5">
+        {correct.map((c, i) => <div key={i}><span className="text-muted-foreground">Blank {i+1}:</span> {c}</div>)}
+        {correct.length === 0 && <p className="italic text-muted-foreground">(No answer key set)</p>}
+      </div>
+    );
+  }
+  if (qType === "fill_blank_dropdown") {
+    const correct = (opts.correct as string[]) ?? [];
+    return (
+      <div className="text-xs space-y-0.5">
+        {correct.map((c, i) => <div key={i}><span className="text-muted-foreground">Blank {i+1}:</span> {c}</div>)}
+      </div>
+    );
+  }
+  if (qType === "matching" || qType === "drag_match") {
+    const lefts = (opts.leftItems as string[]) ?? [];
+    const rights = (opts.rightItems as string[]) ?? [];
+    const pairs = (opts.pairs as Array<{left: number; right: number}>) ?? [];
+    return (
+      <div className="text-xs space-y-0.5">
+        {pairs.map((p, i) => <div key={i}>{lefts[p.left]} → {rights[p.right]}</div>)}
+        {pairs.length === 0 && <p className="italic text-muted-foreground">(No pairs set)</p>}
+      </div>
+    );
+  }
+  if (qType === "multi_select") {
+    const correct = (opts.correct as number[]) ?? [];
+    const options = (opts.options as string[]) ?? [];
+    return (
+      <div className="text-xs space-y-0.5">
+        {correct.map((idx) => <div key={idx}>• {options[idx]}</div>)}
+      </div>
+    );
+  }
+  if (qType === "dropdown" || qType === "choose_word") {
+    return <p className="text-xs font-medium">{String(opts.correct ?? "(—)")}</p>;
+  }
+  if (qType === "short_answer") {
+    return <p className="text-xs">{String(opts.correct ?? "(—)")}</p>;
+  }
+  if (qType === "writing") {
+    return (
+      <div className="text-xs">
+        <p className="text-muted-foreground mb-1">Model answer:</p>
+        <p className="whitespace-pre-wrap">{String(opts.modelAnswer ?? "(—)")}</p>
+      </div>
+    );
+  }
+  return <p className="text-xs text-muted-foreground italic">(Refer to question settings)</p>;
+}
+
+// ─────────────────────────────────────────────
 // Main page
 // ─────────────────────────────────────────────
 export default function QuizDetail() {
@@ -1184,7 +1335,68 @@ export default function QuizDetail() {
   const [activeId, setActiveId] = useState<number | null>(null);
   const isReordering = useRef(false);
 
+  // ── Admin tab
+  const [adminTab, setAdminTab] = useState<"questions" | "submissions">("questions");
+
+  // ── Submission review state
+  const [reviewAttemptId, setReviewAttemptId] = useState<number | null>(null);
+  const [reviewScore, setReviewScore] = useState("");
+  const [reviewFeedback, setReviewFeedback] = useState("");
+
   const { data: quiz, isLoading } = useGetQuiz(quizId);
+
+  // ── Submissions list
+  type SubmissionRow = {
+    id: number; quizId: number; enrollmentId: number | null;
+    studentEmail: string; studentName: string | null;
+    score: number | null; maxScore: number;
+    totalSlots: number | null; answeredSlots: number | null;
+    feedback: string | null; submittedAt: string;
+  };
+  type SubmissionDetail = SubmissionRow & {
+    answers: Record<string, unknown> | null;
+    questions: Array<{ id: number; type: string; order: number; questionText: string; options: unknown }>;
+  };
+
+  const { data: submissions = [], refetch: refetchSubmissions } = useQuery<SubmissionRow[]>({
+    queryKey: ["quiz-submissions", quizId],
+    queryFn: async () => {
+      const res = await fetch(`/api/quizzes/${quizId}/submissions`);
+      if (!res.ok) throw new Error("Failed to load");
+      return res.json();
+    },
+    enabled: !!quizId,
+  });
+
+  const { data: reviewDetail, isLoading: reviewLoading } = useQuery<SubmissionDetail>({
+    queryKey: ["quiz-submission-detail", quizId, reviewAttemptId],
+    queryFn: async () => {
+      const res = await fetch(`/api/quizzes/${quizId}/submissions/${reviewAttemptId}`);
+      if (!res.ok) throw new Error("Failed to load");
+      return res.json();
+    },
+    enabled: !!reviewAttemptId,
+  });
+
+  const saveReview = useMutation({
+    mutationFn: async ({ score, feedback }: { score: string; feedback: string }) => {
+      const res = await fetch(`/api/quizzes/${quizId}/submissions/${reviewAttemptId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          score: score !== "" ? Number(score) : null,
+          feedback: feedback || null,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchSubmissions();
+      toast({ title: "Score saved" });
+    },
+    onError: () => toast({ title: "Failed to save score", variant: "destructive" }),
+  });
 
   // Build a lookup map of all questions from server data
   const questionMap = useMemo(() => {
@@ -1550,8 +1762,217 @@ export default function QuizDetail() {
         </div>
       </div>
 
+      {/* Admin Tab Bar */}
+      <div className="flex gap-1 border-b">
+        <button
+          onClick={() => setAdminTab("questions")}
+          className={cn(
+            "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+            adminTab === "questions"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <ClipboardList className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
+          Questions
+        </button>
+        <button
+          onClick={() => setAdminTab("submissions")}
+          className={cn(
+            "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-1.5",
+            adminTab === "submissions"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Users className="w-3.5 h-3.5" />
+          Submissions
+          {submissions.length > 0 && (
+            <span className={cn(
+              "text-xs rounded-full px-1.5 py-0.5 font-semibold",
+              adminTab === "submissions" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+            )}>
+              {submissions.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Submissions Tab */}
+      {adminTab === "submissions" && (
+        <div className="space-y-4">
+          {submissions.length === 0 ? (
+            <div className="text-center py-16 border rounded-lg bg-card/50 border-dashed">
+              <Users className="mx-auto h-10 w-10 text-muted-foreground/40" />
+              <h3 className="mt-3 text-base font-semibold">No submissions yet</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Submissions will appear here after students complete the quiz.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-lg border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 border-b">
+                  <tr>
+                    <th className="text-left p-3 font-semibold">Student</th>
+                    <th className="text-left p-3 font-semibold">Answered</th>
+                    <th className="text-left p-3 font-semibold">Score</th>
+                    <th className="text-left p-3 font-semibold">Submitted</th>
+                    <th className="p-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {submissions.map((sub, i) => (
+                    <tr key={sub.id} className={cn("border-b last:border-0", i % 2 === 0 ? "bg-background" : "bg-muted/20")}>
+                      <td className="p-3">
+                        <p className="font-medium">{sub.studentName ?? sub.studentEmail}</p>
+                        {sub.studentName && <p className="text-xs text-muted-foreground">{sub.studentEmail}</p>}
+                      </td>
+                      <td className="p-3">
+                        {sub.totalSlots != null ? (
+                          <span>{sub.answeredSlots ?? 0}/{sub.totalSlots}</span>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </td>
+                      <td className="p-3">
+                        {sub.score != null
+                          ? <Badge variant="outline">{sub.score}/{sub.maxScore}</Badge>
+                          : <Badge variant="secondary">Not graded</Badge>}
+                      </td>
+                      <td className="p-3 text-muted-foreground">
+                        {new Date(sub.submittedAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </td>
+                      <td className="p-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5"
+                          onClick={() => {
+                            setReviewAttemptId(sub.id);
+                            setReviewScore(sub.score != null ? String(sub.score) : "");
+                            setReviewFeedback(sub.feedback ?? "");
+                          }}
+                        >
+                          Review <ChevronRight className="w-3.5 h-3.5" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Submission Review Dialog */}
+          <Dialog open={!!reviewAttemptId} onOpenChange={(open) => { if (!open) setReviewAttemptId(null); }}>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Submission Review</DialogTitle>
+                <DialogDescription>
+                  {reviewDetail
+                    ? `${reviewDetail.studentName ?? reviewDetail.studentEmail} · submitted ${new Date(reviewDetail.submittedAt).toLocaleDateString()}`
+                    : "Loading…"}
+                </DialogDescription>
+              </DialogHeader>
+
+              {reviewLoading ? (
+                <div className="space-y-3 py-4">
+                  <Skeleton className="h-6 w-1/2" />
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-20 w-full" />
+                </div>
+              ) : reviewDetail ? (
+                <div className="space-y-5 py-2">
+                  {/* Score + Feedback editor */}
+                  <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                    <h3 className="text-sm font-semibold">Score & Feedback</h3>
+                    <div className="flex gap-3 items-end">
+                      <div className="space-y-1">
+                        <Label>Score</Label>
+                        <div className="flex items-center gap-1.5">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={reviewDetail.maxScore}
+                            value={reviewScore}
+                            onChange={(e) => setReviewScore(e.target.value)}
+                            className="w-24"
+                            placeholder="—"
+                          />
+                          <span className="text-muted-foreground text-sm">/ {reviewDetail.maxScore}</span>
+                        </div>
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <Label>Instructor Feedback</Label>
+                        <Textarea
+                          value={reviewFeedback}
+                          onChange={(e) => setReviewFeedback(e.target.value)}
+                          rows={2}
+                          placeholder="Optional feedback for the student…"
+                        />
+                      </div>
+                      <Button
+                        onClick={() => saveReview.mutate({ score: reviewScore, feedback: reviewFeedback })}
+                        disabled={saveReview.isPending}
+                        className="gap-1.5 shrink-0"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        {saveReview.isPending ? "Saving…" : "Save"}
+                      </Button>
+                    </div>
+                    {reviewDetail.totalSlots != null && (
+                      <p className="text-xs text-muted-foreground">
+                        Student answered {reviewDetail.answeredSlots ?? 0} of {reviewDetail.totalSlots} questions.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Per-question answer review */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Answers</h3>
+                    {reviewDetail.questions.map((q, qi) => {
+                      const studentAns = reviewDetail.answers ? (reviewDetail.answers as Record<string, unknown>)[String(q.id)] : undefined;
+                      const opts = q.options as Record<string, unknown>;
+                      return (
+                        <div key={q.id} className="border rounded-lg p-4 space-y-2 bg-background">
+                          <div className="flex items-start gap-2">
+                            <span className="text-xs font-bold text-muted-foreground bg-muted rounded px-1.5 py-0.5 shrink-0 mt-0.5">{qi + 1}</span>
+                            <div className="flex-1">
+                              <p className="font-medium text-sm">{q.questionText || <span className="italic text-muted-foreground">(No question text)</span>}</p>
+                              <Badge variant="outline" className={cn("text-xs mt-1", Q_TYPE_COLORS[q.type as QType])}>
+                                {Q_TYPE_LABELS[q.type as QType] ?? q.type}
+                              </Badge>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 mt-2">
+                            {/* Student answer */}
+                            <div className="rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3">
+                              <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1 flex items-center gap-1">
+                                Student&apos;s Answer
+                              </p>
+                              <AnswerDisplay qType={q.type} opts={opts} studentAns={studentAns} />
+                            </div>
+                            {/* Correct answer */}
+                            <div className="rounded-md bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 p-3">
+                              <p className="text-xs font-semibold text-green-700 dark:text-green-300 mb-1 flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3" /> Correct Answer
+                              </p>
+                              <CorrectAnswerDisplay qType={q.type} opts={opts} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+            </DialogContent>
+          </Dialog>
+        </div>
+      )}
+
       {/* Questions list */}
-      <div className="space-y-4">
+      {adminTab === "questions" && <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Questions</h2>
           <div className="flex items-center gap-2">
@@ -1661,7 +2082,7 @@ export default function QuizDetail() {
             </DragOverlay>
           </DndContext>
         )}
-      </div>
+      </div>}
 
       {/* ── Quiz Settings Dialog ── */}
       <Dialog open={editSettings} onOpenChange={setEditSettings}>

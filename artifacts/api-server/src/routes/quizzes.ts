@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, sql, and } from "drizzle-orm";
-import { db, quizzesTable, quizQuestionsTable, quizAttemptsTable } from "@workspace/db";
+import { eq, sql, and, isNotNull } from "drizzle-orm";
+import { db, quizzesTable, quizQuestionsTable, quizAttemptsTable, enrollmentsTable } from "@workspace/db";
 import {
   ListQuizzesQueryParams,
   CreateQuizBody,
@@ -241,7 +241,7 @@ router.delete("/quizzes/:id/questions/:questionId", async (req, res): Promise<vo
   res.status(204).send();
 });
 
-// ── Quiz grade (upsert attempt score) ─────────────────────────────────────
+// ── Quiz grade (upsert attempt score — used by admin/gradebook) ─────────────
 router.put("/quizzes/:id/grade", async (req, res): Promise<void> => {
   const quizId = Number(req.params.id);
   if (!quizId) { res.status(400).json({ error: "Invalid quiz id" }); return; }
@@ -286,6 +286,152 @@ router.put("/quizzes/:id/grade", async (req, res): Promise<void> => {
       .returning();
     res.json(row);
   }
+});
+
+// ── Student quiz submission (stores answers) ──────────────────────────────────
+router.post("/quizzes/:id/submit", async (req, res): Promise<void> => {
+  const quizId = Number(req.params.id);
+  if (!quizId) { res.status(400).json({ error: "Invalid quiz id" }); return; }
+
+  const { studentName, studentEmail, enrollmentId, answers, totalSlots, answeredSlots } = req.body;
+  if (!studentEmail) {
+    res.status(400).json({ error: "studentEmail is required" });
+    return;
+  }
+
+  // Try to resolve enrollmentId by email if not provided
+  let resolvedEnrollmentId: number | null = enrollmentId ? Number(enrollmentId) : null;
+  if (!resolvedEnrollmentId && studentEmail) {
+    const quiz = await db.select({ courseId: quizzesTable.courseId }).from(quizzesTable).where(eq(quizzesTable.id, quizId)).limit(1);
+    if (quiz[0]?.courseId) {
+      const enr = await db.select({ id: enrollmentsTable.id })
+        .from(enrollmentsTable)
+        .where(and(
+          eq(enrollmentsTable.courseId, quiz[0].courseId),
+          eq(enrollmentsTable.studentEmail, studentEmail),
+        ))
+        .limit(1);
+      if (enr[0]) resolvedEnrollmentId = enr[0].id;
+    }
+  }
+
+  // Check for existing submission by email for this quiz
+  const conditions = [eq(quizAttemptsTable.quizId, quizId), eq(quizAttemptsTable.studentEmail, studentEmail)];
+  const existing = await db
+    .select({ id: quizAttemptsTable.id })
+    .from(quizAttemptsTable)
+    .where(and(...conditions))
+    .limit(1);
+
+  if (existing.length > 0) {
+    const [row] = await db
+      .update(quizAttemptsTable)
+      .set({
+        studentName: studentName ?? null,
+        answers: answers ?? null,
+        totalSlots: totalSlots !== undefined ? Number(totalSlots) : null,
+        answeredSlots: answeredSlots !== undefined ? Number(answeredSlots) : null,
+        submittedAt: new Date(),
+        ...(resolvedEnrollmentId && { enrollmentId: resolvedEnrollmentId }),
+      })
+      .where(eq(quizAttemptsTable.id, existing[0].id))
+      .returning();
+    res.json(row);
+  } else {
+    const [row] = await db
+      .insert(quizAttemptsTable)
+      .values({
+        quizId,
+        enrollmentId: resolvedEnrollmentId,
+        studentEmail,
+        studentName: studentName ?? null,
+        answers: answers ?? null,
+        totalSlots: totalSlots !== undefined ? Number(totalSlots) : null,
+        answeredSlots: answeredSlots !== undefined ? Number(answeredSlots) : null,
+      })
+      .returning();
+    res.json(row);
+  }
+});
+
+// ── List all submissions for a quiz (admin) ────────────────────────────────────
+router.get("/quizzes/:id/submissions", async (req, res): Promise<void> => {
+  const quizId = Number(req.params.id);
+  if (!quizId) { res.status(400).json({ error: "Invalid quiz id" }); return; }
+
+  const submissions = await db
+    .select({
+      id: quizAttemptsTable.id,
+      quizId: quizAttemptsTable.quizId,
+      enrollmentId: quizAttemptsTable.enrollmentId,
+      studentEmail: quizAttemptsTable.studentEmail,
+      studentName: quizAttemptsTable.studentName,
+      score: quizAttemptsTable.score,
+      maxScore: quizAttemptsTable.maxScore,
+      totalSlots: quizAttemptsTable.totalSlots,
+      answeredSlots: quizAttemptsTable.answeredSlots,
+      feedback: quizAttemptsTable.feedback,
+      submittedAt: quizAttemptsTable.submittedAt,
+    })
+    .from(quizAttemptsTable)
+    .where(eq(quizAttemptsTable.quizId, quizId))
+    .orderBy(quizAttemptsTable.submittedAt);
+
+  res.json(submissions);
+});
+
+// ── Get a single submission detail (admin — includes answers + questions) ──────
+router.get("/quizzes/:id/submissions/:attemptId", async (req, res): Promise<void> => {
+  const quizId = Number(req.params.id);
+  const attemptId = Number(req.params.attemptId);
+  if (!quizId || !attemptId) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [attempt] = await db
+    .select()
+    .from(quizAttemptsTable)
+    .where(and(
+      eq(quizAttemptsTable.id, attemptId),
+      eq(quizAttemptsTable.quizId, quizId),
+    ))
+    .limit(1);
+
+  if (!attempt) {
+    res.status(404).json({ error: "Submission not found" });
+    return;
+  }
+
+  const questions = await db
+    .select()
+    .from(quizQuestionsTable)
+    .where(eq(quizQuestionsTable.quizId, quizId))
+    .orderBy(quizQuestionsTable.order);
+
+  res.json({ ...attempt, questions });
+});
+
+// ── Update score/feedback on a specific submission (admin review) ──────────────
+router.patch("/quizzes/:id/submissions/:attemptId", async (req, res): Promise<void> => {
+  const quizId = Number(req.params.id);
+  const attemptId = Number(req.params.attemptId);
+  if (!quizId || !attemptId) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const { score, feedback } = req.body;
+
+  const update: Record<string, unknown> = {};
+  if (score !== undefined) update.score = score === null ? null : Number(score);
+  if (feedback !== undefined) update.feedback = feedback ?? null;
+
+  const [row] = await db
+    .update(quizAttemptsTable)
+    .set(update)
+    .where(and(
+      eq(quizAttemptsTable.id, attemptId),
+      eq(quizAttemptsTable.quizId, quizId),
+    ))
+    .returning();
+
+  if (!row) { res.status(404).json({ error: "Submission not found" }); return; }
+  res.json(row);
 });
 
 export default router;
