@@ -1125,33 +1125,64 @@ export default function StudentQuizTake() {
       {/* ── MAIN PANELS ── */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* LEFT: Passage / Media — updates based on scroll-driven activePart */}
-        {hasLeftPanel && (
-          <div className="w-1/2 overflow-y-auto border-r bg-card">
-            <div className="p-6 max-w-2xl mx-auto">
-              {tabImages.map((src, i) => (
-                <img key={i} src={src} alt={`Reading image ${i + 1}`} className="rounded-lg border mb-4 w-full object-contain max-h-72" />
-              ))}
-              {tabAudios.map((src, i) => (
-                <audio key={i} controls src={src} className="w-full mb-4" />
-              ))}
-              {leftPassage && (
-                <>
-                  {currentTab.label !== "QUESTIONS" && currentTab.label && (
-                    <h2 className="text-base font-bold mb-4 text-foreground">{quiz.title}</h2>
+        {/* LEFT: Passage / Media — always visible; falls back to quiz info when no content */}
+        <div className="w-1/2 overflow-y-auto border-r bg-card">
+          <div className="p-6 max-w-2xl mx-auto">
+            {hasLeftPanel ? (
+              <>
+                {tabImages.map((src, i) => (
+                  <img key={i} src={src} alt={`Reading image ${i + 1}`} className="rounded-lg border mb-4 w-full object-contain max-h-72" />
+                ))}
+                {tabAudios.map((src, i) => (
+                  <audio key={i} controls src={src} className="w-full mb-4" />
+                ))}
+                {leftPassage && (
+                  <>
+                    {currentTab.label !== "QUESTIONS" && currentTab.label && (
+                      <h2 className="text-base font-bold mb-4 text-foreground">{quiz.title}</h2>
+                    )}
+                    <div className="text-sm leading-7 text-foreground whitespace-pre-wrap">
+                      {leftPassage}
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              /* No passage/media for this section — show quiz info */
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-base font-bold text-foreground">{quiz.title}</h2>
+                  {(quiz as { description?: string }).description && (
+                    <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                      {(quiz as { description?: string }).description}
+                    </p>
                   )}
-                  <div className="text-sm leading-7 text-foreground whitespace-pre-wrap">
-                    {leftPassage}
+                </div>
+                {currentTab.instructions?.some(Boolean) && (
+                  <div className="text-sm text-foreground whitespace-pre-line leading-relaxed border-l-4 border-primary pl-3">
+                    {currentTab.instructions.filter(Boolean).join("\n")}
                   </div>
-                </>
-              )}
-            </div>
+                )}
+                <div className="rounded-lg bg-muted/60 p-4 text-xs text-muted-foreground leading-relaxed space-y-1">
+                  <p className="font-semibold text-foreground text-sm mb-2">Section: {currentTab.label}</p>
+                  {allTabs.map((t, i) => {
+                    const sr = tabSlotRanges[i];
+                    return (
+                      <p key={i} className={cn("flex items-center gap-2", i === clampedPart && "text-primary font-medium")}>
+                        <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", i === clampedPart ? "bg-primary" : "bg-muted-foreground/40")} />
+                        {t.label !== "QUESTIONS" ? t.label : "Questions"}: {sr.min}–{sr.max}
+                      </p>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
         {/* RIGHT: All questions, all parts, continuous scroll */}
         <div
-          className={cn("overflow-y-auto bg-muted/10", hasLeftPanel ? "w-1/2" : "w-full")}
+          className="w-1/2 overflow-y-auto bg-muted/10"
           ref={rightRef}
         >
           {sortedQs.length === 0 ? (
