@@ -141,7 +141,7 @@ function FillBlankQuestion({
     next[i] = val;
     setAnswers({ ...answers, [qId]: next });
   };
-  const parts = opts.sentence.split("___");
+  const parts = opts.sentence.replace(/_{3,}/g, "___").split("___");
   const answered = current.some(Boolean);
   return (
     <div id={`q-${qId}`} className="flex items-start gap-2">
