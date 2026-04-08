@@ -1391,7 +1391,7 @@ export default function QuizDetail() {
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={addInlinePart} size="sm">
               <Plus className="w-4 h-4 mr-1.5" />
-              Add Part
+              Add Question Type
             </Button>
             <Button onClick={openAddDialog} data-testid="btn-add-question">
               <Plus className="w-4 h-4 mr-2" />

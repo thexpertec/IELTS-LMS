@@ -98,7 +98,7 @@ export function PartsEditor({ value, onChange, totalQuestions }: PartsEditorProp
         </Label>
         <Button type="button" variant="outline" size="sm" onClick={addPart}>
           <Plus className="w-3.5 h-3.5 mr-1" />
-          Add Part
+          Add Question Type
         </Button>
       </div>
 
