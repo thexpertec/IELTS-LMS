@@ -34,7 +34,13 @@ import { format, formatDistanceToNow, isPast } from "date-fns";
 type StudentLesson = {
   id: number;
   title: string;
+  description?: string;
   content?: string;
+  videoUrl?: string | null;
+  imageUrl?: string | null;
+  audioUrl?: string | null;
+  imageUrls?: string[] | null;
+  audioUrls?: string[] | null;
   duration: number;
   type: string;
   chapterId?: number | null;
@@ -296,13 +302,64 @@ export default function CourseView() {
         </div>
 
         {isExpanded && (
-          <div className="border-t bg-muted/30 px-4 sm:px-5 py-4 space-y-3">
+          <div className="border-t bg-muted/30 px-4 sm:px-5 py-4 space-y-4">
+            {/* Rich text content */}
             {lesson.content ? (
               <div className="prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed [&_a]:text-primary [&_a]:underline"
                 dangerouslySetInnerHTML={{ __html: lesson.content }} />
             ) : (
               <p className="text-sm text-muted-foreground italic">No content available for this lesson yet.</p>
             )}
+
+            {/* Single image */}
+            {lesson.imageUrl && (
+              <div>
+                <img src={lesson.imageUrl} alt="Lesson image" className="rounded-lg max-w-full max-h-96 object-contain border shadow-sm" />
+              </div>
+            )}
+
+            {/* Multiple images */}
+            {lesson.imageUrls && lesson.imageUrls.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {lesson.imageUrls.map((url, i) => (
+                  <img key={i} src={url} alt={`Lesson image ${i + 1}`} className="rounded-lg w-full max-h-72 object-contain border shadow-sm bg-black/5" />
+                ))}
+              </div>
+            )}
+
+            {/* Single audio */}
+            {lesson.audioUrl && (
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-muted-foreground">Audio</span>
+                <audio controls className="w-full h-10" src={lesson.audioUrl}>
+                  Your browser does not support the audio element.
+                </audio>
+              </div>
+            )}
+
+            {/* Multiple audio files */}
+            {lesson.audioUrls && lesson.audioUrls.length > 0 && (
+              <div className="space-y-2">
+                {lesson.audioUrls.map((url, i) => (
+                  <div key={i} className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-muted-foreground">Audio {i + 1}</span>
+                    <audio controls className="w-full h-10" src={url}>
+                      Your browser does not support the audio element.
+                    </audio>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Video */}
+            {lesson.videoUrl && (
+              <div className="aspect-video w-full rounded-lg overflow-hidden border shadow-sm bg-black">
+                <video controls className="w-full h-full" src={lesson.videoUrl}>
+                  Your browser does not support the video element.
+                </video>
+              </div>
+            )}
+
             {!lesson.isCompleted && (
               <>
                 <Separator />
