@@ -1131,8 +1131,9 @@ export default function StudentQuizTake() {
                   >
                     {/* Part section separator + header */}
                     {tabIdx > 0 && (
-                      <div className="flex items-center gap-3 pt-2">
-                        <div className="flex-1 h-[3px] rounded-full bg-border" />
+                      <div className="pt-4 pb-1 space-y-0.5">
+                        <div className="h-[4px] rounded-full bg-red-500" />
+                        <div className="h-[2px] rounded-full bg-red-300/50" />
                       </div>
                     )}
                     <div className="space-y-3">
