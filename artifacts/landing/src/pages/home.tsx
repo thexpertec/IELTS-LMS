@@ -95,7 +95,7 @@ export default function Home() {
             <p className="text-center text-sm font-medium text-muted-foreground mb-8 uppercase tracking-widest">
               Trusted by leading language institutions
             </p>
-            <div className="flex flex-wrap justify-center gap-12 md:gap-24 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+            <div className="flex flex-wrap justify-center gap-12 md:gap-24 opacity-80 grayscale hover:grayscale-0 transition-all duration-500">
               {['Cambridge', 'Oxford Prep', 'Global English', 'IELTS Masters', 'Linguistics Inst.'].map((logo, i) => (
                 <div key={i} className="text-xl font-serif font-bold text-primary">{logo}</div>
               ))}
@@ -184,7 +184,7 @@ export default function Home() {
               <div className="space-y-8">
                 <RevealSection>
                   <h2 className="text-3xl md:text-5xl font-bold font-serif">12+ Distinct Question Types</h2>
-                  <p className="text-primary-foreground/80 mt-4 text-lg leading-relaxed">
+                  <p className="text-white/90 mt-4 text-lg leading-relaxed">
                     Multiple choice is not enough. We support matching headings, true/false/not given, diagram labeling, sentence completion, and every other format you will encounter on test day.
                   </p>
                 </RevealSection>
@@ -269,7 +269,7 @@ export default function Home() {
               ].map((testimonial, i) => (
                 <RevealSection key={i} className={`stagger-${i+1}`}>
                   <div className="bg-card p-8 rounded-2xl shadow-sm border border-border/50 h-full flex flex-col">
-                    <Quote className="w-10 h-10 text-secondary/30 mb-6" />
+                    <Quote className="w-10 h-10 text-secondary/55 mb-6" />
                     <p className="text-foreground leading-relaxed italic mb-8 flex-1">"{testimonial.quote}"</p>
                     <div>
                       <p className="font-bold font-serif">{testimonial.author}</p>
