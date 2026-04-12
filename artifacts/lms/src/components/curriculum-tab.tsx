@@ -12,6 +12,7 @@ import {
   useListAssignments,
   useDeleteQuiz,
   useDeleteAssignment,
+  useListLessonTypes,
   getListLessonsQueryKey,
   getListChaptersQueryKey,
   getListQuizzesQueryKey,
@@ -39,11 +40,9 @@ import { CSS } from "@dnd-kit/utilities";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
-  BookOpen, Plus, Video, Clock, GripVertical, Trash2, Edit,
+  Plus, Video, Clock, GripVertical, Trash2, Edit,
   ChevronDown, ChevronRight, LayoutList, Pencil, Check, X,
-  ClipboardList, Timer, FileText, Layers,
-  Headphones, Mic, PenLine, BookText, AlignLeft,
-  BookMarked, Volume2, Languages, ArrowUpDown,
+  ClipboardList, Timer, FileText, Layers, ArrowUpDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,23 +57,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-
-// ── Lesson types ────────────────────────────────────────────────────────────
-
-const LESSON_TYPES = [
-  { id: "reading",       label: "Reading",       icon: BookText,   color: "text-blue-600",   bg: "bg-blue-50 dark:bg-blue-950/30" },
-  { id: "writing",       label: "Writing",       icon: PenLine,    color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/30" },
-  { id: "listening",     label: "Listening",     icon: Headphones, color: "text-green-600",  bg: "bg-green-50 dark:bg-green-950/30" },
-  { id: "speaking",      label: "Speaking",      icon: Mic,        color: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-950/30" },
-  { id: "grammar",       label: "Grammar",       icon: AlignLeft,  color: "text-rose-600",   bg: "bg-rose-50 dark:bg-rose-950/30" },
-  { id: "vocabulary",    label: "Vocabulary",    icon: BookMarked, color: "text-amber-600",  bg: "bg-amber-50 dark:bg-amber-950/30" },
-  { id: "pronunciation", label: "Pronunciation", icon: Volume2,    color: "text-sky-600",    bg: "bg-sky-50 dark:bg-sky-950/30" },
-  { id: "translation",   label: "Translation",   icon: Languages,  color: "text-teal-600",   bg: "bg-teal-50 dark:bg-teal-950/30" },
-] as const;
-
-type LessonTypeId = typeof LESSON_TYPES[number]["id"];
+import { ICON_MAP } from "@/pages/lesson-types";
 
 // ── Types ────────────────────────────────────────────────────────────────────
+
+type LessonTypeRow = {
+  id: number; key: string; label: string; icon: string; color: string; bg: string; order: number; isActive: boolean;
+};
 
 type Lesson = {
   id: number;
@@ -102,8 +91,7 @@ function LessonCardInner({
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
   isDragging?: boolean;
 }) {
-  const typeInfo = LESSON_TYPES.find((t) => t.id === lesson.lessonType) ?? LESSON_TYPES[0];
-  const TypeIcon = typeInfo.icon;
+  const TypeIcon = ICON_MAP[lesson.lessonType ?? "BookOpen"] ?? ICON_MAP["BookOpen"]!;
   return (
     <Card className={cn(
       "flex flex-row items-center p-3.5 transition-colors gap-3",
@@ -117,8 +105,8 @@ function LessonCardInner({
       >
         <GripVertical className="w-4 h-4" />
       </div>
-      <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0", typeInfo.bg)}>
-        <TypeIcon className={cn("w-3.5 h-3.5", typeInfo.color)} />
+      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 bg-muted">
+        <TypeIcon className="w-3.5 h-3.5 text-muted-foreground" />
       </div>
       <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0 text-xs font-semibold text-muted-foreground">
         {index + 1}
@@ -225,31 +213,34 @@ function SortableTypeRow({
 
 function UnitSection({
   chapter, lessons, quizzes, assignments, courseId,
-  typeOrder, onTypeReorder,
+  lessonTypes, typeOrder, onTypeReorder,
   onEditLesson, onDeleteLesson, onRenameChapter, onDeleteChapter,
 }: {
   chapter: Chapter; lessons: Lesson[]; quizzes: QuizItem[]; assignments: AssignmentItem[]; courseId: number;
-  typeOrder: LessonTypeId[]; onTypeReorder: (order: LessonTypeId[]) => void;
+  lessonTypes: LessonTypeRow[];
+  typeOrder: string[]; onTypeReorder: (order: string[]) => void;
   onEditLesson: (id: number) => void; onDeleteLesson: (id: number) => void;
   onRenameChapter: (c: Chapter) => void; onDeleteChapter: (c: Chapter) => void;
 }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [collapsed, setCollapsed] = useState(false);
-  const [activeType, setActiveType] = useState<LessonTypeId>("reading");
+  const firstTypeKey = lessonTypes[0]?.key ?? "";
+  const [activeType, setActiveType] = useState<string>(firstTypeKey);
   const [activeDragId, setActiveDragId] = useState<number | null>(null);
   const [typePopoverOpen, setTypePopoverOpen] = useState(false);
 
-  const lessonsByType = LESSON_TYPES.map((t) => ({
+  const lessonsByType = lessonTypes.map((t) => ({
     ...t,
-    lessons: lessons.filter((l) => (l.lessonType ?? "reading") === t.id).sort((a, b) => a.order - b.order),
-    quizzes: quizzes.filter((q) => (q.lessonType ?? "reading") === t.id),
-    assignments: assignments.filter((a) => (a.lessonType ?? "reading") === t.id),
+    id: t.key,
+    lessons: lessons.filter((l) => (l.lessonType ?? firstTypeKey) === t.key).sort((a, b) => a.order - b.order),
+    quizzes: quizzes.filter((q) => (q.lessonType ?? firstTypeKey) === t.key),
+    assignments: assignments.filter((a) => (a.lessonType ?? firstTypeKey) === t.key),
   }));
 
   // Apply typeOrder to sort the tabs
   const orderedLessonsByType = typeOrder
-    .map((id) => lessonsByType.find((t) => t.id === id))
+    .map((key) => lessonsByType.find((t) => t.key === key))
     .filter((t): t is NonNullable<typeof t> => t != null);
 
   const typeSensors = useSensors(
@@ -259,13 +250,13 @@ function UnitSection({
   function handleTypeDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIdx = typeOrder.indexOf(active.id as LessonTypeId);
-    const newIdx = typeOrder.indexOf(over.id as LessonTypeId);
+    const oldIdx = typeOrder.indexOf(active.id as string);
+    const newIdx = typeOrder.indexOf(over.id as string);
     if (oldIdx === -1 || newIdx === -1) return;
     onTypeReorder(arrayMove([...typeOrder], oldIdx, newIdx));
   }
 
-  const activeTypeData = lessonsByType.find((t) => t.id === activeType);
+  const activeTypeData = lessonsByType.find((t) => t.key === activeType);
   const serverLessons = activeTypeData?.lessons ?? [];
   const activeQuizzes = activeTypeData?.quizzes ?? [];
   const activeAssignments = activeTypeData?.assignments ?? [];
@@ -374,12 +365,12 @@ function UnitSection({
           <div className="flex items-center gap-0 border-b">
             <div className="flex items-center gap-0 flex-1 overflow-x-auto">
               {orderedLessonsByType.map((t) => {
-                const Icon = t.icon;
-                const isActive = activeType === t.id;
+                const Icon = ICON_MAP[t.icon] ?? ICON_MAP["BookOpen"]!;
+                const isActive = activeType === t.key;
                 return (
                   <button
-                    key={t.id}
-                    onClick={() => setActiveType(t.id as LessonTypeId)}
+                    key={t.key}
+                    onClick={() => setActiveType(t.key)}
                     className={cn(
                       "flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 -mb-[1px] transition-colors whitespace-nowrap shrink-0",
                       isActive
@@ -430,10 +421,10 @@ function UnitSection({
                     <div className="space-y-1">
                       {orderedLessonsByType.map((t) => (
                         <SortableTypeRow
-                          key={t.id}
-                          id={t.id}
+                          key={t.key}
+                          id={t.key}
                           label={t.label}
-                          Icon={t.icon}
+                          Icon={ICON_MAP[t.icon] ?? ICON_MAP["BookOpen"]!}
                           color={t.color}
                           count={t.lessons.length + t.quizzes.length + t.assignments.length}
                         />
@@ -539,7 +530,7 @@ function UnitSection({
             <Link href={`/courses/${courseId}/lessons/new?chapterId=${chapter.id}&lessonType=${activeType}`}>
               <Button size="sm" variant="outline" className="w-full text-xs gap-1 h-8 border-dashed">
                 <Plus className="w-3 h-3" />
-                Add {LESSON_TYPES.find((t) => t.id === activeType)?.label}
+                Add {activeTypeData?.label}
               </Button>
             </Link>
             <Link href={`/quizzes/new?courseId=${courseId}&chapterId=${chapter.id}&lessonType=${activeType}`}>
@@ -574,22 +565,32 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
   const [renamingChapter, setRenamingChapter] = useState<Chapter | null>(null);
   const [renameTitle, setRenameTitle] = useState("");
 
-  const defaultTypeOrder = LESSON_TYPES.map((t) => t.id) as LessonTypeId[];
-  const [typeOrder, setTypeOrder] = useState<LessonTypeId[]>(() => {
+  const { data: lessonTypesRaw = [] } = useListLessonTypes();
+  const lessonTypes = (lessonTypesRaw as LessonTypeRow[])
+    .filter((t) => t.isActive)
+    .sort((a, b) => a.order - b.order);
+
+  const [typeOrder, setTypeOrder] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (lessonTypes.length === 0) return;
+    const keys = lessonTypes.map((t) => t.key);
     try {
       const saved = localStorage.getItem(`lesson-type-order-${courseId}`);
       if (saved) {
-        const parsed = JSON.parse(saved) as LessonTypeId[];
-        if (
-          parsed.length === defaultTypeOrder.length &&
-          defaultTypeOrder.every((id) => parsed.includes(id))
-        ) return parsed;
+        const parsed = JSON.parse(saved) as string[];
+        const filtered = parsed.filter((k) => keys.includes(k));
+        const missing = keys.filter((k) => !filtered.includes(k));
+        if (filtered.length > 0 || missing.length > 0) {
+          setTypeOrder([...filtered, ...missing]);
+          return;
+        }
       }
     } catch {}
-    return defaultTypeOrder;
-  });
+    setTypeOrder(keys);
+  }, [lessonTypesRaw, courseId]);
 
-  function handleTypeReorder(newOrder: LessonTypeId[]) {
+  function handleTypeReorder(newOrder: string[]) {
     setTypeOrder(newOrder);
     try {
       localStorage.setItem(`lesson-type-order-${courseId}`, JSON.stringify(newOrder));
@@ -791,6 +792,7 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
                   quizzes={chapterQuizzes}
                   assignments={chapterAssignments}
                   courseId={courseId}
+                  lessonTypes={lessonTypes}
                   typeOrder={typeOrder}
                   onTypeReorder={handleTypeReorder}
                   onEditLesson={(lessonId) => setLocation(`/courses/${courseId}/lessons/${lessonId}/edit`)}

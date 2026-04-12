@@ -13,6 +13,7 @@ import chaptersRouter from "./chapters";
 import streamRouter from "./stream";
 import tenantsRouter from "./tenants";
 import authRouter from "./auth";
+import lessonTypesRouter from "./lesson-types";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(assignmentsRouter);
 router.use(storageRouter);
 router.use(streamRouter);
 router.use(tenantsRouter);
+router.use(lessonTypesRouter);
 
 export default router;

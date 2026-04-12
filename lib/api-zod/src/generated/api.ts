@@ -1295,3 +1295,70 @@ export const RequestUploadUrlResponse = zod.object({
 export const GetStorageObjectParams = zod.object({
   objectPath: zod.coerce.string(),
 });
+
+/**
+ * @summary List all lesson types
+ */
+export const ListLessonTypesResponseItem = zod.object({
+  id: zod.number(),
+  key: zod.string(),
+  label: zod.string(),
+  icon: zod.string(),
+  color: zod.string(),
+  bg: zod.string(),
+  order: zod.number(),
+  isActive: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListLessonTypesResponse = zod.array(ListLessonTypesResponseItem);
+
+/**
+ * @summary Create a lesson type
+ */
+export const CreateLessonTypeBody = zod.object({
+  key: zod.string(),
+  label: zod.string(),
+  icon: zod.string().optional(),
+  color: zod.string().optional(),
+  bg: zod.string().optional(),
+  order: zod.number().optional(),
+  isActive: zod.boolean().optional(),
+});
+
+/**
+ * @summary Update a lesson type
+ */
+export const UpdateLessonTypeParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateLessonTypeBody = zod.object({
+  key: zod.string().optional(),
+  label: zod.string().optional(),
+  icon: zod.string().optional(),
+  color: zod.string().optional(),
+  bg: zod.string().optional(),
+  order: zod.number().optional(),
+  isActive: zod.boolean().optional(),
+});
+
+export const UpdateLessonTypeResponse = zod.object({
+  id: zod.number(),
+  key: zod.string(),
+  label: zod.string(),
+  icon: zod.string(),
+  color: zod.string(),
+  bg: zod.string(),
+  order: zod.number(),
+  isActive: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a lesson type
+ */
+export const DeleteLessonTypeParams = zod.object({
+  id: zod.coerce.number(),
+});

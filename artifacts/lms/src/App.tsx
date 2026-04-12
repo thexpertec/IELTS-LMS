@@ -26,6 +26,7 @@ import AdminAssignments from "@/pages/assignments";
 import AssignmentNew from "@/pages/assignment-new";
 import AssignmentDetail from "@/pages/assignment-detail";
 import AdminLogin from "@/pages/admin-login";
+import LessonTypesPage from "@/pages/lesson-types";
 import NotFound from "@/pages/not-found";
 
 // Student quiz pages
@@ -147,6 +148,9 @@ function Router() {
       </Route>
       <Route path="/assignments/:id">
         <AdminGuard><AssignmentDetail /></AdminGuard>
+      </Route>
+      <Route path="/lesson-types">
+        <AdminGuard><LessonTypesPage /></AdminGuard>
       </Route>
 
       <Route component={NotFound} />

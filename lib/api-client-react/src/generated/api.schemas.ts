@@ -774,6 +774,39 @@ export interface TenantStats {
   newThisMonth: number;
 }
 
+export interface LessonType {
+  id: number;
+  key: string;
+  label: string;
+  icon: string;
+  color: string;
+  bg: string;
+  order: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateLessonTypeBody {
+  key: string;
+  label: string;
+  icon?: string;
+  color?: string;
+  bg?: string;
+  order?: number;
+  isActive?: boolean;
+}
+
+export interface UpdateLessonTypeBody {
+  key?: string;
+  label?: string;
+  icon?: string;
+  color?: string;
+  bg?: string;
+  order?: number;
+  isActive?: boolean;
+}
+
 export type ListCoursesParams = {
   category?: string;
   search?: string;

@@ -1419,6 +1419,82 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
 
+  /lesson-types:
+    get:
+      tags: [lesson-types]
+      operationId: listLessonTypes
+      summary: List all lesson types
+      responses:
+        '200':
+          description: List of lesson types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LessonType'
+    post:
+      tags: [lesson-types]
+      operationId: createLessonType
+      summary: Create a lesson type
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLessonTypeBody'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LessonType'
+        '409':
+          description: Key already exists
+
+  /lesson-types/{id}:
+    put:
+      tags: [lesson-types]
+      operationId: updateLessonType
+      summary: Update a lesson type
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLessonTypeBody'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LessonType'
+        '404':
+          description: Not found
+    delete:
+      tags: [lesson-types]
+      operationId: deleteLessonType
+      summary: Delete a lesson type
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+
 components:
   schemas:
     HealthStatus:
@@ -2760,3 +2836,79 @@ components:
         - cancelled
         - byPlan
         - newThisMonth
+
+    LessonType:
+      type: object
+      properties:
+        id:
+          type: integer
+        key:
+          type: string
+        label:
+          type: string
+        icon:
+          type: string
+        color:
+          type: string
+        bg:
+          type: string
+        order:
+          type: integer
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - key
+        - label
+        - icon
+        - color
+        - bg
+        - order
+        - isActive
+        - createdAt
+        - updatedAt
+
+    CreateLessonTypeBody:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        icon:
+          type: string
+        color:
+          type: string
+        bg:
+          type: string
+        order:
+          type: integer
+        isActive:
+          type: boolean
+      required:
+        - key
+        - label
+
+    UpdateLessonTypeBody:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        icon:
+          type: string
+        color:
+          type: string
+        bg:
+          type: string
+        order:
+          type: integer
+        isActive:
+          type: boolean
