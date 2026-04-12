@@ -53,7 +53,7 @@ export default function Home() {
               <RevealSection className="stagger-3">
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Button size="lg" className="rounded-full text-base h-14 px-8" asChild>
-                    <Link href="/start">Start Your Journey <ArrowRight className="w-4 h-4 ml-2" /></Link>
+                    <a href="/lms/">Start Your Journey <ArrowRight className="w-4 h-4 ml-2" /></a>
                   </Button>
                   <Button size="lg" variant="outline" className="rounded-full text-base h-14 px-8" asChild>
                     <Link href="#platform">Explore the Platform</Link>
@@ -201,8 +201,8 @@ export default function Home() {
                 </div>
                 
                 <RevealSection className="pt-4">
-                  <Button variant="secondary" size="lg" className="rounded-full">
-                    View Platform Demo
+                  <Button variant="secondary" size="lg" className="rounded-full" asChild>
+                    <a href="/lms/">View Platform Demo</a>
                   </Button>
                 </RevealSection>
               </div>
@@ -327,11 +327,11 @@ export default function Home() {
                 Join the platform that treats language acquisition with the seriousness it deserves. Start your journey with OneSoft LMS today.
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-4">
-                <Button size="lg" className="bg-white text-secondary hover:bg-white/90 rounded-full h-14 px-10 text-lg">
-                  Start for Free
+                <Button size="lg" className="bg-white text-secondary hover:bg-white/90 rounded-full h-14 px-10 text-lg" asChild>
+                  <a href="/lms/">Start for Free</a>
                 </Button>
-                <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 rounded-full h-14 px-10 text-lg">
-                  Contact Sales
+                <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 rounded-full h-14 px-10 text-lg" asChild>
+                  <a href="mailto:contact@onesoftlms.com">Contact Sales</a>
                 </Button>
               </div>
             </RevealSection>

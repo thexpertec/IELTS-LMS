@@ -19,11 +19,11 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-4">
-          <Link href="/login" className="text-sm font-medium text-foreground hover:text-secondary hidden sm:block transition-colors">
+          <a href="/lms/" className="text-sm font-medium text-foreground hover:text-secondary hidden sm:block transition-colors">
             Sign In
-          </Link>
+          </a>
           <Button asChild className="rounded-full px-6">
-            <Link href="/start">Get Started</Link>
+            <a href="/lms/">Get Started</a>
           </Button>
         </div>
       </div>

@@ -49,8 +49,8 @@ export function Footer() {
         <div className="border-t border-white/20 mt-16 pt-8 flex flex-col md:flex-row items-center justify-between text-xs text-white/65">
           <p>&copy; {new Date().getFullYear()} OneSoft LMS. All rights reserved.</p>
           <div className="flex gap-6 mt-4 md:mt-0">
-            <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
-            <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
+            <span>Privacy Policy</span>
+            <span>Terms of Service</span>
           </div>
         </div>
       </div>
