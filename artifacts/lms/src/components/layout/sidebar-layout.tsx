@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, BookOpen, Users, UserPlus, Moon, Sun, GraduationCap, ClipboardList, Menu, X, FileText } from "lucide-react";
+import { LayoutDashboard, BookOpen, Users, UserPlus, Moon, Sun, GraduationCap, ClipboardList, Menu, X, FileText, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/auth-context";
 
 interface SidebarLayoutProps {
   children: React.ReactNode;
@@ -13,6 +14,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   const [location] = useLocation();
   const { theme, setTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, logout } = useAuth();
 
   const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -80,6 +82,23 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
             <><Moon className="w-4 h-4" />Dark Mode</>
           )}
         </Button>
+        {user && (
+          <div className="pt-2 border-t mt-2">
+            <div className="px-3 pb-1">
+              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start gap-3 text-muted-foreground"
+              onClick={() => { void logout(); }}
+              data-testid="btn-logout"
+            >
+              <LogOut className="w-4 h-4" />
+              Sign Out
+            </Button>
+          </div>
+        )}
       </div>
     </>
   );

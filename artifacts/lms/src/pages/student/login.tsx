@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { GraduationCap, Mail, User, ArrowRight, BookOpen, TrendingUp, Award } from "lucide-react";
+import { GraduationCap, Mail, Lock, ArrowRight, BookOpen, TrendingUp, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useStudent } from "@/context/student-context";
-import { useGetStudentProfile } from "@workspace/api-client-react";
 
 const DEMO_STUDENTS = [
   { email: "alice@example.com", name: "Alice Johnson" },
@@ -15,28 +14,47 @@ const DEMO_STUDENTS = [
   { email: "david@example.com", name: "David Lee" },
 ];
 
+const DEMO_PASSWORD = "student123";
+
 export default function StudentLogin() {
   const [, setLocation] = useLocation();
   const { student, login } = useStudent();
   const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   if (student) {
     setLocation("/student/dashboard");
     return null;
   }
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
-    const displayName = name.trim() || email.split("@")[0];
-    login(email.trim(), displayName);
-    setLocation("/student/dashboard");
+    if (!email.trim() || !password) return;
+    setError("");
+    setLoading(true);
+    try {
+      await login(email.trim(), password);
+      setLocation("/student/dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invalid credentials");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDemoLogin = (demoEmail: string, demoName: string) => {
-    login(demoEmail, demoName);
-    setLocation("/student/dashboard");
+  const handleDemoLogin = async (demoEmail: string) => {
+    setError("");
+    setLoading(true);
+    try {
+      await login(demoEmail, DEMO_PASSWORD);
+      setLocation("/student/dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -83,10 +101,10 @@ export default function StudentLogin() {
           <Card>
             <CardHeader>
               <CardTitle>Sign In</CardTitle>
-              <CardDescription>Enter your email to access the student portal</CardDescription>
+              <CardDescription>Enter your credentials to access the student portal</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleLogin} className="space-y-4">
+              <form onSubmit={(e) => { void handleLogin(e); }} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address</Label>
                   <div className="relative">
@@ -99,28 +117,36 @@ export default function StudentLogin() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
+                      autoComplete="email"
                       data-testid="input-student-email"
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="name">Display Name (optional)</Label>
+                  <Label htmlFor="password">Password</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                      id="name"
-                      type="text"
-                      placeholder="Your name"
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
                       className="pl-9"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      data-testid="input-student-name"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      autoComplete="current-password"
+                      data-testid="input-student-password"
                     />
                   </div>
                 </div>
-                <Button type="submit" className="w-full gap-2" data-testid="btn-student-login">
-                  Enter Portal
-                  <ArrowRight className="w-4 h-4" />
+                {error && (
+                  <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
+                    {error}
+                  </p>
+                )}
+                <Button type="submit" className="w-full gap-2" disabled={loading} data-testid="btn-student-login">
+                  {loading ? "Signing in…" : "Sign In"}
+                  {!loading && <ArrowRight className="w-4 h-4" />}
                 </Button>
               </form>
             </CardContent>
@@ -129,6 +155,7 @@ export default function StudentLogin() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">Quick Demo Access</CardTitle>
+              <p className="text-xs text-muted-foreground">Password for all demo accounts: student123</p>
             </CardHeader>
             <CardContent className="pt-0 grid grid-cols-2 gap-2">
               {DEMO_STUDENTS.map((s) => (
@@ -137,7 +164,8 @@ export default function StudentLogin() {
                   variant="outline"
                   size="sm"
                   className="justify-start gap-2 h-9"
-                  onClick={() => handleDemoLogin(s.email, s.name)}
+                  disabled={loading}
+                  onClick={() => { void handleDemoLogin(s.email); }}
                   data-testid={`btn-demo-${s.email}`}
                 >
                   <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">

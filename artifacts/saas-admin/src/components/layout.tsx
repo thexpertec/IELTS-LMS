@@ -1,6 +1,8 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Users, Settings, Activity } from "lucide-react";
+import { LayoutDashboard, Users, Settings, Activity, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/auth-context";
+import { Button } from "@/components/ui/button";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -8,6 +10,7 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
+  const { user, logout } = useAuth();
 
   const navigation = [
     { name: "Overview", href: "/", icon: LayoutDashboard },
@@ -18,7 +21,6 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-muted/30 flex">
-      {/* Sidebar */}
       <aside className="w-64 border-r bg-card flex-col hidden md:flex">
         <div className="h-14 flex items-center px-6 border-b">
           <div className="font-semibold text-sm tracking-tight flex items-center gap-2">
@@ -28,11 +30,10 @@ export function Layout({ children }: LayoutProps) {
             SaaS Admin
           </div>
         </div>
-        
+
         <nav className="flex-1 py-4 px-3 space-y-1">
           {navigation.map((item) => {
             const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
-            
             return (
               <Link
                 key={item.name}
@@ -50,14 +51,22 @@ export function Layout({ children }: LayoutProps) {
             );
           })}
         </nav>
-        
-        <div className="p-4 border-t text-xs text-muted-foreground">
-          <div>Logged in as Operator</div>
-          <div className="font-medium text-foreground mt-1">sysadmin@platform.com</div>
+
+        <div className="p-4 border-t">
+          <div className="text-xs text-muted-foreground">Logged in as Operator</div>
+          <div className="text-xs font-medium text-foreground mt-0.5 truncate">{user?.email ?? "—"}</div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-2 w-full justify-start gap-2 text-muted-foreground h-8 px-2 text-xs"
+            onClick={() => { void logout(); }}
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            Sign out
+          </Button>
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         <div className="h-14 border-b bg-card flex items-center px-6 md:hidden">
           <div className="font-semibold text-sm tracking-tight flex items-center gap-2">

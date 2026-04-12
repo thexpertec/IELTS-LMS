@@ -12,9 +12,11 @@ import storageRouter from "./storage";
 import chaptersRouter from "./chapters";
 import streamRouter from "./stream";
 import tenantsRouter from "./tenants";
+import authRouter from "./auth";
 
 const router: IRouter = Router();
 
+router.use("/auth", authRouter);
 router.use(healthRouter);
 router.use(coursesRouter);
 router.use(chaptersRouter);
