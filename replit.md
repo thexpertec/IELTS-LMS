@@ -105,9 +105,18 @@ Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used b
 
 Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
 
+### `artifacts/landing` (`@workspace/landing`)
+
+Public-facing marketing landing page for OneSoft LMS. Served at path `/` (root domain). Single-page, no backend.
+- 9-section scroll-worthy page: hero, social proof, methodology, IELTS bands, platform deep dive, tutors, testimonials, FAQ, CTA
+- AI-generated product images, scroll-triggered animations via `use-scroll-reveal` hook
+- Custom color palette: deep indigo + warm terracotta background
+- Files: `src/pages/home.tsx`, `src/components/Navbar.tsx`, `src/components/Footer.tsx`
+
 ### `artifacts/lms` (`@workspace/lms`)
 
 Full-stack LMS (Learning Management System) React + Vite frontend. Contains both the admin dashboard and the student portal.
+**Served at `/lms/` path (BASE_PATH=/lms/)** — moved from `/` to allow landing page at root.
 
 **Admin area** (routes `/`, `/courses`, `/enrollments`, `/students`):
 - Dashboard with stats and charts

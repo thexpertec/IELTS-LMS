@@ -1,0 +1,20 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "nu4gGURn9-n4M-2qJ_9V_"
+uri = "file://artifacts/landing/public/hero-student.png"
+type = "image"
+title = "Focus student laptop study"
+
+[[generated]]
+id = "BCYRTGaty1MrJd2iqpOzM"
+uri = "file://artifacts/landing/public/platform-mockup.png"
+type = "image"
+title = "Platform interface mockup abstract"
+
+[[generated]]
+id = "GXlQWo3V0DfSBskH982ZV"
+uri = "file://artifacts/landing/public/tutor-session.png"
+type = "image"
+title = "Tutor student session office"
