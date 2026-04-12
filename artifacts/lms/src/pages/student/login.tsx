@@ -7,14 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useStudent } from "@/context/student-context";
 
-const DEMO_STUDENTS = [
-  { email: "alice@example.com", name: "Alice Johnson" },
-  { email: "bob@example.com", name: "Bob Smith" },
-  { email: "carol@example.com", name: "Carol White" },
-  { email: "david@example.com", name: "David Lee" },
-];
-
-const DEMO_PASSWORD = "student123";
 
 export default function StudentLogin() {
   const [, setLocation] = useLocation();
@@ -39,19 +31,6 @@ export default function StudentLogin() {
       setLocation("/student/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid credentials");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDemoLogin = async (demoEmail: string) => {
-    setError("");
-    setLoading(true);
-    try {
-      await login(demoEmail, DEMO_PASSWORD);
-      setLocation("/student/dashboard");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
     } finally {
       setLoading(false);
     }
@@ -152,30 +131,6 @@ export default function StudentLogin() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Quick Demo Access</CardTitle>
-              <p className="text-xs text-muted-foreground">Password for all demo accounts: student123</p>
-            </CardHeader>
-            <CardContent className="pt-0 grid grid-cols-2 gap-2">
-              {DEMO_STUDENTS.map((s) => (
-                <Button
-                  key={s.email}
-                  variant="outline"
-                  size="sm"
-                  className="justify-start gap-2 h-9"
-                  disabled={loading}
-                  onClick={() => { void handleDemoLogin(s.email); }}
-                  data-testid={`btn-demo-${s.email}`}
-                >
-                  <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
-                    {s.name[0]}
-                  </div>
-                  <span className="truncate text-xs">{s.name.split(" ")[0]}</span>
-                </Button>
-              ))}
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>

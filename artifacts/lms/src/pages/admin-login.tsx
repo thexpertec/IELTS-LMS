@@ -10,7 +10,7 @@ import { useAuth } from "@/context/auth-context";
 export default function AdminLogin() {
   const { login, user } = useAuth();
   const [, setLocation] = useLocation();
-  const [email, setEmail] = useState("admin@lms.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -97,10 +97,6 @@ export default function AdminLogin() {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Signing in…" : "Sign in"}
               </Button>
-
-              <p className="text-xs text-center text-muted-foreground">
-                Demo: admin@lms.com / admin123
-              </p>
             </form>
           </CardContent>
         </Card>
