@@ -1,10 +1,11 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Search, Phone, Mail, MapPin, GraduationCap, BookOpen,
-  Users, Eye, Target, TrendingUp, ChevronUp, ChevronDown,
+  Users, Eye, Target, TrendingUp, ChevronUp, ChevronDown, UserPlus, Lock,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +14,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -62,10 +67,41 @@ export default function Students() {
   const [sortKey, setSortKey] = useState<SortKey>("displayName");
   const [sortAsc, setSortAsc] = useState(true);
   const [selected, setSelected] = useState<StudentRow | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: students = [], isLoading } = useQuery<StudentRow[]>({
     queryKey: ["admin-students"],
     queryFn: fetchAdminStudents,
+  });
+
+  const addStudentMutation = useMutation({
+    mutationFn: async (body: { name: string; email: string; password: string; phone?: string }) => {
+      const res = await fetch("/api/admin/students", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? "Failed to create student");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Student added", description: `${newName} can now log in to the student portal.` });
+      queryClient.invalidateQueries({ queryKey: ["admin-students"] });
+      setAddOpen(false);
+      setNewName(""); setNewEmail(""); setNewPassword(""); setNewPhone("");
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to add student", description: err.message, variant: "destructive" });
+    },
   });
 
   const filtered = useMemo(() => {
@@ -120,11 +156,17 @@ export default function Students() {
   return (
     <div className="p-4 sm:p-8 max-w-[1400px] mx-auto space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Student Directory</h1>
-        <p className="text-muted-foreground mt-1">
-          Detailed profiles of all learners — {isLoading ? "…" : students.length} registered students.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Student Directory</h1>
+          <p className="text-muted-foreground mt-1">
+            Detailed profiles of all learners — {isLoading ? "…" : students.length} registered students.
+          </p>
+        </div>
+        <Button onClick={() => setAddOpen(true)} className="shrink-0 gap-2">
+          <UserPlus className="w-4 h-4" />
+          Add Student
+        </Button>
       </div>
 
       {/* Stats row */}
@@ -306,6 +348,102 @@ export default function Students() {
           </table>
         </div>
       )}
+
+      {/* ── Add Student Dialog ── */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-primary" />
+              Add New Student
+            </DialogTitle>
+            <DialogDescription>
+              Create a login account for the student. They can sign in at the Student Portal using their email and password.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              addStudentMutation.mutate({
+                name: newName,
+                email: newEmail,
+                password: newPassword,
+                phone: newPhone || undefined,
+              });
+            }}
+            className="space-y-4 py-2"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="new-name">Full Name <span className="text-destructive">*</span></Label>
+              <Input
+                id="new-name"
+                placeholder="e.g. Ahmad Khan"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-email">Email Address <span className="text-destructive">*</span></Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="new-email"
+                  type="email"
+                  placeholder="student@example.com"
+                  className="pl-9"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-password">Password <span className="text-destructive">*</span></Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="Min. 6 characters"
+                  className="pl-9"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  minLength={6}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-phone">Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="new-phone"
+                  type="tel"
+                  placeholder="+92 300 0000000"
+                  className="pl-9"
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={addStudentMutation.isPending} className="gap-2">
+                {addStudentMutation.isPending ? "Creating…" : "Create Student"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Student Detail Drawer ── */}
       <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>

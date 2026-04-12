@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, and, not, inArray, sql } from "drizzle-orm";
+import { eq, and, not, inArray, sql, ilike } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 import {
   db,
   coursesTable,
@@ -15,6 +16,7 @@ import {
   quizzesTable,
   quizAttemptsTable,
 } from "@workspace/db";
+import { usersTable } from "@workspace/db/schema";
 
 const router: IRouter = Router();
 
@@ -183,6 +185,58 @@ router.get("/admin/students", async (req, res): Promise<void> => {
   });
 
   res.json(result);
+});
+
+// POST /api/admin/students — create a new student account
+router.post("/admin/students", async (req, res): Promise<void> => {
+  if (!req.session.userId || req.session.role !== "admin") {
+    res.status(403).json({ error: "Admin access required" });
+    return;
+  }
+
+  const { name, email, password, phone } = req.body as {
+    name?: string; email?: string; password?: string; phone?: string;
+  };
+
+  if (!name?.trim() || !email?.trim() || !password) {
+    res.status(400).json({ error: "Name, email, and password are required" });
+    return;
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // Check if email already exists
+  const [existing] = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(ilike(usersTable.email, normalizedEmail))
+    .limit(1);
+
+  if (existing) {
+    res.status(409).json({ error: "A user with this email already exists" });
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const tenantId = req.session.tenantId ?? null;
+
+  await db.insert(usersTable).values({
+    email: normalizedEmail,
+    username: normalizedEmail + "_" + Date.now(),
+    name: name.trim(),
+    passwordHash,
+    role: "student",
+    tenantId,
+  });
+
+  // Create student profile
+  await db.insert(studentProfilesTable).values({
+    email: normalizedEmail,
+    displayName: name.trim(),
+    phone: phone?.trim() ?? null,
+  });
+
+  res.status(201).json({ email: normalizedEmail, name: name.trim() });
 });
 
 router.get("/student/my-enrollments", async (req, res): Promise<void> => {
