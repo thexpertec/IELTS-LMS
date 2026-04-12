@@ -8,6 +8,8 @@ import Dashboard from "@/pages/dashboard";
 import TenantList from "@/pages/tenants/list";
 import NewTenant from "@/pages/tenants/new";
 import TenantDetail from "@/pages/tenants/detail";
+import PlatformHealth from "@/pages/health";
+import Settings from "@/pages/settings";
 
 const queryClient = new QueryClient();
 
@@ -19,6 +21,8 @@ function Router() {
         <Route path="/tenants" component={TenantList} />
         <Route path="/tenants/new" component={NewTenant} />
         <Route path="/tenants/:id" component={TenantDetail} />
+        <Route path="/health" component={PlatformHealth} />
+        <Route path="/settings" component={Settings} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
