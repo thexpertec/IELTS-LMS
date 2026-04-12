@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, BookOpen, Users, UserPlus, Moon, Sun, GraduationCap, ClipboardList, Menu, X, FileText, LogOut, Settings2 } from "lucide-react";
+import { LayoutDashboard, BookOpen, Users, UserPlus, Moon, Sun, GraduationCap, ClipboardList, Menu, X, FileText, LogOut, Settings2, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
 
 interface SidebarLayoutProps {
@@ -16,6 +18,18 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, logout } = useAuth();
 
+  const { data: chatConversations } = useQuery({
+    queryKey: ["chat-conversations"],
+    queryFn: async () => {
+      const res = await fetch("/api/chat/conversations", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json() as Promise<{ unread: number }[]>;
+    },
+    refetchInterval: 10000,
+    enabled: !!user,
+  });
+  const unreadMessages = chatConversations?.reduce((s, c) => s + (c.unread ?? 0), 0) ?? 0;
+
   const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
     { name: "Courses", href: "/courses", icon: BookOpen },
@@ -23,6 +37,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     { name: "Assignments", href: "/assignments", icon: FileText },
     { name: "Enrollments", href: "/enrollments", icon: UserPlus },
     { name: "Students", href: "/students", icon: Users },
+    { name: "Messages", href: "/messages", icon: MessageSquare },
     { name: "Lesson Types", href: "/lesson-types", icon: Settings2 },
   ];
 
@@ -55,6 +70,11 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
             >
               <item.icon className="w-4 h-4" />
               {item.name}
+              {item.name === "Messages" && unreadMessages > 0 && (
+                <Badge className="ml-auto h-5 w-5 p-0 flex items-center justify-center text-xs bg-destructive">
+                  {unreadMessages > 9 ? "9+" : unreadMessages}
+                </Badge>
+              )}
             </Link>
           );
         })}

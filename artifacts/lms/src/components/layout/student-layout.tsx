@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { BookOpen, Home, FileText, Bell, User, LogOut, GraduationCap, Sun, Moon, ClipboardList, Menu } from "lucide-react";
+import { BookOpen, Home, FileText, Bell, User, LogOut, GraduationCap, Sun, Moon, ClipboardList, Menu, MessageSquare } from "lucide-react";
 import { useStudent } from "@/context/student-context";
+import { useQuery } from "@tanstack/react-query";
 import { useGetStudentNotifications } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -16,6 +17,7 @@ const navItems = [
   { href: "/student/quizzes", label: "Quizzes", icon: ClipboardList },
   { href: "/student/assignments", label: "Assignments", icon: FileText },
   { href: "/student/notifications", label: "Notifications", icon: Bell },
+  { href: "/student/messages", label: "Messages", icon: MessageSquare },
   { href: "/student/profile", label: "Profile", icon: User },
 ];
 
@@ -30,7 +32,19 @@ export function StudentLayout({ children }: { children: ReactNode }) {
     { query: { enabled: !!student?.email } }
   );
 
+  const { data: chatConversations } = useQuery({
+    queryKey: ["student-chat-conversations"],
+    queryFn: async () => {
+      const res = await fetch("/api/chat/conversations", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json() as Promise<{ unread: number }[]>;
+    },
+    enabled: !!student?.email,
+    refetchInterval: 10000,
+  });
+
   const unreadCount = notifications?.filter((n) => !n.isRead).length ?? 0;
+  const unreadMessages = chatConversations?.reduce((s, c) => s + (c.unread ?? 0), 0) ?? 0;
 
   const initials = student?.displayName
     .split(" ")
@@ -88,6 +102,11 @@ export function StudentLayout({ children }: { children: ReactNode }) {
               {label === "Notifications" && unreadCount > 0 && (
                 <Badge className="ml-auto h-5 w-5 p-0 flex items-center justify-center text-xs bg-destructive">
                   {unreadCount > 9 ? "9+" : unreadCount}
+                </Badge>
+              )}
+              {label === "Messages" && unreadMessages > 0 && (
+                <Badge className="ml-auto h-5 w-5 p-0 flex items-center justify-center text-xs bg-destructive">
+                  {unreadMessages > 9 ? "9+" : unreadMessages}
                 </Badge>
               )}
             </Link>

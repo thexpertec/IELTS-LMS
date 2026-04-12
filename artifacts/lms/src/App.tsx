@@ -27,6 +27,7 @@ import AssignmentNew from "@/pages/assignment-new";
 import AssignmentDetail from "@/pages/assignment-detail";
 import AdminLogin from "@/pages/admin-login";
 import LessonTypesPage from "@/pages/lesson-types";
+import Messages from "@/pages/messages";
 import NotFound from "@/pages/not-found";
 
 // Student quiz pages
@@ -41,6 +42,7 @@ import CourseView from "@/pages/student/course-view";
 import Assignments from "@/pages/student/assignments";
 import StudentNotifications from "@/pages/student/notifications";
 import StudentProfile from "@/pages/student/profile";
+import StudentMessages from "@/pages/student/messages";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -102,6 +104,9 @@ function Router() {
       <Route path="/student/profile">
         <StudentGuard><StudentProfile /></StudentGuard>
       </Route>
+      <Route path="/student/messages">
+        <StudentGuard><StudentMessages /></StudentGuard>
+      </Route>
 
       {/* Admin area — all protected */}
       <Route path="/">
@@ -151,6 +156,9 @@ function Router() {
       </Route>
       <Route path="/lesson-types">
         <AdminGuard><LessonTypesPage /></AdminGuard>
+      </Route>
+      <Route path="/messages">
+        <AdminGuard><Messages /></AdminGuard>
       </Route>
 
       <Route component={NotFound} />

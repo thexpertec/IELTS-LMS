@@ -14,6 +14,7 @@ import streamRouter from "./stream";
 import tenantsRouter from "./tenants";
 import authRouter from "./auth";
 import lessonTypesRouter from "./lesson-types";
+import chatRouter from "./chat";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(storageRouter);
 router.use(streamRouter);
 router.use(tenantsRouter);
 router.use(lessonTypesRouter);
+router.use(chatRouter);
 
 export default router;

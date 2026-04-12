@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, or, and, desc, sql, ne, isNull } from "drizzle-orm";
+import { eq, or, and, isNull, inArray } from "drizzle-orm";
 import {
   db,
   chatMessagesTable,
@@ -23,77 +23,84 @@ router.get("/chat/conversations", async (req, res): Promise<void> => {
 
   const role = req.session.role ?? "student";
 
-  // If admin, only talk to students; if student, only talk to admins.
-  // Pull distinct partner emails with last message and unread count.
-  const rows = await db.execute(sql`
-    SELECT
-      partner,
-      MAX(created_at) AS last_at,
-      (SELECT content FROM chat_messages
-        WHERE (from_email = ${myEmail} AND to_email = partner)
-           OR (from_email = partner AND to_email = ${myEmail})
-        ORDER BY created_at DESC LIMIT 1) AS last_message,
-      COUNT(*) FILTER (WHERE from_email = partner AND to_email = ${myEmail} AND read_at IS NULL) AS unread
-    FROM (
-      SELECT CASE WHEN from_email = ${myEmail} THEN to_email ELSE from_email END AS partner,
-             created_at
-      FROM chat_messages
-      WHERE from_email = ${myEmail} OR to_email = ${myEmail}
-    ) t
-    GROUP BY partner
-    ORDER BY last_at DESC
-  `);
+  // Pull all messages involving this user
+  const allMessages = await db
+    .select()
+    .from(chatMessagesTable)
+    .where(
+      or(
+        eq(chatMessagesTable.fromEmail, myEmail),
+        eq(chatMessagesTable.toEmail, myEmail),
+      )
+    )
+    .orderBy(chatMessagesTable.createdAt);
 
-  const partnerEmails = (rows.rows as { partner: string }[]).map((r) => r.partner);
+  // Compute per-partner stats
+  const partnerMap = new Map<string, {
+    lastMessage: string; lastAt: string; unread: number;
+  }>();
+
+  for (const msg of allMessages) {
+    const partner = msg.fromEmail === myEmail ? msg.toEmail : msg.fromEmail;
+    const existing = partnerMap.get(partner);
+    const isUnread = msg.toEmail === myEmail && msg.readAt === null;
+    if (!existing) {
+      partnerMap.set(partner, {
+        lastMessage: msg.content,
+        lastAt: msg.createdAt.toISOString(),
+        unread: isUnread ? 1 : 0,
+      });
+    } else {
+      existing.lastMessage = msg.content;
+      existing.lastAt = msg.createdAt.toISOString();
+      if (isUnread) existing.unread++;
+    }
+  }
+
+  const partnerEmails = Array.from(partnerMap.keys());
 
   // Fetch display names for all partners
   const nameMap = new Map<string, string>();
 
   if (partnerEmails.length > 0) {
-    // Check users table first
     const userRows = await db
       .select({ email: usersTable.email, name: usersTable.name })
       .from(usersTable)
-      .where(sql`${usersTable.email} = ANY(${sql.raw("ARRAY[" + partnerEmails.map((e) => `'${e.replace(/'/g, "''")}'`).join(",") + "]")})`)
-      .catch(() => [] as { email: string; name: string }[]);
+      .where(inArray(usersTable.email, partnerEmails));
     for (const u of userRows) nameMap.set(u.email, u.name);
 
-    // Supplement with student profiles
     const profileRows = await db
       .select({ email: studentProfilesTable.email, displayName: studentProfilesTable.displayName })
       .from(studentProfilesTable)
-      .where(sql`${studentProfilesTable.email} = ANY(${sql.raw("ARRAY[" + partnerEmails.map((e) => `'${e.replace(/'/g, "''")}'`).join(",") + "]")})`)
-      .catch(() => [] as { email: string; displayName: string }[]);
+      .where(inArray(studentProfilesTable.email, partnerEmails));
     for (const p of profileRows) {
       if (!nameMap.has(p.email)) nameMap.set(p.email, p.displayName);
     }
   }
 
-  const result = (rows.rows as {
-    partner: string; last_at: string; last_message: string | null; unread: string;
-  }[]).map((r) => ({
-    email: r.partner,
-    name: nameMap.get(r.partner) ?? r.partner,
-    lastMessage: r.last_message ?? "",
-    lastAt: r.last_at,
-    unread: Number(r.unread),
-  }));
+  const result: { email: string; name: string; lastMessage: string; lastAt: string; unread: number }[] =
+    Array.from(partnerMap.entries())
+      .sort((a, b) => b[1].lastAt.localeCompare(a[1].lastAt))
+      .map(([email, stats]) => ({
+        email,
+        name: nameMap.get(email) ?? email,
+        ...stats,
+      }));
 
-  // If student, also fetch admin partner info even if no messages yet
+  // If student, also prepend the admin partner info even if no messages yet
   if (role === "student") {
-    // Find the admin to talk to (same tenant or any admin)
     const tenantId = req.session.tenantId ?? null;
-    const adminQuery = tenantId
-      ? db.select({ email: usersTable.email, name: usersTable.name })
-          .from(usersTable)
-          .where(and(eq(usersTable.role, "admin"), eq(usersTable.tenantId, tenantId)))
-          .limit(1)
-      : db.select({ email: usersTable.email, name: usersTable.name })
-          .from(usersTable)
-          .where(and(eq(usersTable.role, "admin"), isNull(usersTable.tenantId)))
-          .limit(1);
+    const adminWhere = tenantId
+      ? and(eq(usersTable.role, "admin"), eq(usersTable.tenantId, tenantId))
+      : and(eq(usersTable.role, "admin"), isNull(usersTable.tenantId));
 
-    const [admin] = await adminQuery.catch(() => [] as { email: string; name: string }[]);
+    const [admin] = await db
+      .select({ email: usersTable.email, name: usersTable.name })
+      .from(usersTable)
+      .where(adminWhere)
+      .limit(1)
+      .catch(() => [] as { email: string; name: string }[]);
+
     if (admin && !result.find((r) => r.email === admin.email)) {
       result.unshift({ email: admin.email, name: admin.name, lastMessage: "", lastAt: new Date().toISOString(), unread: 0 });
     }
