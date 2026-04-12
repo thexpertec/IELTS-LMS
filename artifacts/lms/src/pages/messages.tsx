@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MessageSquare, Send, Search, User } from "lucide-react";
+import { MessageSquare, Send, Search, User, PenSquare, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { format, isToday, isYesterday } from "date-fns";
 
@@ -26,6 +29,12 @@ type Message = {
   createdAt: string;
   readAt: string | null;
   isOwn: boolean;
+};
+
+type StudentRow = {
+  email: string;
+  displayName: string;
+  phone: string | null;
 };
 
 function formatTime(iso: string) {
@@ -68,10 +77,12 @@ export default function Messages() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Conversation | null>(null);
   const [draft, setDraft] = useState("");
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [composeSearch, setComposeSearch] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
-  // List conversations
+  // ── All conversations (existing) ──────────────────────────────────────────
   const { data: conversations = [], isLoading: loadingConvs } = useQuery<Conversation[]>({
     queryKey: ["chat-conversations"],
     queryFn: async () => {
@@ -82,7 +93,18 @@ export default function Messages() {
     refetchInterval: 5000,
   });
 
-  // Messages with selected student
+  // ── All students (for compose picker) ────────────────────────────────────
+  const { data: allStudents = [] } = useQuery<StudentRow[]>({
+    queryKey: ["admin-students"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/students", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: composeOpen,
+  });
+
+  // ── Messages with selected student ───────────────────────────────────────
   const { data: messages = [], isLoading: loadingMsgs } = useQuery<Message[]>({
     queryKey: ["chat-messages", selected?.email],
     queryFn: async () => {
@@ -95,7 +117,7 @@ export default function Messages() {
     refetchInterval: 3000,
   });
 
-  // Mark as read whenever we open a conversation
+  // ── Mark as read when opening a conversation ──────────────────────────────
   useEffect(() => {
     if (!selected) return;
     fetch(`/api/chat/read?from=${encodeURIComponent(selected.email)}`, {
@@ -106,11 +128,12 @@ export default function Messages() {
     }).catch(() => {});
   }, [selected, queryClient]);
 
-  // Scroll to bottom on new messages
+  // ── Scroll to bottom on new messages ─────────────────────────────────────
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // ── Send message ─────────────────────────────────────────────────────────
   const sendMutation = useMutation({
     mutationFn: async (content: string) => {
       const res = await fetch("/api/chat/messages", {
@@ -135,22 +158,114 @@ export default function Messages() {
       c.email.toLowerCase().includes(search.toLowerCase())
   );
 
+  const filteredStudents = allStudents.filter(
+    (s) =>
+      s.displayName.toLowerCase().includes(composeSearch.toLowerCase()) ||
+      s.email.toLowerCase().includes(composeSearch.toLowerCase())
+  );
+
   const handleSend = () => {
     const text = draft.trim();
     if (!text || !selected || sendMutation.isPending) return;
     sendMutation.mutate(text);
   };
 
+  // Start or switch to a conversation with a student from the compose picker
+  const startConversation = (student: StudentRow) => {
+    const existing = conversations.find((c) => c.email === student.email);
+    setSelected(existing ?? {
+      email: student.email,
+      name: student.displayName,
+      lastMessage: "",
+      lastAt: new Date().toISOString(),
+      unread: 0,
+    });
+    setComposeOpen(false);
+    setComposeSearch("");
+    setDraft("");
+  };
+
   return (
     <div className="flex h-screen overflow-hidden">
+
+      {/* ── Compose / Student Picker Dialog ── */}
+      <Dialog open={composeOpen} onOpenChange={(open) => { setComposeOpen(open); if (!open) setComposeSearch(""); }}>
+        <DialogContent className="sm:max-w-sm p-0 overflow-hidden">
+          <DialogHeader className="px-4 pt-4 pb-3 border-b">
+            <DialogTitle className="text-base">New Message</DialogTitle>
+          </DialogHeader>
+          <div className="px-3 py-2 border-b">
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
+              <Input
+                autoFocus
+                placeholder="Search students by name or email…"
+                className="pl-9 h-8 text-sm"
+                value={composeSearch}
+                onChange={(e) => setComposeSearch(e.target.value)}
+              />
+              {composeSearch && (
+                <button
+                  onClick={() => setComposeSearch("")}
+                  className="absolute right-2 top-2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+          <ScrollArea className="max-h-72">
+            {filteredStudents.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                {allStudents.length === 0 ? "No students found in this account." : "No students match your search."}
+              </div>
+            ) : (
+              <div className="divide-y">
+                {filteredStudents.map((student) => (
+                  <button
+                    key={student.email}
+                    onClick={() => startConversation(student)}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors"
+                  >
+                    <Avatar className="w-8 h-8 shrink-0">
+                      <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">
+                        {initials(student.displayName)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{student.displayName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{student.email}</p>
+                    </div>
+                    {conversations.some((c) => c.email === student.email) && (
+                      <Badge variant="secondary" className="ml-auto shrink-0 text-[10px]">Active</Badge>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
       {/* ── Left Pane: Conversation List ── */}
       <div className="w-72 border-r bg-card flex flex-col shrink-0">
-        <div className="p-4 border-b">
-          <h2 className="font-semibold text-base mb-3">Messages</h2>
+        <div className="p-3 border-b space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-base px-1">Messages</h2>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="gap-1.5 text-xs text-primary hover:text-primary hover:bg-primary/10"
+              onClick={() => setComposeOpen(true)}
+            >
+              <PenSquare className="w-3.5 h-3.5" />
+              New
+            </Button>
+          </div>
           <div className="relative">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search students…"
+              placeholder="Search conversations…"
               className="pl-9 h-8 text-sm"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -172,8 +287,16 @@ export default function Messages() {
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="p-6 text-center text-sm text-muted-foreground">
-              No conversations yet.
+            <div className="flex flex-col items-center gap-3 py-10 px-4 text-center">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                <MessageSquare className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">No conversations yet</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Click <span className="font-semibold">New</span> above to message a student
+                </p>
+              </div>
             </div>
           ) : (
             <div className="divide-y">
@@ -226,12 +349,18 @@ export default function Messages() {
       {/* ── Right Pane: Chat Thread ── */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {!selected ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 text-muted-foreground">
-            <MessageSquare className="w-12 h-12 opacity-20" />
-            <div>
-              <p className="font-medium">Select a student to start chatting</p>
-              <p className="text-sm mt-1">Choose from the list on the left</p>
+          <div className="flex-1 flex flex-col items-center justify-center text-center gap-4 text-muted-foreground">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+              <MessageSquare className="w-7 h-7 opacity-40" />
             </div>
+            <div>
+              <p className="font-medium text-foreground">Start a conversation</p>
+              <p className="text-sm mt-1">Pick an existing chat or click <strong>New</strong> to message a student</p>
+            </div>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setComposeOpen(true)}>
+              <PenSquare className="w-4 h-4" />
+              New Message
+            </Button>
           </div>
         ) : (
           <>
@@ -242,7 +371,7 @@ export default function Messages() {
                   {initials(selected.name)}
                 </AvatarFallback>
               </Avatar>
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm leading-tight">{selected.name}</p>
                 <p className="text-xs text-muted-foreground">{selected.email}</p>
               </div>
@@ -260,9 +389,10 @@ export default function Messages() {
                   ))}
                 </div>
               ) : messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-40 gap-2 text-muted-foreground">
+                <div className="flex flex-col items-center justify-center h-48 gap-2 text-muted-foreground">
                   <User className="w-8 h-8 opacity-30" />
-                  <p className="text-sm">No messages yet — say hello!</p>
+                  <p className="text-sm font-medium">No messages yet</p>
+                  <p className="text-xs">Send {selected.name.split(" ")[0]} a message to get started</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -281,7 +411,7 @@ export default function Messages() {
                 onSubmit={(e) => { e.preventDefault(); handleSend(); }}
               >
                 <Input
-                  placeholder={`Message ${selected.name}…`}
+                  placeholder={`Message ${selected.name.split(" ")[0]}…`}
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   className="flex-1"
