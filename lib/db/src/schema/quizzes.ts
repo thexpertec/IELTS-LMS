@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 import { coursesTable } from "./courses";
 import { chaptersTable } from "./chapters";
 import { lessonsTable } from "./lessons";
+import { tenantsTable } from "./tenants";
 
 export const quizzesTable = pgTable("quizzes", {
   id: serial("id").primaryKey(),
@@ -17,6 +18,7 @@ export const quizzesTable = pgTable("quizzes", {
   lessonType: text("lesson_type"),
   timeLimitMinutes: integer("time_limit_minutes"),
   isPublished: boolean("is_published").notNull().default(false),
+  tenantId: integer("tenant_id").references(() => tenantsTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

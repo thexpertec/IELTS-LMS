@@ -368,6 +368,8 @@ router.get("/student/available-courses", async (req, res): Promise<void> => {
     return;
   }
 
+  const tenantId = req.session.tenantId ?? null;
+
   const enrolled = await db
     .select({ courseId: enrollmentsTable.courseId })
     .from(enrollmentsTable)
@@ -375,12 +377,16 @@ router.get("/student/available-courses", async (req, res): Promise<void> => {
 
   const enrolledIds = enrolled.map((e) => e.courseId);
 
+  const baseConditions = tenantId
+    ? and(eq(coursesTable.isPublished, true), eq(coursesTable.tenantId, tenantId))
+    : eq(coursesTable.isPublished, true);
+
   const courses = enrolledIds.length > 0
     ? await db
         .select()
         .from(coursesTable)
-        .where(and(eq(coursesTable.isPublished, true), not(inArray(coursesTable.id, enrolledIds))))
-    : await db.select().from(coursesTable).where(eq(coursesTable.isPublished, true));
+        .where(and(baseConditions, not(inArray(coursesTable.id, enrolledIds))))
+    : await db.select().from(coursesTable).where(baseConditions);
 
   res.json(
     courses.map((c) => ({

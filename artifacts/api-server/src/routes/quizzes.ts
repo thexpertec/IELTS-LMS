@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, sql, and, isNotNull } from "drizzle-orm";
-import { db, quizzesTable, quizQuestionsTable, quizAttemptsTable, enrollmentsTable } from "@workspace/db";
+import { db, quizzesTable, quizQuestionsTable, quizAttemptsTable, enrollmentsTable, coursesTable } from "@workspace/db";
 import {
   ListQuizzesQueryParams,
   CreateQuizBody,
@@ -24,6 +24,11 @@ router.get("/quizzes", async (req, res): Promise<void> => {
     return;
   }
 
+  const tenantId = req.session.tenantId ?? null;
+  const conditions = [];
+  if (parsed.data.courseId) conditions.push(eq(quizzesTable.courseId, parsed.data.courseId));
+  if (tenantId) conditions.push(eq(quizzesTable.tenantId, tenantId));
+
   const quizzes = await db
     .select({
       id: quizzesTable.id,
@@ -35,12 +40,13 @@ router.get("/quizzes", async (req, res): Promise<void> => {
       lessonType: quizzesTable.lessonType,
       timeLimitMinutes: quizzesTable.timeLimitMinutes,
       isPublished: quizzesTable.isPublished,
+      tenantId: quizzesTable.tenantId,
       createdAt: quizzesTable.createdAt,
       updatedAt: quizzesTable.updatedAt,
       questionCount: sql<number>`(select coalesce(sum(case when type = 'matching' then jsonb_array_length(options->'leftItems') else 1 end)::int, 0) from quiz_questions where quiz_id = ${quizzesTable.id})`,
     })
     .from(quizzesTable)
-    .where(parsed.data.courseId ? eq(quizzesTable.courseId, parsed.data.courseId) : undefined)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(quizzesTable.createdAt);
 
   res.json(quizzes);
@@ -64,6 +70,7 @@ router.post("/quizzes", async (req, res): Promise<void> => {
     lessonType: parsed.data.lessonType ?? null,
     timeLimitMinutes: parsed.data.timeLimitMinutes ?? null,
     isPublished: parsed.data.isPublished ?? false,
+    tenantId: req.session.tenantId ?? null,
   }).returning();
 
   res.status(201).json({ ...quiz, questionCount: 0 });
