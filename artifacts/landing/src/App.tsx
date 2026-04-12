@@ -11,6 +11,12 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/login">
+        {() => { window.location.replace("/lms/"); return null; }}
+      </Route>
+      <Route path="/lms">
+        {() => { window.location.replace("/lms/"); return null; }}
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
