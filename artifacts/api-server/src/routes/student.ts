@@ -108,13 +108,36 @@ router.patch("/student/profile", async (req, res): Promise<void> => {
 router.get("/admin/students", async (req, res): Promise<void> => {
   const tenantId = req.session.tenantId;
 
+  // Step 1: get ALL student users for this tenant (or all tenants for super-admin)
+  // This ensures students with zero enrollments are still listed.
+  const studentUsers = tenantId
+    ? await db
+        .select({ email: usersTable.email })
+        .from(usersTable)
+        .where(and(eq(usersTable.role, "student"), eq(usersTable.tenantId, tenantId)))
+    : await db
+        .select({ email: usersTable.email })
+        .from(usersTable)
+        .where(eq(usersTable.role, "student"));
+
+  const allStudentEmails = studentUsers.map((u) => u.email);
+
+  if (allStudentEmails.length === 0) {
+    res.json([]);
+    return;
+  }
+
+  // Step 2: fetch profiles for those students
+  const profiles = await db
+    .select()
+    .from(studentProfilesTable)
+    .where(inArray(studentProfilesTable.email, allStudentEmails))
+    .orderBy(studentProfilesTable.displayName);
+
+  // Step 3: enrollment counts — only for courses in this tenant (if applicable)
   let enrollmentCounts: {
-    email: string;
-    total: number;
-    active: number;
-    completed: number;
-    avgProgress: number;
-  }[];
+    email: string; total: number; active: number; completed: number; avgProgress: number;
+  }[] = [];
 
   if (tenantId) {
     const tenantCourses = await db
@@ -123,22 +146,19 @@ router.get("/admin/students", async (req, res): Promise<void> => {
       .where(eq(coursesTable.tenantId, tenantId));
     const courseIds = tenantCourses.map((c) => c.id);
 
-    if (courseIds.length === 0) {
-      res.json([]);
-      return;
+    if (courseIds.length > 0) {
+      enrollmentCounts = await db
+        .select({
+          email: enrollmentsTable.studentEmail,
+          total: sql<number>`count(*)::int`,
+          active: sql<number>`count(*) filter (where ${enrollmentsTable.status} = 'active')::int`,
+          completed: sql<number>`count(*) filter (where ${enrollmentsTable.status} = 'completed')::int`,
+          avgProgress: sql<number>`round(avg(${enrollmentsTable.progressPercent}))::int`,
+        })
+        .from(enrollmentsTable)
+        .where(inArray(enrollmentsTable.courseId, courseIds))
+        .groupBy(enrollmentsTable.studentEmail);
     }
-
-    enrollmentCounts = await db
-      .select({
-        email: enrollmentsTable.studentEmail,
-        total: sql<number>`count(*)::int`,
-        active: sql<number>`count(*) filter (where ${enrollmentsTable.status} = 'active')::int`,
-        completed: sql<number>`count(*) filter (where ${enrollmentsTable.status} = 'completed')::int`,
-        avgProgress: sql<number>`round(avg(${enrollmentsTable.progressPercent}))::int`,
-      })
-      .from(enrollmentsTable)
-      .where(inArray(enrollmentsTable.courseId, courseIds))
-      .groupBy(enrollmentsTable.studentEmail);
   } else {
     enrollmentCounts = await db
       .select({
@@ -153,17 +173,36 @@ router.get("/admin/students", async (req, res): Promise<void> => {
   }
 
   const countMap = new Map(enrollmentCounts.map((e) => [e.email, e]));
-  const studentEmails = Array.from(countMap.keys());
 
-  const profiles = tenantId && studentEmails.length > 0
-    ? await db
-        .select()
-        .from(studentProfilesTable)
-        .where(inArray(studentProfilesTable.email, studentEmails))
-        .orderBy(studentProfilesTable.displayName)
-    : tenantId
-      ? []
-      : await db.select().from(studentProfilesTable).orderBy(studentProfilesTable.displayName);
+  // Step 4: for any student email without a profile, synthesise a minimal entry
+  // from the users table so they still appear.
+  const profileEmails = new Set(profiles.map((p) => p.email));
+  const missingEmails = allStudentEmails.filter((e) => !profileEmails.has(e));
+
+  if (missingEmails.length > 0) {
+    const missingUsers = await db
+      .select({ email: usersTable.email, name: usersTable.name, createdAt: usersTable.createdAt })
+      .from(usersTable)
+      .where(inArray(usersTable.email, missingEmails));
+
+    for (const u of missingUsers) {
+      profiles.push({
+        id: -1,
+        email: u.email,
+        displayName: u.name,
+        bio: null,
+        avatarUrl: null,
+        phone: null,
+        city: null,
+        lastQualification: null,
+        whyIelts: null,
+        targetBand: null,
+        examDate: null,
+        createdAt: u.createdAt,
+      } as typeof profiles[0]);
+    }
+    profiles.sort((a, b) => a.displayName.localeCompare(b.displayName));
+  }
 
   const result = profiles.map((p) => {
     const counts = countMap.get(p.email);
