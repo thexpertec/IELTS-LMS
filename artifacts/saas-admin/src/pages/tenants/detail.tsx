@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,13 +9,13 @@ import {
   useDeleteTenant,
   getGetTenantQueryKey
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Building2, Trash2, ExternalLink, Save } from "lucide-react";
+import { ArrowLeft, Loader2, Building2, Trash2, ExternalLink, Save, KeyRound, LogIn, CheckCircle, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +45,172 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+interface CredentialsInfo {
+  exists: boolean;
+  email: string;
+  name: string | null;
+}
+
+function CredentialsCard({ tenantId }: { tenantId: number }) {
+  const { toast } = useToast();
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loggingIn, setLoggingIn] = useState(false);
+  const [, setLocation] = useLocation();
+
+  const { data: creds, isLoading, refetch } = useQuery<CredentialsInfo>({
+    queryKey: ["tenant-credentials", tenantId],
+    queryFn: async () => {
+      const res = await fetch(`/api/tenants/${tenantId}/credentials`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load credentials");
+      return res.json() as Promise<CredentialsInfo>;
+    },
+  });
+
+  const createCredsMutation = useMutation({
+    mutationFn: async (pw: string) => {
+      const res = await fetch(`/api/tenants/${tenantId}/credentials`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: pw }),
+      });
+      if (!res.ok) {
+        const err = await res.json() as { error: string };
+        throw new Error(err.error);
+      }
+      return res.json() as Promise<{ email: string; name: string; created: boolean }>;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: data.created ? "Credentials created" : "Password updated",
+        description: `Admin can now log in as ${data.email}`,
+      });
+      setPassword("");
+      void refetch();
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleLoginAs = async () => {
+    setLoggingIn(true);
+    try {
+      const res = await fetch(`/api/tenants/${tenantId}/login-as`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json() as { error: string };
+        throw new Error(err.error);
+      }
+      toast({ title: "Switched to tenant session", description: "Redirecting to LMS Admin…" });
+      setTimeout(() => {
+        window.location.href = "/lms/";
+      }, 800);
+    } catch (err) {
+      toast({ title: "Login failed", description: (err as Error).message, variant: "destructive" });
+      setLoggingIn(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-6 flex justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <KeyRound className="h-4 w-4" />
+          Login Credentials
+        </CardTitle>
+        <CardDescription className="text-xs">
+          Admin credentials for this tenant's LMS instance.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {creds?.exists ? (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800">
+            <CheckCircle className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-emerald-800 dark:text-emerald-400">Credentials set</p>
+              <p className="text-xs text-emerald-700/80 dark:text-emerald-500 truncate">{creds.email}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="px-3 py-2 rounded-md bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800">
+            <p className="text-xs font-medium text-amber-800 dark:text-amber-400">No credentials yet</p>
+            <p className="text-xs text-amber-700/80 dark:text-amber-500">Set a password to enable login.</p>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-muted-foreground">
+            {creds?.exists ? "Reset password" : "Set password"}
+          </label>
+          <div className="relative">
+            <Input
+              type={showPassword ? "text" : "password"}
+              placeholder="Minimum 6 characters"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="pr-9 text-sm"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full gap-2"
+            disabled={password.length < 6 || createCredsMutation.isPending}
+            onClick={() => createCredsMutation.mutate(password)}
+          >
+            {createCredsMutation.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : creds?.exists ? (
+              <RefreshCw className="h-3.5 w-3.5" />
+            ) : (
+              <KeyRound className="h-3.5 w-3.5" />
+            )}
+            {creds?.exists ? "Update Password" : "Create Credentials"}
+          </Button>
+        </div>
+
+        <Separator />
+
+        <Button
+          className="w-full gap-2"
+          disabled={!creds?.exists || loggingIn}
+          onClick={() => { void handleLoginAs(); }}
+          title={!creds?.exists ? "Create credentials first" : ""}
+        >
+          {loggingIn ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
+          Login as Tenant
+        </Button>
+        {!creds?.exists && (
+          <p className="text-xs text-center text-muted-foreground -mt-2">
+            Create credentials first to enable login.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function TenantDetail() {
   const params = useParams<{ id: string }>();
@@ -76,7 +242,6 @@ export default function TenantDetail() {
     },
   });
 
-  // Init form
   useEffect(() => {
     if (tenant) {
       form.reset({
@@ -121,7 +286,7 @@ export default function TenantDetail() {
         });
         queryClient.setQueryData(getGetTenantQueryKey(id), updatedData);
       },
-      onError: (err: any) => {
+      onError: (err: Error) => {
         toast({
           title: "Failed to update",
           description: err.message || "An unexpected error occurred.",
@@ -164,7 +329,7 @@ export default function TenantDetail() {
         });
         setLocation("/tenants");
       },
-      onError: (err: any) => {
+      onError: (err: Error) => {
         toast({
           title: "Failed to delete",
           description: err.message || "An unexpected error occurred.",
@@ -360,6 +525,9 @@ export default function TenantDetail() {
         </div>
 
         <div className="space-y-6">
+          {/* Login Credentials card */}
+          <CredentialsCard tenantId={id} />
+
           <Card>
             <CardHeader>
               <CardTitle>Status & Plan</CardTitle>
@@ -369,7 +537,7 @@ export default function TenantDetail() {
                 <label className="text-sm font-medium">Lifecycle Status</label>
                 <Select 
                   value={tenant.status} 
-                  onValueChange={(val: any) => handleStatusChange(val)}
+                  onValueChange={(val: "active" | "suspended" | "cancelled") => handleStatusChange(val)}
                   disabled={updateTenant.isPending}
                 >
                   <SelectTrigger>
@@ -392,7 +560,7 @@ export default function TenantDetail() {
                 <label className="text-sm font-medium">Subscription Plan</label>
                 <Select 
                   value={tenant.plan} 
-                  onValueChange={(val: any) => handlePlanChange(val)}
+                  onValueChange={(val: "trial" | "starter" | "professional" | "enterprise") => handlePlanChange(val)}
                   disabled={updateTenant.isPending}
                 >
                   <SelectTrigger>

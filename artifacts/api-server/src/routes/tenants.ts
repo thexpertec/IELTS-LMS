@@ -1,6 +1,8 @@
 import { Router, type IRouter } from "express";
-import { eq, ilike, and, count, sql, type SQL } from "drizzle-orm";
+import { eq, ilike, and, type SQL } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 import { db, tenantsTable } from "@workspace/db";
+import { usersTable } from "@workspace/db/schema";
 import {
   ListTenantsQueryParams,
   ListTenantsResponse,
@@ -141,6 +143,113 @@ router.delete("/tenants/:id", async (req, res): Promise<void> => {
   }
 
   res.status(204).send();
+});
+
+// GET /api/tenants/:id/credentials — check if login credentials exist for this tenant
+router.get("/tenants/:id/credentials", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [tenant] = await db.select().from(tenantsTable).where(eq(tenantsTable.id, id)).limit(1);
+  if (!tenant) { res.status(404).json({ error: "Tenant not found" }); return; }
+
+  const [user] = await db
+    .select({ id: usersTable.id, email: usersTable.email, name: usersTable.name })
+    .from(usersTable)
+    .where(eq(usersTable.tenantId, id))
+    .limit(1);
+
+  res.json({ exists: !!user, email: user?.email ?? tenant.adminEmail, name: user?.name ?? tenant.adminName });
+});
+
+// POST /api/tenants/:id/credentials — create or reset admin credentials for this tenant
+router.post("/tenants/:id/credentials", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const { password } = req.body as { password?: string };
+  if (!password || password.length < 6) {
+    res.status(400).json({ error: "Password must be at least 6 characters" });
+    return;
+  }
+
+  const [tenant] = await db.select().from(tenantsTable).where(eq(tenantsTable.id, id)).limit(1);
+  if (!tenant) { res.status(404).json({ error: "Tenant not found" }); return; }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const email = tenant.adminEmail;
+  const name = tenant.adminName ?? tenant.name;
+  const username = `tenant_${tenant.slug}`;
+
+  // Check if a user already exists for this tenant
+  const [existing] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.tenantId, id))
+    .limit(1);
+
+  if (existing) {
+    await db
+      .update(usersTable)
+      .set({ passwordHash, email, name })
+      .where(eq(usersTable.id, existing.id));
+    res.json({ email, name, created: false });
+  } else {
+    // Also check if the email already exists globally
+    const [byEmail] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, email))
+      .limit(1);
+
+    if (byEmail) {
+      // Claim this user for the tenant
+      await db
+        .update(usersTable)
+        .set({ passwordHash, tenantId: id, role: "admin" })
+        .where(eq(usersTable.id, byEmail.id));
+      res.json({ email, name, created: false });
+    } else {
+      await db.insert(usersTable).values({
+        email,
+        username: username + "_" + Date.now(),
+        name,
+        passwordHash,
+        role: "admin",
+        tenantId: id,
+      });
+      res.status(201).json({ email, name, created: true });
+    }
+  }
+});
+
+// POST /api/tenants/:id/login-as — SaaS admin assumes the tenant's admin session
+router.post("/tenants/:id/login-as", async (req, res): Promise<void> => {
+  if (req.session.role !== "saas_admin") {
+    res.status(403).json({ error: "Only SaaS admins can use this endpoint" });
+    return;
+  }
+
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.tenantId, id))
+    .limit(1);
+
+  if (!user) {
+    res.status(404).json({ error: "No admin credentials exist for this tenant. Create credentials first." });
+    return;
+  }
+
+  req.session.userId = user.id;
+  req.session.email = user.email;
+  req.session.name = user.name;
+  req.session.role = user.role;
+
+  res.json({ ok: true, email: user.email, name: user.name });
 });
 
 export default router;
