@@ -104,23 +104,64 @@ router.patch("/student/profile", async (req, res): Promise<void> => {
 
 // ── Admin: all students with profile + enrollment stats ───────────────────────
 router.get("/admin/students", async (req, res): Promise<void> => {
-  const profiles = await db
-    .select()
-    .from(studentProfilesTable)
-    .orderBy(studentProfilesTable.displayName);
+  const tenantId = req.session.tenantId;
 
-  const enrollmentCounts = await db
-    .select({
-      email: enrollmentsTable.studentEmail,
-      total: sql<number>`count(*)::int`,
-      active: sql<number>`count(*) filter (where ${enrollmentsTable.status} = 'active')::int`,
-      completed: sql<number>`count(*) filter (where ${enrollmentsTable.status} = 'completed')::int`,
-      avgProgress: sql<number>`round(avg(${enrollmentsTable.progressPercent}))::int`,
-    })
-    .from(enrollmentsTable)
-    .groupBy(enrollmentsTable.studentEmail);
+  let enrollmentCounts: {
+    email: string;
+    total: number;
+    active: number;
+    completed: number;
+    avgProgress: number;
+  }[];
+
+  if (tenantId) {
+    const tenantCourses = await db
+      .select({ id: coursesTable.id })
+      .from(coursesTable)
+      .where(eq(coursesTable.tenantId, tenantId));
+    const courseIds = tenantCourses.map((c) => c.id);
+
+    if (courseIds.length === 0) {
+      res.json([]);
+      return;
+    }
+
+    enrollmentCounts = await db
+      .select({
+        email: enrollmentsTable.studentEmail,
+        total: sql<number>`count(*)::int`,
+        active: sql<number>`count(*) filter (where ${enrollmentsTable.status} = 'active')::int`,
+        completed: sql<number>`count(*) filter (where ${enrollmentsTable.status} = 'completed')::int`,
+        avgProgress: sql<number>`round(avg(${enrollmentsTable.progressPercent}))::int`,
+      })
+      .from(enrollmentsTable)
+      .where(inArray(enrollmentsTable.courseId, courseIds))
+      .groupBy(enrollmentsTable.studentEmail);
+  } else {
+    enrollmentCounts = await db
+      .select({
+        email: enrollmentsTable.studentEmail,
+        total: sql<number>`count(*)::int`,
+        active: sql<number>`count(*) filter (where ${enrollmentsTable.status} = 'active')::int`,
+        completed: sql<number>`count(*) filter (where ${enrollmentsTable.status} = 'completed')::int`,
+        avgProgress: sql<number>`round(avg(${enrollmentsTable.progressPercent}))::int`,
+      })
+      .from(enrollmentsTable)
+      .groupBy(enrollmentsTable.studentEmail);
+  }
 
   const countMap = new Map(enrollmentCounts.map((e) => [e.email, e]));
+  const studentEmails = Array.from(countMap.keys());
+
+  const profiles = tenantId && studentEmails.length > 0
+    ? await db
+        .select()
+        .from(studentProfilesTable)
+        .where(inArray(studentProfilesTable.email, studentEmails))
+        .orderBy(studentProfilesTable.displayName)
+    : tenantId
+      ? []
+      : await db.select().from(studentProfilesTable).orderBy(studentProfilesTable.displayName);
 
   const result = profiles.map((p) => {
     const counts = countMap.get(p.email);

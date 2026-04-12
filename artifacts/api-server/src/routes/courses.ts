@@ -16,8 +16,10 @@ const router: IRouter = Router();
 
 router.get("/courses", async (req, res): Promise<void> => {
   const { category, search } = req.query as { category?: string; search?: string };
+  const tenantId = req.session.tenantId;
 
   const conditions: SQL[] = [];
+  if (tenantId) conditions.push(eq(coursesTable.tenantId, tenantId));
   if (category) conditions.push(eq(coursesTable.category, category));
   if (search) conditions.push(ilike(coursesTable.title, `%${search}%`));
 
@@ -37,7 +39,10 @@ router.post("/courses", async (req, res): Promise<void> => {
     return;
   }
 
-  const [course] = await db.insert(coursesTable).values(parsed.data).returning();
+  const tenantId = req.session.tenantId;
+  const values = tenantId ? { ...parsed.data, tenantId } : parsed.data;
+
+  const [course] = await db.insert(coursesTable).values(values).returning();
   res.status(201).json(GetCourseResponse.parse(course));
 });
 
@@ -48,7 +53,11 @@ router.get("/courses/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, params.data.id));
+  const tenantId = req.session.tenantId;
+  const conditions: SQL[] = [eq(coursesTable.id, params.data.id)];
+  if (tenantId) conditions.push(eq(coursesTable.tenantId, tenantId));
+
+  const [course] = await db.select().from(coursesTable).where(and(...conditions));
   if (!course) {
     res.status(404).json({ error: "Course not found" });
     return;
@@ -70,10 +79,14 @@ router.patch("/courses/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  const tenantId = req.session.tenantId;
+  const conditions: SQL[] = [eq(coursesTable.id, params.data.id)];
+  if (tenantId) conditions.push(eq(coursesTable.tenantId, tenantId));
+
   const [course] = await db
     .update(coursesTable)
     .set({ ...parsed.data, updatedAt: new Date() })
-    .where(eq(coursesTable.id, params.data.id))
+    .where(and(...conditions))
     .returning();
 
   if (!course) {
@@ -91,7 +104,11 @@ router.delete("/courses/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const [course] = await db.delete(coursesTable).where(eq(coursesTable.id, params.data.id)).returning();
+  const tenantId = req.session.tenantId;
+  const conditions: SQL[] = [eq(coursesTable.id, params.data.id)];
+  if (tenantId) conditions.push(eq(coursesTable.tenantId, tenantId));
+
+  const [course] = await db.delete(coursesTable).where(and(...conditions)).returning();
   if (!course) {
     res.status(404).json({ error: "Course not found" });
     return;
@@ -103,6 +120,13 @@ router.delete("/courses/:id", async (req, res): Promise<void> => {
 router.get("/courses/:id/gradebook", async (req, res): Promise<void> => {
   const courseId = Number(req.params.id);
   if (!courseId) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const tenantId = req.session.tenantId;
+  if (tenantId) {
+    const [course] = await db.select({ id: coursesTable.id }).from(coursesTable)
+      .where(and(eq(coursesTable.id, courseId), eq(coursesTable.tenantId, tenantId)));
+    if (!course) { res.status(404).json({ error: "Course not found" }); return; }
+  }
 
   const enrollments = await db
     .select({

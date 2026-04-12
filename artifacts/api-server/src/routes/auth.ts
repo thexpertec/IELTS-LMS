@@ -35,12 +35,14 @@ router.post("/login", async (req, res) => {
   req.session.email = user.email;
   req.session.name = user.name;
   req.session.role = user.role;
+  req.session.tenantId = user.tenantId ?? undefined;
 
   res.json({
     id: user.id,
     email: user.email,
     name: user.name,
     role: user.role,
+    tenantId: user.tenantId ?? null,
   });
 });
 
@@ -61,6 +63,7 @@ router.get("/me", (req, res) => {
     email: req.session.email,
     name: req.session.name,
     role: req.session.role,
+    tenantId: req.session.tenantId ?? null,
   });
 });
 

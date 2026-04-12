@@ -16,8 +16,10 @@ const router: IRouter = Router();
 
 router.get("/enrollments", async (req, res): Promise<void> => {
   const { courseId, studentName } = req.query as { courseId?: string; studentName?: string };
+  const tenantId = req.session.tenantId;
 
   const conditions: SQL[] = [];
+  if (tenantId) conditions.push(eq(coursesTable.tenantId, tenantId));
   if (courseId) conditions.push(eq(enrollmentsTable.courseId, parseInt(courseId, 10)));
   if (studentName) conditions.push(ilike(enrollmentsTable.studentName, `%${studentName}%`));
 

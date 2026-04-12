@@ -248,6 +248,7 @@ router.post("/tenants/:id/login-as", async (req, res): Promise<void> => {
   req.session.email = user.email;
   req.session.name = user.name;
   req.session.role = user.role;
+  req.session.tenantId = id;
 
   res.json({ ok: true, email: user.email, name: user.name });
 });

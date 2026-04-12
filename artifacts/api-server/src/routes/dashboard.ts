@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, count, countDistinct, sql, avg } from "drizzle-orm";
+import { eq, count, countDistinct, sql, avg, and, inArray, type SQL } from "drizzle-orm";
 import { db, coursesTable, enrollmentsTable } from "@workspace/db";
 import { quizAttemptsTable, quizzesTable } from "@workspace/db";
 import {
@@ -14,22 +14,37 @@ import {
 
 const router: IRouter = Router();
 
-router.get("/dashboard/stats", async (_req, res): Promise<void> => {
+async function getTenantCourseIds(tenantId: number | undefined): Promise<number[] | undefined> {
+  if (!tenantId) return undefined;
+  const rows = await db.select({ id: coursesTable.id }).from(coursesTable).where(eq(coursesTable.tenantId, tenantId));
+  return rows.map((r) => r.id);
+}
+
+router.get("/dashboard/stats", async (req, res): Promise<void> => {
+  const tenantId = req.session.tenantId;
+  const courseWhere: SQL | undefined = tenantId ? eq(coursesTable.tenantId, tenantId) : undefined;
+
   const [courseStats] = await db
     .select({
       totalCourses: count(coursesTable.id),
       publishedCourses: sql<number>`COUNT(CASE WHEN ${coursesTable.isPublished} = true THEN 1 END)`,
     })
-    .from(coursesTable);
+    .from(coursesTable)
+    .where(courseWhere);
 
-  const [enrollmentStats] = await db
+  const enrollmentQuery = db
     .select({
       totalEnrollments: count(enrollmentsTable.id),
       activeEnrollments: sql<number>`COUNT(CASE WHEN ${enrollmentsTable.status} = 'active' THEN 1 END)`,
       completedEnrollments: sql<number>`COUNT(CASE WHEN ${enrollmentsTable.status} = 'completed' THEN 1 END)`,
       totalStudents: countDistinct(enrollmentsTable.studentEmail),
     })
-    .from(enrollmentsTable);
+    .from(enrollmentsTable)
+    .leftJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id));
+
+  const [enrollmentStats] = tenantId
+    ? await enrollmentQuery.where(eq(coursesTable.tenantId, tenantId))
+    : await enrollmentQuery;
 
   const total = Number(enrollmentStats.totalEnrollments);
   const completed = Number(enrollmentStats.completedEnrollments);
@@ -51,8 +66,9 @@ router.get("/dashboard/stats", async (_req, res): Promise<void> => {
 router.get("/dashboard/activity", async (req, res): Promise<void> => {
   const params = GetRecentActivityQueryParams.safeParse(req.query);
   const limit = params.success && params.data.limit ? params.data.limit : 10;
+  const tenantId = req.session.tenantId;
 
-  const recentEnrollments = await db
+  const query = db
     .select({
       id: enrollmentsTable.id,
       studentName: enrollmentsTable.studentName,
@@ -64,6 +80,10 @@ router.get("/dashboard/activity", async (req, res): Promise<void> => {
     .leftJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id))
     .orderBy(sql`${enrollmentsTable.enrolledAt} DESC`)
     .limit(limit);
+
+  const recentEnrollments = tenantId
+    ? await query.where(eq(coursesTable.tenantId, tenantId))
+    : await query;
 
   const activities = recentEnrollments.map((e, i) => ({
     id: i + 1,
@@ -79,7 +99,10 @@ router.get("/dashboard/activity", async (req, res): Promise<void> => {
   res.json(GetRecentActivityResponse.parse(activities));
 });
 
-router.get("/dashboard/course-stats", async (_req, res): Promise<void> => {
+router.get("/dashboard/course-stats", async (req, res): Promise<void> => {
+  const tenantId = req.session.tenantId;
+  const courseWhere: SQL | undefined = tenantId ? eq(coursesTable.tenantId, tenantId) : undefined;
+
   const rows = await db
     .select({
       courseId: coursesTable.id,
@@ -90,6 +113,7 @@ router.get("/dashboard/course-stats", async (_req, res): Promise<void> => {
     })
     .from(coursesTable)
     .leftJoin(enrollmentsTable, eq(coursesTable.id, enrollmentsTable.courseId))
+    .where(courseWhere)
     .groupBy(coursesTable.id, coursesTable.title, coursesTable.category)
     .orderBy(coursesTable.title);
 
@@ -110,14 +134,20 @@ router.get("/dashboard/course-stats", async (_req, res): Promise<void> => {
   res.json(GetCourseStatsResponse.parse(stats));
 });
 
-router.get("/dashboard/enrollment-trend", async (_req, res): Promise<void> => {
+router.get("/dashboard/enrollment-trend", async (req, res): Promise<void> => {
+  const tenantId = req.session.tenantId;
+
+  const baseWhere = sql`${enrollmentsTable.enrolledAt} >= NOW() - INTERVAL '30 days'`;
+  const tenantWhere = tenantId ? eq(coursesTable.tenantId, tenantId) : undefined;
+
   const rows = await db
     .select({
       date: sql<string>`DATE(${enrollmentsTable.enrolledAt})::text`,
       count: count(enrollmentsTable.id),
     })
     .from(enrollmentsTable)
-    .where(sql`${enrollmentsTable.enrolledAt} >= NOW() - INTERVAL '30 days'`)
+    .leftJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id))
+    .where(tenantWhere ? and(baseWhere, tenantWhere) : baseWhere)
     .groupBy(sql`DATE(${enrollmentsTable.enrolledAt})`)
     .orderBy(sql`DATE(${enrollmentsTable.enrolledAt}) ASC`);
 
@@ -125,26 +155,44 @@ router.get("/dashboard/enrollment-trend", async (_req, res): Promise<void> => {
   res.json(GetDashboardEnrollmentTrendResponse.parse(points));
 });
 
-router.get("/dashboard/quiz-analytics", async (_req, res): Promise<void> => {
+router.get("/dashboard/quiz-analytics", async (req, res): Promise<void> => {
+  const tenantId = req.session.tenantId;
+  const courseIds = await getTenantCourseIds(tenantId);
+
+  const quizWhere: SQL | undefined = courseIds ? inArray(quizzesTable.courseId, courseIds.length > 0 ? courseIds : [-1]) : undefined;
+
+  const [quizCount] = await db
+    .select({ totalQuizzes: count(quizzesTable.id) })
+    .from(quizzesTable)
+    .where(quizWhere);
+
+  const quizIds = courseIds !== undefined
+    ? (await db.select({ id: quizzesTable.id }).from(quizzesTable).where(quizWhere)).map((q) => q.id)
+    : undefined;
+
+  const attemptWhere: SQL | undefined = quizIds ? inArray(quizAttemptsTable.quizId, quizIds.length > 0 ? quizIds : [-1]) : undefined;
+
   const [attemptStats] = await db
     .select({
       totalAttempts: count(quizAttemptsTable.id),
       avgScore: avg(quizAttemptsTable.score),
     })
-    .from(quizAttemptsTable);
-
-  const [quizCount] = await db
-    .select({ totalQuizzes: count(quizzesTable.id) })
-    .from(quizzesTable);
+    .from(quizAttemptsTable)
+    .where(attemptWhere);
 
   const totalAttempts = Number(attemptStats?.totalAttempts ?? 0);
   const avgScore = Number(attemptStats?.avgScore ?? 0);
 
-  const passAttempts = await db
+  const passQuery = db
     .select({ c: count(quizAttemptsTable.id) })
     .from(quizAttemptsTable)
-    .where(sql`${quizAttemptsTable.score} >= 60`);
+    .where(
+      attemptWhere
+        ? and(sql`${quizAttemptsTable.score} >= 60`, attemptWhere)
+        : sql`${quizAttemptsTable.score} >= 60`
+    );
 
+  const passAttempts = await passQuery;
   const passing = Number(passAttempts[0]?.c ?? 0);
   const passRate = totalAttempts > 0 ? Math.round((passing / totalAttempts) * 100) : 0;
 
@@ -156,7 +204,10 @@ router.get("/dashboard/quiz-analytics", async (_req, res): Promise<void> => {
   }));
 });
 
-router.get("/dashboard/top-courses", async (_req, res): Promise<void> => {
+router.get("/dashboard/top-courses", async (req, res): Promise<void> => {
+  const tenantId = req.session.tenantId;
+  const courseWhere: SQL | undefined = tenantId ? eq(coursesTable.tenantId, tenantId) : undefined;
+
   const rows = await db
     .select({
       courseId: coursesTable.id,
@@ -170,6 +221,7 @@ router.get("/dashboard/top-courses", async (_req, res): Promise<void> => {
     })
     .from(coursesTable)
     .leftJoin(enrollmentsTable, eq(coursesTable.id, enrollmentsTable.courseId))
+    .where(courseWhere)
     .groupBy(coursesTable.id, coursesTable.title, coursesTable.category, coursesTable.instructor, coursesTable.isPublished)
     .orderBy(sql`COUNT(${enrollmentsTable.id}) DESC`)
     .limit(6);
