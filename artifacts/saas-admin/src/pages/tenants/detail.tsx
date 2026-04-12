@@ -108,7 +108,7 @@ function CredentialsCard({ tenantId }: { tenantId: number }) {
       }
       toast({ title: "Switched to tenant session", description: "Redirecting to LMS Admin…" });
       setTimeout(() => {
-        window.location.href = "/lms/";
+        window.location.href = "/";
       }, 800);
     } catch (err) {
       toast({ title: "Login failed", description: (err as Error).message, variant: "destructive" });
