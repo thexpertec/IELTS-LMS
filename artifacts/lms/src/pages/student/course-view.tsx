@@ -92,13 +92,13 @@ type Tab = "stream" | "curriculum" | "grades" | "instructors";
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
 
 const fetchAnnouncements = (id: number): Promise<Announcement[]> =>
-  fetch(`/api/courses/${id}/announcements`).then((r) => r.json());
+  fetch(`/api/courses/${id}/announcements`, { credentials: "include" }).then((r) => r.json());
 const fetchDiscussions = (id: number): Promise<Discussion[]> =>
-  fetch(`/api/courses/${id}/discussions`).then((r) => r.json());
+  fetch(`/api/courses/${id}/discussions`, { credentials: "include" }).then((r) => r.json());
 const fetchUpcoming = (id: number): Promise<UpcomingItem[]> =>
-  fetch(`/api/courses/${id}/upcoming`).then((r) => r.json());
+  fetch(`/api/courses/${id}/upcoming`, { credentials: "include" }).then((r) => r.json());
 const fetchQuizAttempts = (courseId: number, email: string): Promise<QuizAttemptRow[]> =>
-  fetch(`/api/student/quiz-attempts?courseId=${courseId}&email=${encodeURIComponent(email)}`).then((r) => r.json());
+  fetch(`/api/student/quiz-attempts?courseId=${courseId}&email=${encodeURIComponent(email)}`, { credentials: "include" }).then((r) => r.json());
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -163,7 +163,8 @@ export default function CourseView() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          courseId, email,
+          courseId,
+          studentEmail: email,
           studentName: student?.name ?? email,
           content,
         }),

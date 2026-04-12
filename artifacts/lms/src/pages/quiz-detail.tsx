@@ -1363,7 +1363,7 @@ export default function QuizDetail() {
   const { data: submissions = [], refetch: refetchSubmissions } = useQuery<SubmissionRow[]>({
     queryKey: ["quiz-submissions", quizId],
     queryFn: async () => {
-      const res = await fetch(`/api/quizzes/${quizId}/submissions`);
+      const res = await fetch(`/api/quizzes/${quizId}/submissions`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load");
       return res.json();
     },
@@ -1373,7 +1373,7 @@ export default function QuizDetail() {
   const { data: reviewDetail, isLoading: reviewLoading } = useQuery<SubmissionDetail>({
     queryKey: ["quiz-submission-detail", quizId, reviewAttemptId],
     queryFn: async () => {
-      const res = await fetch(`/api/quizzes/${quizId}/submissions/${reviewAttemptId}`);
+      const res = await fetch(`/api/quizzes/${quizId}/submissions/${reviewAttemptId}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load");
       return res.json();
     },
@@ -1384,6 +1384,7 @@ export default function QuizDetail() {
     mutationFn: async ({ score, feedback }: { score: string; feedback: string }) => {
       const res = await fetch(`/api/quizzes/${quizId}/submissions/${reviewAttemptId}`, {
         method: "PATCH",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           score: score !== "" ? Number(score) : null,

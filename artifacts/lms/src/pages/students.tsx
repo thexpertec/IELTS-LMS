@@ -45,7 +45,7 @@ type SortKey = "displayName" | "email" | "city" | "lastQualification" | "totalCo
 // ── Fetch ─────────────────────────────────────────────────────────────────────
 
 async function fetchAdminStudents(): Promise<StudentRow[]> {
-  const res = await fetch("/api/admin/students");
+  const res = await fetch("/api/admin/students", { credentials: "include" });
   if (!res.ok) throw new Error("Failed to fetch students");
   return res.json();
 }
