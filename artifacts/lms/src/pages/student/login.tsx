@@ -137,6 +137,13 @@ export default function StudentLogin() {
                   {loading ? "Signing in…" : "Sign In"}
                   {!loading && <ArrowRight className="w-4 h-4" />}
                 </Button>
+
+                <p className="text-center text-sm text-muted-foreground pt-1">
+                  Are you an admin?{" "}
+                  <a href="/lms/" className="font-medium text-primary hover:underline">
+                    Sign in to Admin Portal
+                  </a>
+                </p>
               </form>
             </CardContent>
           </Card>

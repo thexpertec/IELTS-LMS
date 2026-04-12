@@ -107,6 +107,13 @@ export default function AdminLogin() {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Signing in…" : "Sign in"}
               </Button>
+
+              <p className="text-center text-sm text-muted-foreground pt-1">
+                Are you a student?{" "}
+                <a href="/lms/student" className="font-medium text-primary hover:underline">
+                  Sign in to Student Portal
+                </a>
+              </p>
             </form>
           </CardContent>
         </Card>
