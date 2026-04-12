@@ -27,6 +27,8 @@ tags:
     description: Quiz management
   - name: Storage
     description: Object storage upload and serving endpoints.
+  - name: tenants
+    description: SaaS multi-tenant management
 paths:
   /healthz:
     get:
@@ -1219,6 +1221,146 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AdminSubmission"
+
+  /tenants:
+    get:
+      operationId: listTenants
+      tags: [tenants]
+      summary: List all tenants
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: plan
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of tenants
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Tenant"
+    post:
+      operationId: createTenant
+      tags: [tenants]
+      summary: Create a new tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTenantBody"
+      responses:
+        "201":
+          description: Created tenant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tenant"
+        "409":
+          description: Slug already taken
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /tenants/{id}:
+    get:
+      operationId: getTenant
+      tags: [tenants]
+      summary: Get a tenant by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Tenant detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tenant"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateTenant
+      tags: [tenants]
+      summary: Update a tenant
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTenantBody"
+      responses:
+        "200":
+          description: Updated tenant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tenant"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteTenant
+      tags: [tenants]
+      summary: Delete a tenant
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /tenants/stats:
+    get:
+      operationId: getTenantStats
+      tags: [tenants]
+      summary: Aggregate stats across all tenants
+      responses:
+        "200":
+          description: Tenant aggregate stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantStats"
 
   /storage/uploads/request-url:
     post:
@@ -2482,3 +2624,139 @@ components:
         - type
         - questionText
         - options
+
+    Tenant:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        domain:
+          type: ["string", "null"]
+        adminEmail:
+          type: string
+        adminName:
+          type: ["string", "null"]
+        plan:
+          type: string
+          enum: [trial, starter, professional, enterprise]
+        status:
+          type: string
+          enum: [active, suspended, cancelled]
+        description:
+          type: ["string", "null"]
+        logoUrl:
+          type: ["string", "null"]
+        maxCourses:
+          type: ["integer", "null"]
+        maxStudents:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - slug
+        - domain
+        - adminEmail
+        - adminName
+        - plan
+        - status
+        - description
+        - logoUrl
+        - maxCourses
+        - maxStudents
+        - createdAt
+        - updatedAt
+
+    CreateTenantBody:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        domain:
+          type: string
+        adminEmail:
+          type: string
+        adminName:
+          type: string
+        plan:
+          type: string
+          enum: [trial, starter, professional, enterprise]
+        status:
+          type: string
+          enum: [active, suspended, cancelled]
+        description:
+          type: string
+        logoUrl:
+          type: string
+        maxCourses:
+          type: integer
+        maxStudents:
+          type: integer
+      required:
+        - name
+        - slug
+        - adminEmail
+
+    UpdateTenantBody:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        domain:
+          type: string
+        adminEmail:
+          type: string
+        adminName:
+          type: string
+        plan:
+          type: string
+          enum: [trial, starter, professional, enterprise]
+        status:
+          type: string
+          enum: [active, suspended, cancelled]
+        description:
+          type: string
+        logoUrl:
+          type: string
+        maxCourses:
+          type: integer
+        maxStudents:
+          type: integer
+
+    TenantStats:
+      type: object
+      properties:
+        total:
+          type: integer
+        active:
+          type: integer
+        suspended:
+          type: integer
+        cancelled:
+          type: integer
+        byPlan:
+          type: object
+          additionalProperties:
+            type: integer
+        newThisMonth:
+          type: integer
+      required:
+        - total
+        - active
+        - suspended
+        - cancelled
+        - byPlan
+        - newThisMonth

@@ -1143,6 +1143,131 @@ export const MarkSubmissionResponse = zod.object({
 });
 
 /**
+ * @summary List all tenants
+ */
+export const ListTenantsQueryParams = zod.object({
+  status: zod.coerce.string().optional(),
+  plan: zod.coerce.string().optional(),
+  search: zod.coerce.string().optional(),
+});
+
+export const ListTenantsResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  slug: zod.string(),
+  domain: zod.string().nullable(),
+  adminEmail: zod.string(),
+  adminName: zod.string().nullable(),
+  plan: zod.enum(["trial", "starter", "professional", "enterprise"]),
+  status: zod.enum(["active", "suspended", "cancelled"]),
+  description: zod.string().nullable(),
+  logoUrl: zod.string().nullable(),
+  maxCourses: zod.number().nullable(),
+  maxStudents: zod.number().nullable(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListTenantsResponse = zod.array(ListTenantsResponseItem);
+
+/**
+ * @summary Create a new tenant
+ */
+export const CreateTenantBody = zod.object({
+  name: zod.string(),
+  slug: zod.string(),
+  domain: zod.string().optional(),
+  adminEmail: zod.string(),
+  adminName: zod.string().optional(),
+  plan: zod.enum(["trial", "starter", "professional", "enterprise"]).optional(),
+  status: zod.enum(["active", "suspended", "cancelled"]).optional(),
+  description: zod.string().optional(),
+  logoUrl: zod.string().optional(),
+  maxCourses: zod.number().optional(),
+  maxStudents: zod.number().optional(),
+});
+
+/**
+ * @summary Get a tenant by ID
+ */
+export const GetTenantParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetTenantResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  slug: zod.string(),
+  domain: zod.string().nullable(),
+  adminEmail: zod.string(),
+  adminName: zod.string().nullable(),
+  plan: zod.enum(["trial", "starter", "professional", "enterprise"]),
+  status: zod.enum(["active", "suspended", "cancelled"]),
+  description: zod.string().nullable(),
+  logoUrl: zod.string().nullable(),
+  maxCourses: zod.number().nullable(),
+  maxStudents: zod.number().nullable(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update a tenant
+ */
+export const UpdateTenantParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateTenantBody = zod.object({
+  name: zod.string().optional(),
+  slug: zod.string().optional(),
+  domain: zod.string().optional(),
+  adminEmail: zod.string().optional(),
+  adminName: zod.string().optional(),
+  plan: zod.enum(["trial", "starter", "professional", "enterprise"]).optional(),
+  status: zod.enum(["active", "suspended", "cancelled"]).optional(),
+  description: zod.string().optional(),
+  logoUrl: zod.string().optional(),
+  maxCourses: zod.number().optional(),
+  maxStudents: zod.number().optional(),
+});
+
+export const UpdateTenantResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  slug: zod.string(),
+  domain: zod.string().nullable(),
+  adminEmail: zod.string(),
+  adminName: zod.string().nullable(),
+  plan: zod.enum(["trial", "starter", "professional", "enterprise"]),
+  status: zod.enum(["active", "suspended", "cancelled"]),
+  description: zod.string().nullable(),
+  logoUrl: zod.string().nullable(),
+  maxCourses: zod.number().nullable(),
+  maxStudents: zod.number().nullable(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a tenant
+ */
+export const DeleteTenantParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Aggregate stats across all tenants
+ */
+export const GetTenantStatsResponse = zod.object({
+  total: zod.number(),
+  active: zod.number(),
+  suspended: zod.number(),
+  cancelled: zod.number(),
+  byPlan: zod.record(zod.string(), zod.number()),
+  newThisMonth: zod.number(),
+});
+
+/**
  * @summary Request a presigned URL for file upload
  */
 

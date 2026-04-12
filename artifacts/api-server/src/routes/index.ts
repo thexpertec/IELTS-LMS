@@ -11,6 +11,7 @@ import assignmentsRouter from "./assignments";
 import storageRouter from "./storage";
 import chaptersRouter from "./chapters";
 import streamRouter from "./stream";
+import tenantsRouter from "./tenants";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(quizzesRouter);
 router.use(assignmentsRouter);
 router.use(storageRouter);
 router.use(streamRouter);
+router.use(tenantsRouter);
 
 export default router;

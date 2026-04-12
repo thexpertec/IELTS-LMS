@@ -657,6 +657,123 @@ export interface CreateQuizQuestionBody {
   options: CreateQuizQuestionBodyOptions;
 }
 
+export type TenantPlan = (typeof TenantPlan)[keyof typeof TenantPlan];
+
+export const TenantPlan = {
+  trial: "trial",
+  starter: "starter",
+  professional: "professional",
+  enterprise: "enterprise",
+} as const;
+
+export type TenantStatus = (typeof TenantStatus)[keyof typeof TenantStatus];
+
+export const TenantStatus = {
+  active: "active",
+  suspended: "suspended",
+  cancelled: "cancelled",
+} as const;
+
+export interface Tenant {
+  id: number;
+  name: string;
+  slug: string;
+  /** @nullable */
+  domain: string | null;
+  adminEmail: string;
+  /** @nullable */
+  adminName: string | null;
+  plan: TenantPlan;
+  status: TenantStatus;
+  /** @nullable */
+  description: string | null;
+  /** @nullable */
+  logoUrl: string | null;
+  /** @nullable */
+  maxCourses: number | null;
+  /** @nullable */
+  maxStudents: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateTenantBodyPlan =
+  (typeof CreateTenantBodyPlan)[keyof typeof CreateTenantBodyPlan];
+
+export const CreateTenantBodyPlan = {
+  trial: "trial",
+  starter: "starter",
+  professional: "professional",
+  enterprise: "enterprise",
+} as const;
+
+export type CreateTenantBodyStatus =
+  (typeof CreateTenantBodyStatus)[keyof typeof CreateTenantBodyStatus];
+
+export const CreateTenantBodyStatus = {
+  active: "active",
+  suspended: "suspended",
+  cancelled: "cancelled",
+} as const;
+
+export interface CreateTenantBody {
+  name: string;
+  slug: string;
+  domain?: string;
+  adminEmail: string;
+  adminName?: string;
+  plan?: CreateTenantBodyPlan;
+  status?: CreateTenantBodyStatus;
+  description?: string;
+  logoUrl?: string;
+  maxCourses?: number;
+  maxStudents?: number;
+}
+
+export type UpdateTenantBodyPlan =
+  (typeof UpdateTenantBodyPlan)[keyof typeof UpdateTenantBodyPlan];
+
+export const UpdateTenantBodyPlan = {
+  trial: "trial",
+  starter: "starter",
+  professional: "professional",
+  enterprise: "enterprise",
+} as const;
+
+export type UpdateTenantBodyStatus =
+  (typeof UpdateTenantBodyStatus)[keyof typeof UpdateTenantBodyStatus];
+
+export const UpdateTenantBodyStatus = {
+  active: "active",
+  suspended: "suspended",
+  cancelled: "cancelled",
+} as const;
+
+export interface UpdateTenantBody {
+  name?: string;
+  slug?: string;
+  domain?: string;
+  adminEmail?: string;
+  adminName?: string;
+  plan?: UpdateTenantBodyPlan;
+  status?: UpdateTenantBodyStatus;
+  description?: string;
+  logoUrl?: string;
+  maxCourses?: number;
+  maxStudents?: number;
+}
+
+export type TenantStatsByPlan = { [key: string]: number };
+
+export interface TenantStats {
+  total: number;
+  active: number;
+  suspended: number;
+  cancelled: number;
+  byPlan: TenantStatsByPlan;
+  newThisMonth: number;
+}
+
 export type ListCoursesParams = {
   category?: string;
   search?: string;
@@ -717,4 +834,10 @@ export type ListQuizzesParams = {
 
 export type ListAssignmentsParams = {
   courseId?: number;
+};
+
+export type ListTenantsParams = {
+  status?: string;
+  plan?: string;
+  search?: string;
 };

@@ -1,4 +1,5 @@
 import { pgTable, text, serial, timestamp, integer, boolean } from "drizzle-orm/pg-core";
+import { tenantsTable } from "./tenants";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -11,6 +12,7 @@ export const coursesTable = pgTable("courses", {
   level: text("level").notNull().default("beginner"),
   imageUrl: text("image_url"),
   durationHours: integer("duration_hours"),
+  tenantId: integer("tenant_id").references(() => tenantsTable.id, { onDelete: "set null" }),
   isPublished: boolean("is_published").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
