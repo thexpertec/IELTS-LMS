@@ -177,7 +177,7 @@ router.post("/tenants/:id/credentials", async (req, res): Promise<void> => {
   if (!tenant) { res.status(404).json({ error: "Tenant not found" }); return; }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const email = tenant.adminEmail;
+  const email = tenant.adminEmail.toLowerCase().trim();
   const name = tenant.adminName ?? tenant.name;
   const username = `tenant_${tenant.slug}`;
 
@@ -195,11 +195,11 @@ router.post("/tenants/:id/credentials", async (req, res): Promise<void> => {
       .where(eq(usersTable.id, existing.id));
     res.json({ email, name, created: false });
   } else {
-    // Also check if the email already exists globally
+    // Also check if the email already exists globally (case-insensitive)
     const [byEmail] = await db
       .select()
       .from(usersTable)
-      .where(eq(usersTable.email, email))
+      .where(ilike(usersTable.email, email))
       .limit(1);
 
     if (byEmail) {

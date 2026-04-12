@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { ilike } from "drizzle-orm";
 
 const router = Router();
 
@@ -17,7 +17,7 @@ router.post("/login", async (req, res) => {
   const [user] = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.email, email.toLowerCase().trim()))
+    .where(ilike(usersTable.email, email.trim()))
     .limit(1);
 
   if (!user) {
