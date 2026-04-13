@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, count, countDistinct, sql, avg, and, inArray, type SQL } from "drizzle-orm";
 import { db, coursesTable, enrollmentsTable } from "@workspace/db";
 import { quizAttemptsTable, quizzesTable } from "@workspace/db";
+import { assignmentSubmissionsTable, assignmentsTable } from "@workspace/db/schema";
 import {
   GetDashboardStatsResponse,
   GetRecentActivityResponse,
@@ -242,6 +243,95 @@ router.get("/dashboard/top-courses", async (req, res): Promise<void> => {
   });
 
   res.json(GetDashboardTopCoursesResponse.parse(topCourses));
+});
+
+// GET /api/dashboard/action-items — things requiring admin attention
+router.get("/dashboard/action-items", async (req, res): Promise<void> => {
+  const tenantId = req.session.tenantId as number | undefined;
+
+  // Resolve tenant-scoped course IDs for joins
+  let tenantCourseIds: number[] | undefined;
+  if (tenantId) {
+    const rows = await db.select({ id: coursesTable.id }).from(coursesTable).where(eq(coursesTable.tenantId, tenantId));
+    tenantCourseIds = rows.map((r) => r.id);
+  }
+
+  // Guard: if tenant has no courses, all counts will be 0
+  if (tenantId && tenantCourseIds && tenantCourseIds.length === 0) {
+    res.json({ ungradedAssignments: 0, ungradedQuizzes: 0, newEnrollmentsThisWeek: 0, draftCourses: 0, overdueAssignments: 0 });
+    return;
+  }
+
+  // 1. Ungraded assignment submissions (score IS NULL)
+  const aSubQuery = db
+    .select({ cnt: count(assignmentSubmissionsTable.id) })
+    .from(assignmentSubmissionsTable)
+    .innerJoin(assignmentsTable, eq(assignmentSubmissionsTable.assignmentId, assignmentsTable.id));
+  const [aResult] = tenantCourseIds
+    ? await aSubQuery.where(and(
+        sql`${assignmentSubmissionsTable.score} IS NULL`,
+        inArray(assignmentsTable.courseId, tenantCourseIds)
+      ))
+    : await aSubQuery.where(sql`${assignmentSubmissionsTable.score} IS NULL`);
+
+  // 2. Ungraded quiz attempts (score IS NULL)
+  const qAttemptQuery = db
+    .select({ cnt: count(quizAttemptsTable.id) })
+    .from(quizAttemptsTable)
+    .innerJoin(quizzesTable, eq(quizAttemptsTable.quizId, quizzesTable.id));
+  const [qResult] = tenantId
+    ? await qAttemptQuery.where(and(
+        sql`${quizAttemptsTable.score} IS NULL`,
+        eq(quizzesTable.tenantId, tenantId)
+      ))
+    : await qAttemptQuery.where(sql`${quizAttemptsTable.score} IS NULL`);
+
+  // 3. New enrollments in last 7 days
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const recentEnrollQuery = db
+    .select({ cnt: count(enrollmentsTable.id) })
+    .from(enrollmentsTable)
+    .leftJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id));
+  const [recentEnroll] = tenantCourseIds
+    ? await recentEnrollQuery.where(and(
+        sql`${enrollmentsTable.enrolledAt} >= ${sevenDaysAgo}`,
+        inArray(coursesTable.id, tenantCourseIds)
+      ))
+    : await recentEnrollQuery.where(sql`${enrollmentsTable.enrolledAt} >= ${sevenDaysAgo}`);
+
+  // 4. Draft (unpublished) courses
+  const draftQuery = db
+    .select({ cnt: count(coursesTable.id) })
+    .from(coursesTable)
+    .where(tenantId
+      ? and(eq(coursesTable.isPublished, false), eq(coursesTable.tenantId, tenantId))
+      : eq(coursesTable.isPublished, false)
+    );
+  const [draftResult] = await draftQuery;
+
+  // 5. Overdue assignment submissions (past due date, not yet graded)
+  const overdueQuery = db
+    .select({ cnt: count(assignmentSubmissionsTable.id) })
+    .from(assignmentSubmissionsTable)
+    .innerJoin(assignmentsTable, eq(assignmentSubmissionsTable.assignmentId, assignmentsTable.id));
+  const [overdueResult] = tenantCourseIds
+    ? await overdueQuery.where(and(
+        sql`${assignmentSubmissionsTable.score} IS NULL`,
+        sql`${assignmentsTable.dueDate} < NOW()`,
+        inArray(assignmentsTable.courseId, tenantCourseIds)
+      ))
+    : await overdueQuery.where(and(
+        sql`${assignmentSubmissionsTable.score} IS NULL`,
+        sql`${assignmentsTable.dueDate} < NOW()`
+      ));
+
+  res.json({
+    ungradedAssignments: Number(aResult?.cnt ?? 0),
+    ungradedQuizzes: Number(qResult?.cnt ?? 0),
+    newEnrollmentsThisWeek: Number(recentEnroll?.cnt ?? 0),
+    draftCourses: Number(draftResult?.cnt ?? 0),
+    overdueAssignments: Number(overdueResult?.cnt ?? 0),
+  });
 });
 
 export default router;
