@@ -22,7 +22,6 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { useLocation } from "wouter";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -61,7 +60,6 @@ function initials(name: string) {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function Students() {
-  const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("displayName");
   const [sortAsc, setSortAsc] = useState(true);
@@ -156,11 +154,13 @@ export default function Students() {
         const err = await res.json().catch(() => ({}));
         throw new Error((err as { error?: string }).error ?? "Failed to login as student");
       }
-      return res.json();
+      return res.json() as Promise<{ ok: boolean; email: string; name: string }>;
     },
-    onSuccess: (data: { name: string }) => {
+    onSuccess: (data) => {
       toast({ title: `Logged in as ${data.name}`, description: "Redirecting to student portal…" });
-      setTimeout(() => setLocation("/student/dashboard"), 800);
+      // Hard navigation clears all in-memory React Query caches so the student
+      // portal always reads the fresh session from the server.
+      setTimeout(() => { window.location.href = "/lms/student/dashboard"; }, 600);
     },
     onError: (err: Error) => {
       toast({ title: "Login failed", description: err.message, variant: "destructive" });
