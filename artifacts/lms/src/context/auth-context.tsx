@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 export interface AuthUser {
   id: number;
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   const checkMe = useCallback(async () => {
     try {
@@ -54,11 +56,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(err.message ?? "Login failed");
     }
     const data = await res.json() as AuthUser;
+    queryClient.clear();
     setUser(data);
   };
 
   const logout = async () => {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    queryClient.clear();
     setUser(null);
   };
 

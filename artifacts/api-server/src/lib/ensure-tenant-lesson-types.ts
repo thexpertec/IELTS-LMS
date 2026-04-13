@@ -1,8 +1,8 @@
 import { db } from "@workspace/db";
 import { lessonTypesTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 
-const DEFAULT_LESSON_TYPES = [
+export const DEFAULT_LESSON_TYPES = [
   { key: "writing",       label: "Writing",       icon: "PenLine",    color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/30",   order: 1 },
   { key: "listening",     label: "Listening",     icon: "Headphones", color: "text-green-600",  bg: "bg-green-50 dark:bg-green-950/30",     order: 2 },
   { key: "speaking",      label: "Speaking",      icon: "Mic",        color: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-950/30",   order: 3 },
@@ -15,13 +15,39 @@ const DEFAULT_LESSON_TYPES = [
 
 export async function ensureTenantLessonTypes(tenantId: number): Promise<void> {
   const existing = await db
-    .select({ id: lessonTypesTable.id })
+    .select({ key: lessonTypesTable.key })
     .from(lessonTypesTable)
-    .where(eq(lessonTypesTable.tenantId, tenantId))
-    .limit(1);
-  if (existing.length > 0) return;
-  for (const lt of DEFAULT_LESSON_TYPES) {
-    await db.insert(lessonTypesTable).values({ ...lt, tenantId }).onConflictDoNothing();
+    .where(eq(lessonTypesTable.tenantId, tenantId));
+
+  const existingKeys = new Set(existing.map((r) => r.key));
+  const missing = DEFAULT_LESSON_TYPES.filter((lt) => !existingKeys.has(lt.key));
+
+  if (missing.length === 0) return;
+
+  for (const lt of missing) {
+    await db
+      .insert(lessonTypesTable)
+      .values({ ...lt, tenantId })
+      .onConflictDoNothing();
   }
-  console.log(`Seeded default lesson types for tenant ${tenantId}.`);
+
+  if (existing.length === 0) {
+    console.log(`Seeded default lesson types for tenant ${tenantId}.`);
+  } else {
+    console.log(`Backfilled ${missing.length} missing lesson types for tenant ${tenantId}.`);
+  }
+}
+
+export async function cleanupOrphanedGlobalLessonTypes(): Promise<void> {
+  try {
+    const deleted = await db
+      .delete(lessonTypesTable)
+      .where(isNull(lessonTypesTable.tenantId))
+      .returning({ id: lessonTypesTable.id });
+    if (deleted.length > 0) {
+      console.log(`Removed ${deleted.length} orphaned global lesson types.`);
+    }
+  } catch (err) {
+    console.error("Failed to clean up orphaned lesson types:", err);
+  }
 }
