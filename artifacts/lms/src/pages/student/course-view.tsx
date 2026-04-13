@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode, type ComponentType } from "react";
 import { useRoute, Link, useLocation, useSearch } from "wouter";
 import {
   useGetStudentCourseDetail,
@@ -116,7 +116,7 @@ const fetchLessonTypes = (): Promise<LessonTypeFromApi[]> =>
   fetch(`/api/lesson-types`, { credentials: "include" }).then((r) => r.json());
 
 // ── Icon map: icon-name string → Lucide component ─────────────────────────────
-const ICON_MAP: Record<string, React.ElementType> = {
+const ICON_MAP: Record<string, ComponentType<{ className?: string }>> = {
   BookText, PenLine, Headphones, Mic, AlignLeft, BookMarked, Volume2, Languages,
   BookOpen, Layers,
 };
@@ -581,14 +581,25 @@ export default function CourseView() {
 
           const completedCount = unitLessons.filter((l) => l.isCompleted).length;
 
-          const lessonsByType = STUDENT_LESSON_TYPES.map((t) => ({
+          const allLessonsByType = STUDENT_LESSON_TYPES.map((t) => ({
             ...t,
             lessons: unitLessons.filter((l) => (l.type ?? "reading") === t.id),
             quizzes: unitChapQuizzes.filter((q) => ((q as unknown as { lessonType?: string | null }).lessonType ?? "reading") === t.id),
             assignments: unitChapAssignments.filter((a) => ((a as unknown as { lessonType?: string | null }).lessonType ?? "reading") === t.id),
           }));
 
-          const activeTypeData = lessonsByType.find((t) => t.id === activeType);
+          // Only show tabs that have content in this unit
+          const lessonsByType = allLessonsByType.filter(
+            (t) => t.lessons.length + t.quizzes.length + t.assignments.length > 0
+          );
+
+          // Auto-select first tab with content if current selection is empty
+          const resolvedActiveType =
+            lessonsByType.find((t) => t.id === activeType)
+              ? activeType
+              : (lessonsByType[0]?.id ?? activeType);
+
+          const activeTypeData = lessonsByType.find((t) => t.id === resolvedActiveType);
           const activeLessons = activeTypeData?.lessons ?? [];
           const activeUnitQuizzes = activeTypeData?.quizzes ?? [];
           const activeUnitAssignments = activeTypeData?.assignments ?? [];
@@ -604,42 +615,47 @@ export default function CourseView() {
                 </span>
               </div>
 
-              {/* Lesson type tab bar */}
-              <div className="flex items-center gap-0 border-b overflow-x-auto bg-card">
-                {lessonsByType.map((t) => {
-                  const { Icon } = t;
-                  const isActive = activeType === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => setActiveType(t.id)}
-                      className={cn(
-                        "flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 -mb-[1px] transition-colors whitespace-nowrap shrink-0",
-                        isActive
-                          ? `${t.border} ${t.color}`
-                          : "border-transparent text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      <Icon className="w-3.5 h-3.5" />
-                      {t.label}
-                      {(t.lessons.length + t.quizzes.length + t.assignments.length) > 0 && (
+              {/* Lesson type tab bar — only types with content in this unit */}
+              {lessonsByType.length > 0 && (
+                <div className="flex items-center gap-0 border-b overflow-x-auto bg-card">
+                  {lessonsByType.map((t) => {
+                    const { Icon } = t;
+                    const isActive = resolvedActiveType === t.id;
+                    const count = t.lessons.length + t.quizzes.length + t.assignments.length;
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => setActiveType(t.id)}
+                        className={cn(
+                          "flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 -mb-[1px] transition-colors whitespace-nowrap shrink-0",
+                          isActive
+                            ? `${t.border} ${t.color}`
+                            : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        {t.label}
                         <span className={cn(
                           "px-1.5 py-0.5 rounded-full text-[10px]",
                           isActive ? cn(t.activeBg, t.color) : "bg-muted text-muted-foreground"
                         )}>
-                          {t.lessons.length + t.quizzes.length + t.assignments.length}
+                          {count}
                         </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Active type content */}
               <div className="bg-card p-3 space-y-2 min-h-[72px]">
-                {activeLessons.length === 0 && activeUnitQuizzes.length === 0 && activeUnitAssignments.length === 0 ? (
+                {lessonsByType.length === 0 ? (
                   <div className="flex items-center justify-center h-12 text-xs text-muted-foreground/50 italic">
-                    No {activeType} content in this unit.
+                    No content in this unit yet.
+                  </div>
+                ) : activeLessons.length === 0 && activeUnitQuizzes.length === 0 && activeUnitAssignments.length === 0 ? (
+                  <div className="flex items-center justify-center h-12 text-xs text-muted-foreground/50 italic">
+                    No {resolvedActiveType} content in this unit.
                   </div>
                 ) : (
                   <>
