@@ -18,7 +18,7 @@ import {
   CheckCheck, GraduationCap, Megaphone, MessageSquare,
   Calendar, Award, Zap, Pencil, AlertCircle,
   Layers, BookText, PenLine, Headphones, Mic, AlignLeft,
-  BookMarked, Volume2, Languages,
+  BookMarked, Volume2, Languages, ExternalLink,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,6 +55,8 @@ type Announcement = {
   content: string;
   authorName: string;
   createdAt: string;
+  linkUrl: string | null;
+  linkTitle: string | null;
 };
 
 type Discussion = {
@@ -405,6 +407,17 @@ export default function CourseView() {
                       </span>
                     </div>
                     <p className="text-sm text-muted-foreground leading-relaxed">{a.content}</p>
+                    {a.linkUrl && (
+                      <a
+                        href={a.linkUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-medium hover:bg-primary/90 transition-colors"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        <span className="truncate max-w-[240px]">{a.linkTitle || a.linkUrl}</span>
+                      </a>
+                    )}
                     <p className="text-xs text-muted-foreground mt-2">— {a.authorName}</p>
                   </div>
                 ))}
