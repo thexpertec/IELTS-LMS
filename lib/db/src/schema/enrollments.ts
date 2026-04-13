@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { coursesTable } from "./courses";
@@ -12,7 +12,9 @@ export const enrollmentsTable = pgTable("enrollments", {
   enrolledAt: timestamp("enrolled_at", { withTimezone: true }).notNull().defaultNow(),
   completedAt: timestamp("completed_at", { withTimezone: true }),
   progressPercent: integer("progress_percent").notNull().default(0),
-});
+}, (t) => [
+  uniqueIndex("enrollments_course_student_unique").on(t.courseId, t.studentEmail),
+]);
 
 export const insertEnrollmentSchema = createInsertSchema(enrollmentsTable).omit({ id: true, enrolledAt: true });
 export type InsertEnrollment = z.infer<typeof insertEnrollmentSchema>;

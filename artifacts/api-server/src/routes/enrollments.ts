@@ -50,6 +50,16 @@ router.post("/enrollments", async (req, res): Promise<void> => {
     return;
   }
 
+  const existing = await db
+    .select({ id: enrollmentsTable.id })
+    .from(enrollmentsTable)
+    .where(and(eq(enrollmentsTable.courseId, parsed.data.courseId), eq(enrollmentsTable.studentEmail, parsed.data.studentEmail)))
+    .limit(1);
+  if (existing.length > 0) {
+    res.status(409).json({ error: "This student is already enrolled in this course" });
+    return;
+  }
+
   const [enrollment] = await db.insert(enrollmentsTable).values(parsed.data).returning();
 
   const [row] = await db
