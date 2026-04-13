@@ -213,12 +213,12 @@ function SortableTypeRow({
 
 function UnitSection({
   chapter, lessons, quizzes, assignments, courseId,
-  lessonTypes, typeOrder, onTypeReorder,
+  lessonTypes, typeOrder, initialType, onTypeReorder,
   onEditLesson, onDeleteLesson, onRenameChapter, onDeleteChapter,
 }: {
   chapter: Chapter; lessons: Lesson[]; quizzes: QuizItem[]; assignments: AssignmentItem[]; courseId: number;
   lessonTypes: LessonTypeRow[];
-  typeOrder: string[]; onTypeReorder: (order: string[]) => void;
+  typeOrder: string[]; initialType?: string; onTypeReorder: (order: string[]) => void;
   onEditLesson: (id: number) => void; onDeleteLesson: (id: number) => void;
   onRenameChapter: (c: Chapter) => void; onDeleteChapter: (c: Chapter) => void;
 }) {
@@ -226,7 +226,12 @@ function UnitSection({
   const { toast } = useToast();
   const [collapsed, setCollapsed] = useState(false);
   const firstTypeKey = lessonTypes[0]?.key ?? "";
-  const [activeType, setActiveType] = useState<string>(firstTypeKey);
+  // Prefer the type passed from the URL (e.g. after lesson creation redirect),
+  // fall back to the first lesson type in the ordered list.
+  const resolvedInitial = (initialType && lessonTypes.some((t) => t.key === initialType))
+    ? initialType
+    : firstTypeKey;
+  const [activeType, setActiveType] = useState<string>(resolvedInitial);
   const [activeDragId, setActiveDragId] = useState<number | null>(null);
   const [typePopoverOpen, setTypePopoverOpen] = useState(false);
 
@@ -664,7 +669,9 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
   const chapterIds = new Set(chapters.map((c) => c.id));
   const unassignedLessons = (lessons as Lesson[]).filter((l) => !l.chapterId || !chapterIds.has(l.chapterId!));
 
-  const subTab = new URLSearchParams(search).get("sub") ?? "units";
+  const urlParams = new URLSearchParams(search);
+  const subTab = urlParams.get("sub") ?? "units";
+  const urlLessonType = urlParams.get("lessonType") ?? "";
 
   function setSubTab(v: string) {
     setLocation(`/courses/${courseId}?tab=curriculum&sub=${v}`);
@@ -794,6 +801,7 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
                   courseId={courseId}
                   lessonTypes={lessonTypes}
                   typeOrder={typeOrder}
+                  initialType={urlLessonType}
                   onTypeReorder={handleTypeReorder}
                   onEditLesson={(lessonId) => setLocation(`/courses/${courseId}/lessons/${lessonId}/edit`)}
                   onDeleteLesson={(lessonId) => deleteLesson.mutate({ courseId, id: lessonId })}

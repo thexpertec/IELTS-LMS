@@ -92,10 +92,11 @@ export default function LessonNew() {
 
   const createLesson = useCreateLesson({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (_, vars) => {
         queryClient.invalidateQueries({ queryKey: getListLessonsQueryKey(courseId) });
         toast({ title: "Lesson created successfully" });
-        setLocation(`/courses/${courseId}?tab=curriculum&sub=units`);
+        const type = vars.data.lessonType ?? form.getValues("lessonType");
+        setLocation(`/courses/${courseId}?tab=curriculum&sub=units&lessonType=${type}`);
       },
       onError: () => {
         toast({ title: "Failed to create lesson", variant: "destructive" });

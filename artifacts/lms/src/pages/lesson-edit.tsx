@@ -128,10 +128,11 @@ export default function LessonEdit() {
 
   const updateLesson = useUpdateLesson({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (_, vars) => {
         queryClient.invalidateQueries({ queryKey: getListLessonsQueryKey(courseId) });
         toast({ title: "Lesson updated successfully" });
-        setLocation(`/courses/${courseId}`);
+        const type = vars.data.lessonType ?? form.getValues("lessonType");
+        setLocation(`/courses/${courseId}?tab=curriculum&sub=units&lessonType=${type}`);
       },
       onError: () => {
         toast({ title: "Failed to update lesson", variant: "destructive" });
