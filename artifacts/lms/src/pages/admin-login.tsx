@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { BookOpen, Lock, Mail, Eye, EyeOff } from "lucide-react";
+import { BookOpen, Lock, Mail, Eye, EyeOff, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -108,12 +108,24 @@ export default function AdminLogin() {
                 {loading ? "Signing in…" : "Sign in"}
               </Button>
 
-              <p className="text-center text-sm text-muted-foreground pt-1">
-                Are you a student?{" "}
-                <a href="/lms/student" className="font-medium text-primary hover:underline">
-                  Sign in to Student Portal
-                </a>
-              </p>
+              <div className="relative my-1">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">or</span>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full gap-2"
+                onClick={() => setLocation("/student/login")}
+              >
+                <GraduationCap className="h-4 w-4" />
+                Login as Student
+              </Button>
             </form>
           </CardContent>
         </Card>
