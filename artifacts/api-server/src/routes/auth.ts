@@ -1,8 +1,8 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
-import { usersTable } from "@workspace/db/schema";
-import { ilike } from "drizzle-orm";
+import { usersTable, tenantsTable } from "@workspace/db/schema";
+import { ilike, eq } from "drizzle-orm";
 
 const router = Router();
 
@@ -38,6 +38,94 @@ router.post("/login", async (req, res) => {
   req.session.tenantId = user.tenantId ?? undefined;
 
   res.json({
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    tenantId: user.tenantId ?? null,
+  });
+});
+
+// POST /api/auth/register — self-service admin registration
+// Creates a new tenant + admin user in one atomic transaction
+router.post("/register", async (req, res) => {
+  const { name, email, password, orgName } = req.body as {
+    name?: string;
+    email?: string;
+    password?: string;
+    orgName?: string;
+  };
+
+  if (!name || !email || !password || !orgName) {
+    res.status(400).json({ message: "Name, email, password, and organization name are required" });
+    return;
+  }
+
+  if (password.length < 6) {
+    res.status(400).json({ message: "Password must be at least 6 characters" });
+    return;
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const [existing] = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(ilike(usersTable.email, normalizedEmail))
+    .limit(1);
+
+  if (existing) {
+    res.status(409).json({ message: "An account with this email already exists" });
+    return;
+  }
+
+  const slug = orgName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) + "-" + Date.now().toString(36);
+
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  const baseUsername = normalizedEmail.split("@")[0]!.replace(/[^a-z0-9_]/g, "_");
+  const username = `${baseUsername}_${Date.now().toString(36)}`;
+
+  const { user } = await db.transaction(async (tx) => {
+    const [tenant] = await tx
+      .insert(tenantsTable)
+      .values({
+        name: orgName.trim(),
+        slug,
+        adminEmail: normalizedEmail,
+        adminName: name.trim(),
+        plan: "trial",
+        status: "active",
+      })
+      .returning();
+
+    const [user] = await tx
+      .insert(usersTable)
+      .values({
+        name: name.trim(),
+        email: normalizedEmail,
+        username,
+        passwordHash,
+        role: "admin",
+        tenantId: tenant.id,
+      })
+      .returning();
+
+    return { tenant, user };
+  });
+
+  req.session.userId = user.id;
+  req.session.email = user.email;
+  req.session.name = user.name;
+  req.session.role = user.role;
+  req.session.tenantId = user.tenantId ?? undefined;
+
+  res.status(201).json({
     id: user.id,
     email: user.email,
     name: user.name,
