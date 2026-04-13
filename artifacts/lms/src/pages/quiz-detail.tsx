@@ -74,6 +74,18 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+function extractApiError(err: unknown): string | undefined {
+  if (!err || typeof err !== "object") return undefined;
+  const e = err as Record<string, unknown>;
+  if (typeof e.message === "string" && e.message) return e.message;
+  if (e.data && typeof e.data === "object") {
+    const d = e.data as Record<string, unknown>;
+    if (typeof d.error === "string") return d.error;
+    if (typeof d.message === "string") return d.message;
+  }
+  return undefined;
+}
+
 // ─────────────────────────────────────────────
 // Types for the eight question formats
 // ─────────────────────────────────────────────
@@ -1509,8 +1521,9 @@ export default function QuizDetail() {
     try {
       const flatIds = currentGroups.flatMap((g) => g.questionIds);
       if (flatIds.length > 0) {
-        await fetch(`${import.meta.env.BASE_URL}api/quizzes/${quizId}/questions/reorder`, {
+        await fetch(`/api/quizzes/${quizId}/questions/reorder`, {
           method: "PATCH",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ orderedIds: flatIds }),
         });
@@ -1527,8 +1540,9 @@ export default function QuizDetail() {
         }
         cursor += count;
       }
-      await fetch(`${import.meta.env.BASE_URL}api/quizzes/${quizId}`, {
+      await fetch(`/api/quizzes/${quizId}`, {
         method: "PUT",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: quiz.title,
@@ -1595,14 +1609,25 @@ export default function QuizDetail() {
   const addQuestion = useAddQuizQuestion({
     mutation: {
       onSuccess: (data) => {
-        const newId = (data as { id?: number })?.id;
-        if (newId) {
-          // Place the new question into the section where "Add Question" was clicked.
-          skipPositionalSync.current = true;
+        const newQ = data as QuestionRow & { quizId?: number };
+        const targetKey = targetGroupKey.current;
+        // Optimistically update the query cache so questionMap gets the new
+        // question immediately — without waiting for the background refetch.
+        queryClient.setQueryData(
+          getGetQuizQueryKey(quizId),
+          (old: Record<string, unknown> | undefined) => {
+            if (!old) return old;
+            const existing = (old.questions as QuestionRow[] | undefined) ?? [];
+            return { ...old, questions: [...existing, newQ] };
+          },
+        );
+        // Also keep groups in sync so the question lands in the right section.
+        skipPositionalSync.current = true;
+        if (newQ?.id) {
           setGroups((prev) =>
             prev.map((g) =>
-              g.key === targetGroupKey.current
-                ? { ...g, questionIds: [...g.questionIds, newId] }
+              g.key === targetKey
+                ? { ...g, questionIds: [...g.questionIds, newQ.id] }
                 : g
             )
           );
@@ -1611,7 +1636,10 @@ export default function QuizDetail() {
         toast({ title: "Question added" });
         closeDialog();
       },
-      onError: () => toast({ title: "Failed to add question", variant: "destructive" }),
+      onError: (err: unknown) => {
+        const detail = extractApiError(err);
+        toast({ title: "Failed to add question", description: detail, variant: "destructive" });
+      },
     },
   });
 
@@ -1622,7 +1650,10 @@ export default function QuizDetail() {
         toast({ title: "Question updated" });
         closeDialog();
       },
-      onError: () => toast({ title: "Failed to update question", variant: "destructive" }),
+      onError: (err: unknown) => {
+        const detail = extractApiError(err);
+        toast({ title: "Failed to update question", description: detail, variant: "destructive" });
+      },
     },
   });
 
@@ -1641,7 +1672,10 @@ export default function QuizDetail() {
         queryClient.invalidateQueries({ queryKey: getGetQuizQueryKey(quizId) });
         toast({ title: "Question deleted" });
       },
-      onError: () => toast({ title: "Failed to delete question", variant: "destructive" }),
+      onError: (err: unknown) => {
+        const detail = extractApiError(err);
+        toast({ title: "Failed to delete question", description: detail, variant: "destructive" });
+      },
     },
   });
 
