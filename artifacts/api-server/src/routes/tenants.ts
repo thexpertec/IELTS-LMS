@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, ilike, and, type SQL } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db, tenantsTable } from "@workspace/db";
+import { DEFAULT_TENANT_SETTINGS } from "@workspace/db/schema";
 import { usersTable } from "@workspace/db/schema";
 import {
   ListTenantsQueryParams,
@@ -221,6 +222,85 @@ router.post("/tenants/:id/credentials", async (req, res): Promise<void> => {
       res.status(201).json({ email, name, created: true });
     }
   }
+});
+
+// ── Tenant self-service settings (for LMS admin of a specific tenant) ────────
+
+// GET /api/tenant/settings — returns the current tenant's profile + settings
+router.get("/tenant/settings", async (req, res): Promise<void> => {
+  const tenantId = req.session.tenantId;
+  if (!tenantId) {
+    res.status(403).json({ error: "Tenant context required" });
+    return;
+  }
+
+  const [tenant] = await db.select().from(tenantsTable).where(eq(tenantsTable.id, tenantId)).limit(1);
+  if (!tenant) {
+    res.status(404).json({ error: "Tenant not found" });
+    return;
+  }
+
+  const merged = {
+    id: tenant.id,
+    name: tenant.name,
+    slug: tenant.slug,
+    domain: tenant.domain ?? "",
+    website: tenant.website ?? "",
+    phone: tenant.phone ?? "",
+    address: tenant.address ?? "",
+    adminEmail: tenant.adminEmail,
+    adminName: tenant.adminName ?? "",
+    description: tenant.description ?? "",
+    logoUrl: tenant.logoUrl ?? "",
+    plan: tenant.plan,
+    status: tenant.status,
+    maxCourses: tenant.maxCourses,
+    maxStudents: tenant.maxStudents,
+    settings: {
+      features: { ...DEFAULT_TENANT_SETTINGS.features, ...(tenant.settings?.features ?? {}) },
+      portal:   { ...DEFAULT_TENANT_SETTINGS.portal,   ...(tenant.settings?.portal   ?? {}) },
+      branding: { ...DEFAULT_TENANT_SETTINGS.branding, ...(tenant.settings?.branding ?? {}) },
+    },
+  };
+
+  res.json(merged);
+});
+
+// PATCH /api/tenant/settings — update the current tenant's profile + settings
+router.patch("/tenant/settings", async (req, res): Promise<void> => {
+  const tenantId = req.session.tenantId;
+  if (!tenantId) {
+    res.status(403).json({ error: "Tenant context required" });
+    return;
+  }
+
+  const { name, domain, website, phone, address, adminEmail, adminName, description, logoUrl, settings } = req.body as Record<string, unknown>;
+
+  const updates: Record<string, unknown> = {};
+  if (typeof name === "string" && name.trim()) updates.name = name.trim();
+  if (typeof domain === "string") updates.domain = domain.trim() || null;
+  if (typeof website === "string") updates.website = website.trim() || null;
+  if (typeof phone === "string") updates.phone = phone.trim() || null;
+  if (typeof address === "string") updates.address = address.trim() || null;
+  if (typeof adminEmail === "string" && adminEmail.trim()) updates.adminEmail = adminEmail.trim();
+  if (typeof adminName === "string") updates.adminName = adminName.trim() || null;
+  if (typeof description === "string") updates.description = description.trim() || null;
+  if (typeof logoUrl === "string") updates.logoUrl = logoUrl.trim() || null;
+  if (settings && typeof settings === "object") updates.settings = settings;
+
+  const [updated] = await db
+    .update(tenantsTable)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .set(updates as any)
+    .where(eq(tenantsTable.id, tenantId))
+    .returning();
+
+  if (!updated) {
+    res.status(404).json({ error: "Tenant not found" });
+    return;
+  }
+
+  res.json({ ok: true });
 });
 
 // POST /api/tenants/:id/login-as — SaaS admin assumes the tenant's admin session

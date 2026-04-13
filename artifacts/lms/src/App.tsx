@@ -28,6 +28,7 @@ import AssignmentDetail from "@/pages/assignment-detail";
 import AdminLogin from "@/pages/admin-login";
 import LessonTypesPage from "@/pages/lesson-types";
 import Messages from "@/pages/messages";
+import OrganizationSettings from "@/pages/organization-settings";
 import NotFound from "@/pages/not-found";
 
 // Student quiz pages
@@ -159,6 +160,9 @@ function Router() {
       </Route>
       <Route path="/messages">
         <AdminGuard><Messages /></AdminGuard>
+      </Route>
+      <Route path="/organization-settings">
+        <AdminGuard><OrganizationSettings /></AdminGuard>
       </Route>
 
       <Route component={NotFound} />
