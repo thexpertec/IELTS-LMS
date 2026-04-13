@@ -29,7 +29,9 @@ router.post("/courses/:courseId/announcements", async (req, res): Promise<void> 
   const courseId = Number(req.params.courseId);
   if (!courseId) { res.status(400).json({ error: "Invalid courseId" }); return; }
 
-  const { title, content, authorName } = req.body;
+  const { title, content, authorName, linkUrl, linkTitle } = req.body as {
+    title?: string; content?: string; authorName?: string; linkUrl?: string; linkTitle?: string;
+  };
   if (!title || !content) {
     res.status(400).json({ error: "title and content are required" });
     return;
@@ -37,7 +39,14 @@ router.post("/courses/:courseId/announcements", async (req, res): Promise<void> 
 
   const [row] = await db
     .insert(announcementsTable)
-    .values({ courseId, title, content, authorName: authorName ?? "Instructor" })
+    .values({
+      courseId,
+      title,
+      content,
+      authorName: authorName ?? "Instructor",
+      linkUrl: linkUrl?.trim() || null,
+      linkTitle: linkTitle?.trim() || null,
+    })
     .returning();
 
   res.status(201).json(row);

@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
   Megaphone, MessageSquare, Calendar, Trash2, Plus,
-  ClipboardList, FileText, ChevronDown, ChevronUp,
+  ClipboardList, FileText, ChevronDown, ChevronUp, Link2, ExternalLink,
 } from "lucide-react";
 import { useLocation, useSearch } from "wouter";
 import {
@@ -26,6 +26,8 @@ type Announcement = {
   title: string;
   content: string;
   authorName: string;
+  linkUrl: string | null;
+  linkTitle: string | null;
   createdAt: string;
 };
 
@@ -281,6 +283,18 @@ function AnnouncementCard({ ann, onDelete }: { ann: Announcement; onDelete: () =
           {expanded ? <><ChevronUp className="w-3 h-3" />Show less</> : <><ChevronDown className="w-3 h-3" />Read more</>}
         </button>
       )}
+      {ann.linkUrl && (
+        <a
+          href={ann.linkUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-primary/30 bg-primary/5 text-primary text-xs font-semibold hover:bg-primary/10 transition-colors mt-1"
+        >
+          <Link2 className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate max-w-[260px]">{ann.linkTitle || ann.linkUrl}</span>
+          <ExternalLink className="w-3 h-3 shrink-0 opacity-60" />
+        </a>
+      )}
     </Card>
   );
 }
@@ -331,6 +345,9 @@ function PostAnnouncementForm({ courseId, onSuccess }: { courseId: number; onSuc
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [authorName, setAuthorName] = useState("Instructor");
+  const [showLink, setShowLink] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkTitle, setLinkTitle] = useState("");
   const { toast } = useToast();
 
   const mutation = useMutation({
@@ -338,12 +355,21 @@ function PostAnnouncementForm({ courseId, onSuccess }: { courseId: number; onSuc
       fetch(`/api/courses/${courseId}/announcements`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, content, authorName }),
+        body: JSON.stringify({
+          title,
+          content,
+          authorName,
+          linkUrl: showLink && linkUrl.trim() ? linkUrl.trim() : undefined,
+          linkTitle: showLink && linkTitle.trim() ? linkTitle.trim() : undefined,
+        }),
       }).then((r) => r.json()),
     onSuccess: () => {
       onSuccess();
       setTitle("");
       setContent("");
+      setLinkUrl("");
+      setLinkTitle("");
+      setShowLink(false);
       setOpen(false);
       toast({ title: "Announcement posted" });
     },
@@ -374,11 +400,54 @@ function PostAnnouncementForm({ courseId, onSuccess }: { courseId: number; onSuc
         onChange={(e) => setContent(e.target.value)}
         className="text-sm"
       />
-      <div className="flex gap-2">
+
+      {/* Optional link attachment */}
+      {showLink ? (
+        <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
+              <Link2 className="w-3.5 h-3.5" />
+              Attach Link
+            </p>
+            <button
+              type="button"
+              onClick={() => { setShowLink(false); setLinkUrl(""); setLinkTitle(""); }}
+              className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+            >
+              Remove
+            </button>
+          </div>
+          <Input
+            placeholder="Link URL (e.g. https://example.com)"
+            value={linkUrl}
+            onChange={(e) => setLinkUrl(e.target.value)}
+            className="h-8 text-sm"
+          />
+          <Input
+            placeholder="Link label (e.g. View Resource)"
+            value={linkTitle}
+            onChange={(e) => setLinkTitle(e.target.value)}
+            className="h-8 text-sm"
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowLink(true)}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors font-medium"
+        >
+          <Link2 className="w-3.5 h-3.5" />
+          Attach a link
+        </button>
+      )}
+
+      <div className="flex gap-2 pt-1">
         <Button size="sm" onClick={() => mutation.mutate()} disabled={!title.trim() || !content.trim() || mutation.isPending}>
-          Post
+          {mutation.isPending ? "Posting…" : "Post"}
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+        <Button size="sm" variant="ghost" onClick={() => { setOpen(false); setShowLink(false); setLinkUrl(""); setLinkTitle(""); }}>
+          Cancel
+        </Button>
       </div>
     </Card>
   );

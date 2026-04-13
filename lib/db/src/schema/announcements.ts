@@ -9,6 +9,8 @@ export const announcementsTable = pgTable("announcements", {
   title: text("title").notNull(),
   content: text("content").notNull(),
   authorName: text("author_name").notNull().default("Instructor"),
+  linkUrl: text("link_url"),
+  linkTitle: text("link_title"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
