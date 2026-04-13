@@ -158,8 +158,13 @@ export default function Students() {
     },
     onSuccess: (data) => {
       toast({ title: `Logged in as ${data.name}`, description: "Redirecting to student portal…" });
-      // Hard navigation clears all in-memory React Query caches so the student
-      // portal always reads the fresh session from the server.
+      // The student portal reads auth from localStorage, not the server session.
+      // Write the impersonated student's info so StudentGuard lets them through.
+      localStorage.setItem(
+        "lms_student_session",
+        JSON.stringify({ email: data.email, displayName: data.name })
+      );
+      // Hard navigation clears React Query caches so all data is re-fetched fresh.
       setTimeout(() => { window.location.href = "/lms/student/dashboard"; }, 600);
     },
     onError: (err: Error) => {
