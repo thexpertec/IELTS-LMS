@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { seedUsersIfEmpty } from "./lib/seed-users";
 import { seedLessonTypesIfEmpty } from "./lib/seed-lesson-types";
+import { repairDuplicateEnrollments, ensureEnrollmentUniqueConstraint } from "./lib/repair-enrollments";
 
 const rawPort = process.env["PORT"];
 
@@ -24,6 +25,9 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  void repairDuplicateEnrollments()
+    .then(() => ensureEnrollmentUniqueConstraint())
+    .catch((err) => logger.error({ err }, "Startup repair failed"));
   seedUsersIfEmpty();
   seedLessonTypesIfEmpty();
 });
