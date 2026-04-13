@@ -1,10 +1,12 @@
-import { pgTable, text, serial, timestamp, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { tenantsTable } from "./tenants";
 
 export const lessonTypesTable = pgTable("lesson_types", {
   id: serial("id").primaryKey(),
-  key: text("key").notNull().unique(),
+  tenantId: integer("tenant_id").references(() => tenantsTable.id, { onDelete: "cascade" }),
+  key: text("key").notNull(),
   label: text("label").notNull(),
   icon: text("icon").notNull().default("BookOpen"),
   color: text("color").notNull().default("text-blue-600"),
@@ -13,7 +15,9 @@ export const lessonTypesTable = pgTable("lesson_types", {
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => [
+  uniqueIndex("lesson_types_tenant_key_unique").on(t.tenantId, t.key),
+]);
 
 export const insertLessonTypeSchema = createInsertSchema(lessonTypesTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertLessonType = z.infer<typeof insertLessonTypeSchema>;

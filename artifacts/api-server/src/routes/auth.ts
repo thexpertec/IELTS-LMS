@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
 import { usersTable, tenantsTable } from "@workspace/db/schema";
 import { ilike, eq } from "drizzle-orm";
+import { ensureTenantLessonTypes } from "../lib/ensure-tenant-lesson-types";
 
 const router = Router();
 
@@ -124,6 +125,12 @@ router.post("/register", async (req, res) => {
   req.session.name = user.name;
   req.session.role = user.role;
   req.session.tenantId = user.tenantId ?? undefined;
+
+  if (user.tenantId) {
+    await ensureTenantLessonTypes(user.tenantId).catch((err) =>
+      console.error("Failed to seed lesson types for new tenant:", err)
+    );
+  }
 
   res.status(201).json({
     id: user.id,
