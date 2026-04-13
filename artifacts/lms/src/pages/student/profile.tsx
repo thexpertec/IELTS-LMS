@@ -10,7 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
   User, Mail, FileText, BookOpen, CheckCircle, TrendingUp,
-  Save, Edit2, Phone, MapPin, GraduationCap, Target,
+  Save, Edit2, Phone, MapPin, GraduationCap,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,23 +38,12 @@ const QUALIFICATION_OPTIONS = [
   "Other",
 ];
 
-const WHY_IELTS_OPTIONS = [
-  "University Admission Abroad",
-  "Immigration / Visa",
-  "Work Permit",
-  "Professional Registration",
-  "Personal Development",
-  "Employer Requirement",
-  "Other",
-];
-
 type ProfileForm = {
   displayName: string;
   bio: string;
   phone: string;
   city: string;
   lastQualification: string;
-  whyIelts: string;
 };
 
 export default function Profile() {
@@ -64,7 +53,7 @@ export default function Profile() {
   const { toast } = useToast();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<ProfileForm>({
-    displayName: "", bio: "", phone: "", city: "", lastQualification: "", whyIelts: "",
+    displayName: "", bio: "", phone: "", city: "", lastQualification: "",
   });
 
   const { data: profile, isLoading } = useGetStudentProfile(
@@ -85,7 +74,6 @@ export default function Profile() {
         phone: (profile as any).phone ?? "",
         city: (profile as any).city ?? "",
         lastQualification: (profile as any).lastQualification ?? "",
-        whyIelts: (profile as any).whyIelts ?? "",
       });
     }
   }, [profile]);
@@ -101,7 +89,6 @@ export default function Profile() {
           phone: form.phone || undefined,
           city: form.city || undefined,
           lastQualification: form.lastQualification || undefined,
-          whyIelts: form.whyIelts || undefined,
         } as any,
       });
       await queryClient.invalidateQueries({ queryKey: getGetStudentProfileQueryKey({ email }) });
@@ -298,34 +285,6 @@ export default function Profile() {
                     )}
                   </div>
 
-                  {/* Why IELTS */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-sm">
-                      <Target className="w-4 h-4" />Why doing IELTS?
-                    </Label>
-                    {editing ? (
-                      <Select
-                        value={form.whyIelts || "__none__"}
-                        onValueChange={(v) =>
-                          setForm((f) => ({ ...f, whyIelts: v === "__none__" ? "" : v }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select reason…" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__none__">— Select —</SelectItem>
-                          {WHY_IELTS_OPTIONS.map((r) => (
-                            <SelectItem key={r} value={r}>{r}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      p?.whyIelts
-                        ? <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-0">{p.whyIelts}</Badge>
-                        : <p className="text-sm text-muted-foreground">Not provided</p>
-                    )}
-                  </div>
                 </div>
 
                 {/* Bio */}

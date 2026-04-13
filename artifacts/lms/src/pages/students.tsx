@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Search, Phone, Mail, MapPin, GraduationCap, BookOpen,
-  Users, Eye, Target, TrendingUp, ChevronUp, ChevronDown, UserPlus, Lock,
+  Users, Eye, TrendingUp, ChevronUp, ChevronDown, UserPlus, Lock,
   Pencil, LogIn, X, Check, Loader2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -699,15 +699,6 @@ export default function Students() {
                       label="Last Qualification"
                       value={selected.lastQualification}
                     />
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
-                        <Target className="w-4 h-4" />
-                        <span>Why doing IELTS?</span>
-                      </div>
-                      {selected.whyIelts
-                        ? <p className="text-sm leading-relaxed pl-6">{selected.whyIelts}</p>
-                        : <p className="text-sm text-muted-foreground/50 pl-6 italic">Not provided</p>}
-                    </div>
                     {selected.bio && (
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
