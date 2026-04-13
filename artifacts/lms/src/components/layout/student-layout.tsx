@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { BookOpen, Home, FileText, Bell, User, LogOut, GraduationCap, Sun, Moon, ClipboardList, Menu, MessageSquare } from "lucide-react";
+import { BookOpen, Home, FileText, Bell, User, LogOut, GraduationCap, Sun, Moon, ClipboardList, Menu, MessageSquare, Eye, ArrowLeft } from "lucide-react";
 import { useStudent } from "@/context/student-context";
 import { useQuery } from "@tanstack/react-query";
 import { useGetStudentNotifications } from "@workspace/api-client-react";
@@ -22,14 +22,14 @@ const navItems = [
 ];
 
 export function StudentLayout({ children }: { children: ReactNode }) {
-  const [location] = useLocation();
-  const { student, logout } = useStudent();
+  const [location, setLocation] = useLocation();
+  const { student, isAdminPreview, logout, exitAdminPreview } = useStudent();
   const { theme, setTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const { data: notifications } = useGetStudentNotifications(
     { email: student?.email ?? "" },
-    { query: { enabled: !!student?.email } }
+    { query: { enabled: !!student?.email && !isAdminPreview } }
   );
 
   const { data: chatConversations } = useQuery({
@@ -39,7 +39,7 @@ export function StudentLayout({ children }: { children: ReactNode }) {
       if (!res.ok) return [];
       return res.json() as Promise<{ unread: number }[]>;
     },
-    enabled: !!student?.email,
+    enabled: !!student?.email && !isAdminPreview,
     refetchInterval: 10000,
   });
 
@@ -52,6 +52,11 @@ export function StudentLayout({ children }: { children: ReactNode }) {
     .join("")
     .toUpperCase()
     .slice(0, 2) ?? "?";
+
+  function handleExitPreview() {
+    exitAdminPreview();
+    setLocation("/");
+  }
 
   const SidebarContent = () => (
     <>
@@ -68,16 +73,23 @@ export function StudentLayout({ children }: { children: ReactNode }) {
       </div>
 
       {student && (
-        <div className="p-4 border-b shrink-0">
+        <div className={cn("p-4 border-b shrink-0", isAdminPreview && "bg-amber-50 dark:bg-amber-950/30")}>
           <div className="flex items-center gap-3">
             <Avatar className="w-9 h-9">
-              <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                {initials}
+              <AvatarFallback className={cn(
+                "text-sm font-semibold",
+                isAdminPreview ? "bg-amber-200 text-amber-800 dark:bg-amber-800 dark:text-amber-200" : "bg-primary/10 text-primary"
+              )}>
+                {isAdminPreview ? <Eye className="w-4 h-4" /> : initials}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <p className="font-medium text-sm truncate">{student.displayName}</p>
-              <p className="text-xs text-muted-foreground truncate">{student.email}</p>
+              <p className="font-medium text-sm truncate">
+                {isAdminPreview ? "Admin Preview" : student.displayName}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {isAdminPreview ? "Viewing as student" : student.email}
+              </p>
             </div>
           </div>
         </div>
@@ -124,15 +136,27 @@ export function StudentLayout({ children }: { children: ReactNode }) {
           {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           {theme === "dark" ? "Light Mode" : "Dark Mode"}
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
-          onClick={logout}
-        >
-          <LogOut className="w-4 h-4" />
-          Exit Portal
-        </Button>
+        {isAdminPreview ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start gap-3 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+            onClick={handleExitPreview}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Admin
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
+            onClick={logout}
+          >
+            <LogOut className="w-4 h-4" />
+            Exit Portal
+          </Button>
+        )}
       </div>
     </>
   );
@@ -163,6 +187,23 @@ export function StudentLayout({ children }: { children: ReactNode }) {
 
       {/* ── Main content ── */}
       <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Admin preview banner */}
+        {isAdminPreview && (
+          <div className="flex items-center justify-between gap-3 px-4 py-2 bg-amber-400 text-amber-950 text-sm font-medium shrink-0">
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 flex-shrink-0" />
+              <span>Admin Preview — you are viewing the student portal. No real student data is shown.</span>
+            </div>
+            <button
+              onClick={handleExitPreview}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-amber-950/15 hover:bg-amber-950/25 transition-colors text-xs font-semibold whitespace-nowrap"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Back to Admin
+            </button>
+          </div>
+        )}
+
         {/* Mobile top bar */}
         <div className="lg:hidden flex items-center gap-3 h-14 px-4 border-b bg-card shrink-0">
           <button

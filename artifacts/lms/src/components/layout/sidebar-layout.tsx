@@ -1,22 +1,30 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, BookOpen, Users, UserPlus, Moon, Sun, GraduationCap, ClipboardList, Menu, X, FileText, LogOut, Settings2, MessageSquare, Building2 } from "lucide-react";
+import { LayoutDashboard, BookOpen, Users, UserPlus, Moon, Sun, GraduationCap, ClipboardList, Menu, FileText, LogOut, Settings2, MessageSquare, Building2, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
+import { useStudent } from "@/context/student-context";
 
 interface SidebarLayoutProps {
   children: React.ReactNode;
 }
 
 export function SidebarLayout({ children }: SidebarLayoutProps) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { theme, setTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, logout } = useAuth();
+  const { startAdminPreview } = useStudent();
+
+  function handlePreviewStudent() {
+    startAdminPreview();
+    setMobileOpen(false);
+    setLocation("/student/dashboard");
+  }
 
   const { data: chatConversations } = useQuery({
     queryKey: ["chat-conversations"],
@@ -82,15 +90,14 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
       </nav>
 
       <div className="p-4 border-t space-y-1 shrink-0">
-        <Link
-          href="/student"
-          onClick={() => setMobileOpen(false)}
-          className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-          data-testid="nav-student-portal"
+        <button
+          onClick={handlePreviewStudent}
+          data-testid="btn-preview-student"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
         >
-          <GraduationCap className="w-4 h-4" />
-          Student Portal
-        </Link>
+          <Eye className="w-4 h-4" />
+          Preview Student Portal
+        </button>
         <Button
           variant="ghost"
           size="sm"

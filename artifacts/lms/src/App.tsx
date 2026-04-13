@@ -55,14 +55,14 @@ const queryClient = new QueryClient({
 });
 
 function StudentGuard({ children }: { children: ReactNode }) {
-  const { student } = useStudent();
-  if (!student) return <Redirect to="/student" />;
+  const { student, isAdminPreview } = useStudent();
+  if (!student && !isAdminPreview) return <Redirect to="/student" />;
   return <StudentLayout>{children}</StudentLayout>;
 }
 
 function StudentGuardNoLayout({ children }: { children: ReactNode }) {
-  const { student } = useStudent();
-  if (!student) return <Redirect to="/student" />;
+  const { student, isAdminPreview } = useStudent();
+  if (!student && !isAdminPreview) return <Redirect to="/student" />;
   return <>{children}</>;
 }
 
