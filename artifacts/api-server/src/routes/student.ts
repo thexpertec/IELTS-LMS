@@ -924,4 +924,101 @@ router.get("/student/quiz-attempts", async (req, res): Promise<void> => {
   res.json(result);
 });
 
+// PATCH /api/admin/students/:email — update a student's profile
+router.patch("/admin/students/:email", async (req, res): Promise<void> => {
+  if (!req.session.userId || req.session.role !== "admin") {
+    res.status(403).json({ error: "Admin access required" });
+    return;
+  }
+
+  const { email } = req.params;
+  if (!email) { res.status(400).json({ error: "Email required" }); return; }
+
+  const { displayName, phone, city, bio } = req.body as {
+    displayName?: string; phone?: string; city?: string; bio?: string;
+  };
+
+  const updates: Record<string, string | null> = {};
+  if (typeof displayName === "string" && displayName.trim()) updates.displayName = displayName.trim();
+  if (typeof phone === "string") updates.phone = phone.trim() || null;
+  if (typeof city === "string") updates.city = city.trim() || null;
+  if (typeof bio === "string") updates.bio = bio.trim() || null;
+
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "No fields to update" });
+    return;
+  }
+
+  // Upsert profile — if no profile row exists, create one
+  const [existing] = await db
+    .select({ email: studentProfilesTable.email })
+    .from(studentProfilesTable)
+    .where(eq(studentProfilesTable.email, email.toLowerCase()))
+    .limit(1);
+
+  if (existing) {
+    await db
+      .update(studentProfilesTable)
+      .set({
+        ...(updates.displayName !== undefined ? { displayName: updates.displayName } : {}),
+        ...(updates.phone !== undefined ? { phone: updates.phone } : {}),
+        ...(updates.city !== undefined ? { city: updates.city } : {}),
+        ...(updates.bio !== undefined ? { bio: updates.bio } : {}),
+      })
+      .where(eq(studentProfilesTable.email, email.toLowerCase()));
+  } else {
+    const [user] = await db
+      .select({ name: usersTable.name })
+      .from(usersTable)
+      .where(ilike(usersTable.email, email))
+      .limit(1);
+    await db.insert(studentProfilesTable).values({
+      email: email.toLowerCase(),
+      displayName: (updates.displayName as string | undefined) ?? user?.name ?? email,
+      phone: (updates.phone as string | null) ?? null,
+      city: (updates.city as string | null) ?? null,
+      bio: (updates.bio as string | null) ?? undefined,
+    });
+  }
+
+  // Also update the name in users table if displayName changed
+  if (updates.displayName) {
+    await db
+      .update(usersTable)
+      .set({ name: updates.displayName as string })
+      .where(ilike(usersTable.email, email));
+  }
+
+  res.json({ ok: true });
+});
+
+// POST /api/admin/students/:email/login-as — admin impersonates a student
+router.post("/admin/students/:email/login-as", async (req, res): Promise<void> => {
+  if (!req.session.userId || req.session.role !== "admin") {
+    res.status(403).json({ error: "Admin access required" });
+    return;
+  }
+
+  const email = (req.params.email ?? "").toLowerCase();
+
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(and(ilike(usersTable.email, email), eq(usersTable.role, "student")))
+    .limit(1);
+
+  if (!user) {
+    res.status(404).json({ error: "Student not found" });
+    return;
+  }
+
+  req.session.userId = user.id;
+  req.session.email = user.email;
+  req.session.name = user.name;
+  req.session.role = user.role;
+  req.session.tenantId = user.tenantId ?? undefined;
+
+  res.json({ ok: true, email: user.email, name: user.name });
+});
+
 export default router;

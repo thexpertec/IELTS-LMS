@@ -3,14 +3,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Search, Phone, Mail, MapPin, GraduationCap, BookOpen,
   Users, Eye, Target, TrendingUp, ChevronUp, ChevronDown, UserPlus, Lock,
+  Pencil, LogIn, X, Check, Loader2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
@@ -21,6 +22,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useLocation } from "wouter";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -40,7 +42,7 @@ type StudentRow = {
   avgProgress: number;
 };
 
-type SortKey = "displayName" | "email" | "city" | "lastQualification" | "totalCourses" | "avgProgress";
+type SortKey = "displayName" | "email" | "city" | "totalCourses" | "avgProgress";
 
 // ── Fetch ─────────────────────────────────────────────────────────────────────
 
@@ -56,17 +58,19 @@ function initials(name: string) {
   return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 }
 
-function Cell({ value, fallback = "—" }: { value: string | null | undefined; fallback?: string }) {
-  return <span>{value ?? fallback}</span>;
-}
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function Students() {
+  const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("displayName");
   const [sortAsc, setSortAsc] = useState(true);
   const [selected, setSelected] = useState<StudentRow | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editCity, setEditCity] = useState("");
+  const [editBio, setEditBio] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
@@ -104,14 +108,72 @@ export default function Students() {
     },
   });
 
+  const editStudentMutation = useMutation({
+    mutationFn: async ({ email, data }: {
+      email: string;
+      data: { displayName?: string; phone?: string; city?: string; bio?: string };
+    }) => {
+      const res = await fetch(`/api/admin/students/${encodeURIComponent(email)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? "Failed to update student");
+      }
+      return res.json();
+    },
+    onSuccess: (_, { data }) => {
+      toast({ title: "Profile updated", description: "Student profile has been saved." });
+      queryClient.invalidateQueries({ queryKey: ["admin-students"] });
+      // Optimistically update selected row
+      if (selected) {
+        const updated = {
+          ...selected,
+          displayName: data.displayName ?? selected.displayName,
+          phone: data.phone ?? selected.phone,
+          city: data.city ?? selected.city,
+          bio: data.bio ?? selected.bio,
+        };
+        setSelected(updated);
+      }
+      setEditMode(false);
+    },
+    onError: (err: Error) => {
+      toast({ title: "Update failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const loginAsMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const res = await fetch(`/api/admin/students/${encodeURIComponent(email)}/login-as`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? "Failed to login as student");
+      }
+      return res.json();
+    },
+    onSuccess: (data: { name: string }) => {
+      toast({ title: `Logged in as ${data.name}`, description: "Redirecting to student portal…" });
+      setTimeout(() => setLocation("/student/dashboard"), 800);
+    },
+    onError: (err: Error) => {
+      toast({ title: "Login failed", description: err.message, variant: "destructive" });
+    },
+  });
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     const rows = students.filter((s) =>
       s.displayName.toLowerCase().includes(q) ||
       s.email.toLowerCase().includes(q) ||
       (s.city ?? "").toLowerCase().includes(q) ||
-      (s.phone ?? "").includes(q) ||
-      (s.lastQualification ?? "").toLowerCase().includes(q)
+      (s.phone ?? "").includes(q)
     );
 
     rows.sort((a, b) => {
@@ -130,6 +192,14 @@ export default function Students() {
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortAsc((v) => !v);
     else { setSortKey(key); setSortAsc(true); }
+  }
+
+  function openEdit(student: StudentRow) {
+    setEditName(student.displayName);
+    setEditPhone(student.phone ?? "");
+    setEditCity(student.city ?? "");
+    setEditBio(student.bio ?? "");
+    setEditMode(true);
   }
 
   function SortIcon({ k }: { k: SortKey }) {
@@ -234,11 +304,9 @@ export default function Students() {
                 <Th label="Email" k="email" />
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">Phone</th>
                 <Th label="City" k="city" />
-                <Th label="Last Qualification" k="lastQualification" />
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">Why IELTS?</th>
                 <Th label="Courses" k="totalCourses" className="text-right" />
                 <Th label="Progress" k="avgProgress" className="text-right" />
-                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground">Profile</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -249,7 +317,7 @@ export default function Students() {
                     "border-b last:border-0 hover:bg-muted/20 transition-colors cursor-pointer",
                     idx % 2 === 0 ? "bg-card" : "bg-muted/5"
                   )}
-                  onClick={() => setSelected(student)}
+                  onClick={() => { setSelected(student); setEditMode(false); }}
                   data-testid={`card-student-${student.email}`}
                 >
                   {/* Row number */}
@@ -299,20 +367,6 @@ export default function Students() {
                     ) : <span className="text-muted-foreground/40">—</span>}
                   </td>
 
-                  {/* Last Qualification */}
-                  <td className="px-4 py-3 min-w-[160px]">
-                    {student.lastQualification
-                      ? <Badge variant="secondary" className="text-[11px] font-medium">{student.lastQualification}</Badge>
-                      : <span className="text-muted-foreground/40">—</span>}
-                  </td>
-
-                  {/* Why IELTS */}
-                  <td className="px-4 py-3 max-w-[200px]">
-                    {student.whyIelts
-                      ? <span className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{student.whyIelts}</span>
-                      : <span className="text-muted-foreground/40">—</span>}
-                  </td>
-
                   {/* Courses */}
                   <td className="px-4 py-3 text-right">
                     <div className="flex flex-col items-end gap-0.5">
@@ -331,16 +385,30 @@ export default function Students() {
                     </div>
                   </td>
 
-                  {/* View button */}
+                  {/* Actions */}
                   <td className="px-4 py-3 text-right">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="gap-1.5 text-xs h-7 text-muted-foreground hover:text-foreground"
-                      onClick={(e) => { e.stopPropagation(); setSelected(student); }}
-                    >
-                      <Eye className="w-3 h-3" />View
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="gap-1.5 text-xs h-7 text-muted-foreground hover:text-foreground"
+                        title="View profile"
+                        onClick={(e) => { e.stopPropagation(); setSelected(student); setEditMode(false); }}
+                      >
+                        <Eye className="w-3 h-3" />View
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="gap-1.5 text-xs h-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        title="Login as student"
+                        onClick={(e) => { e.stopPropagation(); loginAsMutation.mutate(student.email); }}
+                        disabled={loginAsMutation.isPending}
+                      >
+                        {loginAsMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <LogIn className="w-3 h-3" />}
+                        Login
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -446,92 +514,207 @@ export default function Students() {
       </Dialog>
 
       {/* ── Student Detail Drawer ── */}
-      <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
+      <Sheet open={!!selected} onOpenChange={(open) => { if (!open) { setSelected(null); setEditMode(false); } }}>
         <SheetContent className="w-full sm:max-w-md overflow-y-auto">
           {selected && (
             <>
               <SheetHeader className="mb-6">
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-16 w-16 border-2 border-primary/20">
+                <div className="flex items-start gap-4">
+                  <Avatar className="h-16 w-16 border-2 border-primary/20 shrink-0">
                     {selected.avatarUrl && <AvatarImage src={selected.avatarUrl} alt={selected.displayName} />}
                     <AvatarFallback className="text-2xl font-bold bg-primary/10 text-primary">
                       {initials(selected.displayName)}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <SheetTitle className="text-xl">{selected.displayName}</SheetTitle>
                     <SheetDescription className="mt-0.5">
                       Member since {format(new Date(selected.createdAt), "MMMM d, yyyy")}
                     </SheetDescription>
+                    <p className="text-xs text-muted-foreground mt-1 truncate">{selected.email}</p>
                   </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-2 mt-4">
+                  {!editMode ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2 flex-1"
+                        onClick={() => openEdit(selected)}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        Edit Profile
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="gap-2 flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                        onClick={() => loginAsMutation.mutate(selected.email)}
+                        disabled={loginAsMutation.isPending}
+                      >
+                        {loginAsMutation.isPending
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <LogIn className="w-3.5 h-3.5" />
+                        }
+                        Login as Student
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2"
+                        onClick={() => setEditMode(false)}
+                        disabled={editStudentMutation.isPending}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="gap-2 flex-1"
+                        onClick={() => {
+                          editStudentMutation.mutate({
+                            email: selected.email,
+                            data: {
+                              displayName: editName,
+                              phone: editPhone,
+                              city: editCity,
+                              bio: editBio,
+                            },
+                          });
+                        }}
+                        disabled={editStudentMutation.isPending || !editName.trim()}
+                      >
+                        {editStudentMutation.isPending
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <Check className="w-3.5 h-3.5" />
+                        }
+                        Save Changes
+                      </Button>
+                    </>
+                  )}
                 </div>
               </SheetHeader>
 
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-3 mb-6">
-                {[
-                  { label: "Courses", value: selected.totalCourses, color: "text-foreground" },
-                  { label: "Active", value: selected.activeCourses, color: "text-blue-500" },
-                  { label: "Done", value: selected.completedCourses, color: "text-green-500" },
-                ].map((s) => (
-                  <div key={s.label} className="bg-muted/50 rounded-xl p-3 text-center">
-                    <p className={cn("text-xl font-bold", s.color)}>{s.value}</p>
-                    <p className="text-xs text-muted-foreground">{s.label}</p>
+              {/* Edit Form */}
+              {editMode ? (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-name">Full Name <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="edit-name"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Full name"
+                    />
                   </div>
-                ))}
-              </div>
-
-              <div className="mb-4">
-                <div className="flex justify-between text-sm mb-1.5">
-                  <span className="text-muted-foreground font-medium">Overall Progress</span>
-                  <span className="font-bold text-primary">{selected.avgProgress}%</span>
-                </div>
-                <Progress value={selected.avgProgress} className="h-2 rounded-full" />
-              </div>
-
-              <Separator className="my-5" />
-
-              {/* Contact details */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Contact & Location</h3>
-
-                <ProfileField icon={<Mail className="w-4 h-4" />} label="Email" value={selected.email} />
-                <ProfileField icon={<Phone className="w-4 h-4" />} label="Phone" value={selected.phone} />
-                <ProfileField icon={<MapPin className="w-4 h-4" />} label="City" value={selected.city} />
-              </div>
-
-              <Separator className="my-5" />
-
-              {/* Academic details */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Academic Background</h3>
-
-                <ProfileField
-                  icon={<GraduationCap className="w-4 h-4" />}
-                  label="Last Qualification"
-                  value={selected.lastQualification}
-                />
-
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
-                    <Target className="w-4 h-4" />
-                    <span>Why doing IELTS?</span>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-phone" className="flex items-center gap-1.5">
+                      <Phone className="w-3.5 h-3.5" /> Phone
+                    </Label>
+                    <Input
+                      id="edit-phone"
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      placeholder="+92 300 0000000"
+                    />
                   </div>
-                  {selected.whyIelts
-                    ? <p className="text-sm leading-relaxed pl-6">{selected.whyIelts}</p>
-                    : <p className="text-sm text-muted-foreground/50 pl-6 italic">Not provided</p>}
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-city" className="flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5" /> City
+                    </Label>
+                    <Input
+                      id="edit-city"
+                      value={editCity}
+                      onChange={(e) => setEditCity(e.target.value)}
+                      placeholder="e.g. Karachi"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-bio" className="flex items-center gap-1.5">
+                      <BookOpen className="w-3.5 h-3.5" /> Bio
+                    </Label>
+                    <Textarea
+                      id="edit-bio"
+                      value={editBio}
+                      onChange={(e) => setEditBio(e.target.value)}
+                      placeholder="A short bio about the student…"
+                      rows={3}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Note: Email address cannot be changed here.
+                  </p>
                 </div>
+              ) : (
+                <>
+                  {/* Stats */}
+                  <div className="grid grid-cols-3 gap-3 mb-6">
+                    {[
+                      { label: "Courses", value: selected.totalCourses, color: "text-foreground" },
+                      { label: "Active", value: selected.activeCourses, color: "text-blue-500" },
+                      { label: "Done", value: selected.completedCourses, color: "text-green-500" },
+                    ].map((s) => (
+                      <div key={s.label} className="bg-muted/50 rounded-xl p-3 text-center">
+                        <p className={cn("text-xl font-bold", s.color)}>{s.value}</p>
+                        <p className="text-xs text-muted-foreground">{s.label}</p>
+                      </div>
+                    ))}
+                  </div>
 
-                {selected.bio && (
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
-                      <BookOpen className="w-4 h-4" />
-                      <span>Bio</span>
+                  <div className="mb-4">
+                    <div className="flex justify-between text-sm mb-1.5">
+                      <span className="text-muted-foreground font-medium">Overall Progress</span>
+                      <span className="font-bold text-primary">{selected.avgProgress}%</span>
                     </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed pl-6">{selected.bio}</p>
+                    <Progress value={selected.avgProgress} className="h-2 rounded-full" />
                   </div>
-                )}
-              </div>
+
+                  <Separator className="my-5" />
+
+                  {/* Contact details */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Contact & Location</h3>
+                    <ProfileField icon={<Mail className="w-4 h-4" />} label="Email" value={selected.email} />
+                    <ProfileField icon={<Phone className="w-4 h-4" />} label="Phone" value={selected.phone} />
+                    <ProfileField icon={<MapPin className="w-4 h-4" />} label="City" value={selected.city} />
+                  </div>
+
+                  <Separator className="my-5" />
+
+                  {/* Academic details */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Academic Background</h3>
+                    <ProfileField
+                      icon={<GraduationCap className="w-4 h-4" />}
+                      label="Last Qualification"
+                      value={selected.lastQualification}
+                    />
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+                        <Target className="w-4 h-4" />
+                        <span>Why doing IELTS?</span>
+                      </div>
+                      {selected.whyIelts
+                        ? <p className="text-sm leading-relaxed pl-6">{selected.whyIelts}</p>
+                        : <p className="text-sm text-muted-foreground/50 pl-6 italic">Not provided</p>}
+                    </div>
+                    {selected.bio && (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+                          <BookOpen className="w-4 h-4" />
+                          <span>Bio</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground leading-relaxed pl-6">{selected.bio}</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </>
           )}
         </SheetContent>
