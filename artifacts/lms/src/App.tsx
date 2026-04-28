@@ -56,13 +56,13 @@ const queryClient = new QueryClient({
 
 function StudentGuard({ children }: { children: ReactNode }) {
   const { student, isAdminPreview } = useStudent();
-  if (!student && !isAdminPreview) return <Redirect to="/student" />;
+  if (!student && !isAdminPreview) return <Redirect to="/student/login" />;
   return <StudentLayout>{children}</StudentLayout>;
 }
 
 function StudentGuardNoLayout({ children }: { children: ReactNode }) {
   const { student, isAdminPreview } = useStudent();
-  if (!student && !isAdminPreview) return <Redirect to="/student" />;
+  if (!student && !isAdminPreview) return <Redirect to="/student/login" />;
   return <>{children}</>;
 }
 
@@ -80,7 +80,8 @@ function Router() {
       <Route path="/admin-login" component={AdminLogin} />
 
       {/* Student Portal */}
-      <Route path="/student" component={StudentLogin} />
+      <Route path="/student/login" component={StudentLogin} />
+      <Route path="/student"><Redirect to="/student/login" /></Route>
       <Route path="/student/dashboard">
         <StudentGuard><StudentDashboard /></StudentGuard>
       </Route>
