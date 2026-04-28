@@ -5,6 +5,7 @@ import { coursesTable } from "./courses";
 import { chaptersTable } from "./chapters";
 import { lessonsTable } from "./lessons";
 import { enrollmentsTable } from "./enrollments";
+import { tenantsTable } from "./tenants";
 
 export const assignmentsTable = pgTable("assignments", {
   id: serial("id").primaryKey(),
@@ -18,6 +19,7 @@ export const assignmentsTable = pgTable("assignments", {
   dueDate: timestamp("due_date", { withTimezone: true }).notNull(),
   maxScore: integer("max_score").notNull().default(100),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  tenantId: integer("tenant_id").references(() => tenantsTable.id, { onDelete: "set null" }),
 });
 
 export const assignmentSubmissionsTable = pgTable("assignment_submissions", {

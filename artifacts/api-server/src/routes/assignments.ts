@@ -1,11 +1,16 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, count, and } from "drizzle-orm";
+import { eq, desc, count, and, SQL } from "drizzle-orm";
 import { db, assignmentsTable, assignmentSubmissionsTable, coursesTable, enrollmentsTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
 router.get("/assignments", async (req, res): Promise<void> => {
   const courseId = req.query.courseId ? Number(req.query.courseId) : undefined;
+  const tenantId = req.session.tenantId;
+
+  const conditions: SQL[] = [];
+  if (courseId) conditions.push(eq(assignmentsTable.courseId, courseId));
+  if (tenantId) conditions.push(eq(coursesTable.tenantId, tenantId));
 
   const rows = await db
     .select({
@@ -26,7 +31,7 @@ router.get("/assignments", async (req, res): Promise<void> => {
     .from(assignmentsTable)
     .leftJoin(coursesTable, eq(assignmentsTable.courseId, coursesTable.id))
     .leftJoin(assignmentSubmissionsTable, eq(assignmentSubmissionsTable.assignmentId, assignmentsTable.id))
-    .where(courseId ? eq(assignmentsTable.courseId, courseId) : undefined)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
     .groupBy(assignmentsTable.id, coursesTable.title)
     .orderBy(desc(assignmentsTable.createdAt));
 
@@ -40,6 +45,8 @@ router.post("/assignments", async (req, res): Promise<void> => {
     return;
   }
 
+  const tenantId = req.session.tenantId ?? null;
+
   const [row] = await db.insert(assignmentsTable).values({
     courseId: Number(courseId),
     chapterId: chapterId ? Number(chapterId) : null,
@@ -50,6 +57,7 @@ router.post("/assignments", async (req, res): Promise<void> => {
     type: type ?? "assignment",
     dueDate: new Date(dueDate),
     maxScore: maxScore ? Number(maxScore) : 100,
+    tenantId,
   }).returning();
 
   res.status(201).json({ ...row, courseTitle: null, submissionCount: 0 });
