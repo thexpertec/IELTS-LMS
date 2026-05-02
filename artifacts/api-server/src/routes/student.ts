@@ -20,6 +20,14 @@ import { usersTable } from "@workspace/db/schema";
 
 const router: IRouter = Router();
 
+// The synthetic email used when an admin previews the student portal.
+// Requests from this email get virtual access to all published tenant courses
+// without touching real enrollment records.
+const PREVIEW_EMAIL = "admin-preview@lms.local";
+
+// Synthetic enrollment IDs for preview mode are offset to avoid DB collisions.
+const PREVIEW_ENROLLMENT_ID_OFFSET = 900000;
+
 router.get("/student/profile", async (req, res): Promise<void> => {
   const { email } = req.query as { email?: string };
   if (!email) {
@@ -285,6 +293,41 @@ router.get("/student/my-enrollments", async (req, res): Promise<void> => {
     return;
   }
 
+  // Admin preview: return all published tenant courses as synthetic enrollments
+  if (email === PREVIEW_EMAIL) {
+    const tenantId = req.session.tenantId;
+    const courseWhere = tenantId
+      ? and(eq(coursesTable.isPublished, true), eq(coursesTable.tenantId, tenantId))
+      : eq(coursesTable.isPublished, true);
+    const courses = await db.select().from(coursesTable).where(courseWhere);
+
+    const enriched = await Promise.all(courses.map(async (c) => {
+      const [lc] = await db.select({ total: sql<number>`COUNT(*)` }).from(lessonsTable).where(eq(lessonsTable.courseId, c.id));
+      const [qc] = await db.select({ total: sql<number>`COUNT(*)` }).from(quizzesTable).where(eq(quizzesTable.courseId, c.id));
+      const [ac] = await db.select({ total: sql<number>`COUNT(*)` }).from(assignmentsTable).where(eq(assignmentsTable.courseId, c.id));
+      const [ec] = await db.select({ total: sql<number>`COUNT(*)` }).from(enrollmentsTable).where(and(eq(enrollmentsTable.courseId, c.id), not(eq(enrollmentsTable.status, "dropped"))));
+      return {
+        id: PREVIEW_ENROLLMENT_ID_OFFSET + c.id,
+        courseId: c.id,
+        courseTitle: c.title,
+        courseDescription: c.description ?? "",
+        courseCategory: c.category ?? "",
+        instructor: c.instructor ?? "",
+        status: "active" as const,
+        progressPercent: 0,
+        completedLessons: 0,
+        totalLessons: Number(lc.total),
+        totalQuizzes: Number(qc.total),
+        totalAssignments: Number(ac.total),
+        totalEnrolled: Number(ec.total),
+        enrolledAt: new Date().toISOString(),
+      };
+    }));
+
+    res.json(enriched);
+    return;
+  }
+
   const rows = await db
     .select({
       id: enrollmentsTable.id,
@@ -365,6 +408,12 @@ router.get("/student/available-courses", async (req, res): Promise<void> => {
   const { email } = req.query as { email?: string };
   if (!email) {
     res.status(400).json({ error: "email query param required" });
+    return;
+  }
+
+  // Admin preview sees all courses as enrolled — nothing left to join
+  if (email === PREVIEW_EMAIL) {
+    res.json([]);
     return;
   }
 
@@ -488,15 +537,30 @@ router.get("/student/courses/:courseId", async (req, res): Promise<void> => {
     return;
   }
 
-  const [enrollment] = await db
-    .select()
-    .from(enrollmentsTable)
-    .where(and(eq(enrollmentsTable.courseId, courseId), eq(enrollmentsTable.studentEmail, email)))
-    .limit(1);
+  // Admin preview: bypass enrollment check — use synthetic enrollment
+  const isPreview = email === PREVIEW_EMAIL;
+  let enrollmentId: number;
+  let enrollmentStatus: string;
+  let progressPercent: number;
 
-  if (!enrollment) {
-    res.status(404).json({ error: "Not enrolled in this course" });
-    return;
+  if (isPreview) {
+    enrollmentId = PREVIEW_ENROLLMENT_ID_OFFSET + courseId;
+    enrollmentStatus = "active";
+    progressPercent = 0;
+  } else {
+    const [enrollment] = await db
+      .select()
+      .from(enrollmentsTable)
+      .where(and(eq(enrollmentsTable.courseId, courseId), eq(enrollmentsTable.studentEmail, email)))
+      .limit(1);
+
+    if (!enrollment) {
+      res.status(404).json({ error: "Not enrolled in this course" });
+      return;
+    }
+    enrollmentId = enrollment.id;
+    enrollmentStatus = enrollment.status;
+    progressPercent = enrollment.progressPercent;
   }
 
   const lessonRows = await db
@@ -521,10 +585,13 @@ router.get("/student/courses/:courseId", async (req, res): Promise<void> => {
     .where(eq(lessonsTable.courseId, courseId))
     .orderBy(lessonsTable.order);
 
-  const progressRows = await db
-    .select()
-    .from(lessonProgressTable)
-    .where(eq(lessonProgressTable.enrollmentId, enrollment.id));
+  // Progress rows don't exist for preview synthetic enrollment IDs — treat all as incomplete
+  const progressRows = isPreview
+    ? []
+    : await db
+        .select()
+        .from(lessonProgressTable)
+        .where(eq(lessonProgressTable.enrollmentId, enrollmentId));
 
   const progressMap = new Map(progressRows.map((p) => [p.lessonId, p.completed]));
 
@@ -534,9 +601,9 @@ router.get("/student/courses/:courseId", async (req, res): Promise<void> => {
     description: course.description,
     category: course.category,
     instructor: course.instructor,
-    enrollmentId: enrollment.id,
-    status: enrollment.status,
-    progressPercent: enrollment.progressPercent,
+    enrollmentId,
+    status: enrollmentStatus,
+    progressPercent,
     lessons: lessonRows.map((l) => ({
       id: l.id,
       title: l.title,
@@ -691,18 +758,33 @@ router.get("/student/assignments", async (req, res): Promise<void> => {
     return;
   }
 
-  const enrollments = await db
-    .select({ id: enrollmentsTable.id, courseId: enrollmentsTable.courseId })
-    .from(enrollmentsTable)
-    .where(eq(enrollmentsTable.studentEmail, email));
+  // Admin preview: use all published tenant courses as synthetic enrollments
+  let courseIds: number[];
+  let enrollmentMap: Map<number, number>;
 
-  if (enrollments.length === 0) {
-    res.json([]);
-    return;
+  if (email === PREVIEW_EMAIL) {
+    const tenantId = req.session.tenantId;
+    const courseWhere = tenantId
+      ? and(eq(coursesTable.isPublished, true), eq(coursesTable.tenantId, tenantId))
+      : eq(coursesTable.isPublished, true);
+    const allCourses = await db.select({ id: coursesTable.id }).from(coursesTable).where(courseWhere);
+    if (allCourses.length === 0) { res.json([]); return; }
+    courseIds = allCourses.map((c) => c.id);
+    enrollmentMap = new Map(courseIds.map((id) => [id, PREVIEW_ENROLLMENT_ID_OFFSET + id]));
+  } else {
+    const enrollments = await db
+      .select({ id: enrollmentsTable.id, courseId: enrollmentsTable.courseId })
+      .from(enrollmentsTable)
+      .where(eq(enrollmentsTable.studentEmail, email));
+
+    if (enrollments.length === 0) {
+      res.json([]);
+      return;
+    }
+
+    courseIds = enrollments.map((e) => e.courseId);
+    enrollmentMap = new Map(enrollments.map((e) => [e.courseId, e.id]));
   }
-
-  const courseIds = enrollments.map((e) => e.courseId);
-  const enrollmentMap = new Map(enrollments.map((e) => [e.courseId, e.id]));
 
   const assignments = await db
     .select({
