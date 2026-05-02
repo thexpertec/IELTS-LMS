@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { coursesTable } from "./courses";
@@ -20,6 +20,7 @@ export const assignmentsTable = pgTable("assignments", {
   maxScore: integer("max_score").notNull().default(100),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   tenantId: integer("tenant_id").references(() => tenantsTable.id, { onDelete: "set null" }),
+  attachedLinks: jsonb("attached_links").$type<string[]>().default([]),
 });
 
 export const assignmentSubmissionsTable = pgTable("assignment_submissions", {
@@ -31,6 +32,7 @@ export const assignmentSubmissionsTable = pgTable("assignment_submissions", {
   score: integer("score"),
   feedback: text("feedback"),
   submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+  submissionLinks: jsonb("submission_links").$type<string[]>().default([]),
 });
 
 export const insertAssignmentSchema = createInsertSchema(assignmentsTable).omit({ id: true, createdAt: true });

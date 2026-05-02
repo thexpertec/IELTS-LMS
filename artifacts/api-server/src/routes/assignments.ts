@@ -25,6 +25,7 @@ router.get("/assignments", async (req, res): Promise<void> => {
       dueDate: assignmentsTable.dueDate,
       maxScore: assignmentsTable.maxScore,
       createdAt: assignmentsTable.createdAt,
+      attachedLinks: assignmentsTable.attachedLinks,
       courseTitle: coursesTable.title,
       submissionCount: count(assignmentSubmissionsTable.id),
     })
@@ -46,6 +47,7 @@ router.post("/assignments", async (req, res): Promise<void> => {
   }
 
   const tenantId = req.session.tenantId ?? null;
+  const attachedLinks: string[] = Array.isArray(req.body.attachedLinks) ? req.body.attachedLinks : [];
 
   const [row] = await db.insert(assignmentsTable).values({
     courseId: Number(courseId),
@@ -58,6 +60,7 @@ router.post("/assignments", async (req, res): Promise<void> => {
     dueDate: new Date(dueDate),
     maxScore: maxScore ? Number(maxScore) : 100,
     tenantId,
+    attachedLinks,
   }).returning();
 
   res.status(201).json({ ...row, courseTitle: null, submissionCount: 0 });
@@ -95,6 +98,7 @@ router.get("/assignments/:id", async (req, res): Promise<void> => {
       score: assignmentSubmissionsTable.score,
       feedback: assignmentSubmissionsTable.feedback,
       submittedAt: assignmentSubmissionsTable.submittedAt,
+      submissionLinks: assignmentSubmissionsTable.submissionLinks,
       studentName: enrollmentsTable.studentName,
     })
     .from(assignmentSubmissionsTable)
@@ -109,7 +113,7 @@ router.put("/assignments/:id", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  const { title, description, type, dueDate, maxScore, courseId, chapterId, lessonId, lessonType } = req.body;
+  const { title, description, type, dueDate, maxScore, courseId, chapterId, lessonId, lessonType, attachedLinks } = req.body;
   const update: Record<string, unknown> = {};
   if (title !== undefined) update.title = title;
   if (description !== undefined) update.description = description;
@@ -120,6 +124,7 @@ router.put("/assignments/:id", async (req, res): Promise<void> => {
   if (chapterId !== undefined) update.chapterId = chapterId ? Number(chapterId) : null;
   if (lessonId !== undefined) update.lessonId = lessonId ? Number(lessonId) : null;
   if (lessonType !== undefined) update.lessonType = lessonType ?? null;
+  if (attachedLinks !== undefined) update.attachedLinks = Array.isArray(attachedLinks) ? attachedLinks : [];
 
   const [row] = await db.update(assignmentsTable).set(update).where(eq(assignmentsTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }

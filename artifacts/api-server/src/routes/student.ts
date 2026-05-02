@@ -796,6 +796,7 @@ router.get("/student/assignments", async (req, res): Promise<void> => {
       type: assignmentsTable.type,
       dueDate: assignmentsTable.dueDate,
       maxScore: assignmentsTable.maxScore,
+      attachedLinks: assignmentsTable.attachedLinks,
     })
     .from(assignmentsTable)
     .leftJoin(coursesTable, eq(assignmentsTable.courseId, coursesTable.id))
@@ -824,6 +825,7 @@ router.get("/student/assignments", async (req, res): Promise<void> => {
             id: sub.id,
             assignmentId: sub.assignmentId,
             content: sub.content,
+            submissionLinks: (sub.submissionLinks as string[]) ?? [],
             score: sub.score ?? undefined,
             feedback: sub.feedback ?? undefined,
             submittedAt: sub.submittedAt.toISOString(),
@@ -841,6 +843,7 @@ router.get("/student/assignments", async (req, res): Promise<void> => {
         type: a.type as "assignment" | "quiz",
         dueDate: a.dueDate.toISOString(),
         maxScore: a.maxScore,
+        attachedLinks: (a.attachedLinks as string[]) ?? [],
         submission,
       };
     })
@@ -851,16 +854,23 @@ router.get("/student/assignments", async (req, res): Promise<void> => {
 
 router.post("/student/assignments/:id/submit", async (req, res): Promise<void> => {
   const assignmentId = parseInt(req.params.id, 10);
-  const { email, enrollmentId, content } = req.body as {
+  const { email, enrollmentId, content, submissionLinks } = req.body as {
     email?: string;
     enrollmentId?: number;
     content?: string;
+    submissionLinks?: string[];
   };
 
-  if (!email || !enrollmentId || !content) {
-    res.status(400).json({ error: "email, enrollmentId, and content are required" });
+  if (!email || !enrollmentId) {
+    res.status(400).json({ error: "email and enrollmentId are required" });
     return;
   }
+  if (!content && (!submissionLinks || submissionLinks.length === 0)) {
+    res.status(400).json({ error: "content or at least one link is required" });
+    return;
+  }
+
+  const links: string[] = Array.isArray(submissionLinks) ? submissionLinks.filter(Boolean) : [];
 
   const existing = await db
     .select()
@@ -877,13 +887,13 @@ router.post("/student/assignments/:id/submit", async (req, res): Promise<void> =
   if (existing.length > 0) {
     [submission] = await db
       .update(assignmentSubmissionsTable)
-      .set({ content, submittedAt: new Date() })
+      .set({ content: content ?? "", submissionLinks: links, submittedAt: new Date() })
       .where(eq(assignmentSubmissionsTable.id, existing[0].id))
       .returning();
   } else {
     [submission] = await db
       .insert(assignmentSubmissionsTable)
-      .values({ assignmentId, enrollmentId, studentEmail: email, content })
+      .values({ assignmentId, enrollmentId, studentEmail: email, content: content ?? "", submissionLinks: links })
       .returning();
   }
 
@@ -891,6 +901,7 @@ router.post("/student/assignments/:id/submit", async (req, res): Promise<void> =
     id: submission.id,
     assignmentId: submission.assignmentId,
     content: submission.content,
+    submissionLinks: submission.submissionLinks ?? [],
     score: submission.score ?? undefined,
     feedback: submission.feedback ?? undefined,
     submittedAt: submission.submittedAt.toISOString(),

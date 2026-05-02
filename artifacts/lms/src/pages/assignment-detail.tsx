@@ -9,7 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { format, isPast } from "date-fns";
 import {
-  ArrowLeft, Award, CheckCircle, Clock, Edit2, FileText, Save, Trash2, User, X,
+  ArrowLeft, Award, CheckCircle, Clock, Edit2, FileText, Link2, Plus, Save, Trash2, User, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,6 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 
 type AdminSubmission = {
   id: number;
@@ -33,6 +32,7 @@ type AdminSubmission = {
   studentEmail: string;
   studentName?: string | null;
   content: string;
+  submissionLinks?: string[];
   score?: number | null;
   feedback?: string | null;
   submittedAt: string;
@@ -109,6 +109,7 @@ function MarkingPanel({
 function SubmissionCard({ sub, maxScore, assignmentId }: { sub: AdminSubmission; maxScore: number; assignmentId: number }) {
   const [marking, setMarking] = useState(false);
   const isMarked = sub.score != null;
+  const links = sub.submissionLinks ?? [];
 
   return (
     <Card>
@@ -137,9 +138,29 @@ function SubmissionCard({ sub, maxScore, assignmentId }: { sub: AdminSubmission;
           </div>
         </div>
 
-        <div className="bg-muted/50 rounded-md p-3 text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-          {sub.content}
-        </div>
+        {sub.content && (
+          <div className="bg-muted/50 rounded-md p-3 text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+            {sub.content}
+          </div>
+        )}
+
+        {links.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Submitted Links</p>
+            {links.map((link, i) => (
+              <a
+                key={i}
+                href={link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 p-2 rounded-md bg-primary/5 border border-primary/20 text-sm text-primary hover:bg-primary/10 transition-colors"
+              >
+                <Link2 className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="truncate">{link}</span>
+              </a>
+            ))}
+          </div>
+        )}
 
         {sub.feedback && (
           <div className="bg-primary/5 border border-primary/20 rounded-md p-3 text-sm">
@@ -179,6 +200,8 @@ export default function AssignmentDetail() {
   const [editMaxScore, setEditMaxScore] = useState("");
   const [editType, setEditType] = useState<"assignment" | "quiz">("assignment");
   const [editCourseId, setEditCourseId] = useState("");
+  const [editLinks, setEditLinks] = useState<string[]>([]);
+  const [editLinkInput, setEditLinkInput] = useState("");
 
   const { data: assignment, isLoading } = useGetAssignment(id, {
     query: { enabled: !!id },
@@ -222,8 +245,19 @@ export default function AssignmentDetail() {
     setEditMaxScore(String(assignment.maxScore));
     setEditType(assignment.type as "assignment" | "quiz");
     setEditCourseId(String(assignment.courseId));
+    setEditLinks(((assignment as any).attachedLinks as string[]) ?? []);
     setEditing(true);
   };
+
+  const addEditLink = () => {
+    const url = editLinkInput.trim();
+    if (!url) return;
+    const withProtocol = url.startsWith("http://") || url.startsWith("https://") ? url : `https://${url}`;
+    if (!editLinks.includes(withProtocol)) setEditLinks((p) => [...p, withProtocol]);
+    setEditLinkInput("");
+  };
+
+  const removeEditLink = (idx: number) => setEditLinks((p) => p.filter((_, i) => i !== idx));
 
   const handleSaveEdit = () => {
     const dueDatetime = new Date(`${editDueDate}T${editDueTime}:00`).toISOString();
@@ -236,7 +270,8 @@ export default function AssignmentDetail() {
         maxScore: Number(editMaxScore),
         type: editType,
         courseId: Number(editCourseId),
-      },
+        attachedLinks: editLinks,
+      } as any,
     });
   };
 
@@ -253,6 +288,7 @@ export default function AssignmentDetail() {
   const overdue = isPast(due);
   const unmarked = assignment.submissions.filter((s: AdminSubmission) => s.score == null).length;
   const marked = assignment.submissions.filter((s: AdminSubmission) => s.score != null).length;
+  const attachedLinks: string[] = ((assignment as any).attachedLinks as string[]) ?? [];
 
   return (
     <div className="p-4 sm:p-8 max-w-4xl mx-auto space-y-6">
@@ -278,6 +314,23 @@ export default function AssignmentDetail() {
               <h1 className="text-3xl font-bold tracking-tight">{assignment.title}</h1>
               {assignment.description && (
                 <p className="text-muted-foreground mt-2 text-sm leading-relaxed">{assignment.description}</p>
+              )}
+              {attachedLinks.length > 0 && (
+                <div className="mt-3 space-y-1.5">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Reference Links</p>
+                  {attachedLinks.map((link, i) => (
+                    <a
+                      key={i}
+                      href={link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 p-2 rounded-md bg-muted/50 border text-sm text-primary hover:bg-muted transition-colors"
+                    >
+                      <Link2 className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="truncate">{link}</span>
+                    </a>
+                  ))}
+                </div>
               )}
               <div className="flex flex-wrap gap-4 mt-3 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1.5">
@@ -352,6 +405,33 @@ export default function AssignmentDetail() {
                 <Label className="text-xs mb-1.5 block">Description / Instructions</Label>
                 <Textarea rows={3} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
               </div>
+
+              {/* Attached links editor */}
+              <div className="space-y-2">
+                <Label className="text-xs mb-1.5 block">Reference Links</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="https://…"
+                    value={editLinkInput}
+                    onChange={(e) => setEditLinkInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addEditLink(); } }}
+                    className="text-sm"
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={addEditLink} className="gap-1 flex-shrink-0">
+                    <Plus className="w-3.5 h-3.5" /> Add
+                  </Button>
+                </div>
+                {editLinks.map((link, idx) => (
+                  <div key={idx} className="flex items-center gap-2 p-2 rounded-md bg-muted/50 border text-sm">
+                    <Link2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                    <span className="flex-1 truncate text-primary">{link}</span>
+                    <button type="button" onClick={() => removeEditLink(idx)} className="text-muted-foreground hover:text-destructive">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs mb-1.5 block">Type</Label>

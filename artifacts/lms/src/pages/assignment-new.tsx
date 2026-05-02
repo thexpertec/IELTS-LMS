@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useCreateAssignment, getListAssignmentsQueryKey } from "@workspace/api-client-react";
 import { useLocation, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -5,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Link2, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage,
@@ -41,6 +42,9 @@ export default function AssignmentNew() {
   const prefilledChapterId = params.get("chapterId") ?? "none";
   const prefilledLessonType = params.get("lessonType") ?? undefined;
 
+  const [attachedLinks, setAttachedLinks] = useState<string[]>([]);
+  const [linkInput, setLinkInput] = useState("");
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -68,6 +72,19 @@ export default function AssignmentNew() {
     },
   });
 
+  const addLink = () => {
+    const url = linkInput.trim();
+    if (!url) return;
+    const withProtocol = url.startsWith("http://") || url.startsWith("https://") ? url : `https://${url}`;
+    if (!attachedLinks.includes(withProtocol)) {
+      setAttachedLinks((prev) => [...prev, withProtocol]);
+    }
+    setLinkInput("");
+  };
+
+  const removeLink = (idx: number) =>
+    setAttachedLinks((prev) => prev.filter((_, i) => i !== idx));
+
   function onSubmit(values: FormValues) {
     const dueDatetime = new Date(`${values.dueDate}T${values.dueTime}:00`).toISOString();
     createAssignment.mutate({
@@ -81,7 +98,8 @@ export default function AssignmentNew() {
         type: values.type,
         dueDate: dueDatetime,
         maxScore: values.maxScore,
-      },
+        attachedLinks,
+      } as any,
     });
   }
 
@@ -153,6 +171,40 @@ export default function AssignmentNew() {
               </FormItem>
             )}
           />
+
+          {/* Attached Links */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Reference Links <span className="text-muted-foreground font-normal">(optional)</span></p>
+            <p className="text-xs text-muted-foreground">Add links students should refer to — e.g. Google Forms, documents, resources.</p>
+            <div className="flex gap-2">
+              <Input
+                placeholder="https://docs.google.com/…"
+                value={linkInput}
+                onChange={(e) => setLinkInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLink(); } }}
+                className="text-sm"
+              />
+              <Button type="button" variant="outline" size="sm" onClick={addLink} className="gap-1.5 flex-shrink-0">
+                <Plus className="w-3.5 h-3.5" />
+                Add
+              </Button>
+            </div>
+            {attachedLinks.length > 0 && (
+              <div className="space-y-1.5">
+                {attachedLinks.map((link, idx) => (
+                  <div key={idx} className="flex items-center gap-2 p-2 rounded-md bg-muted/50 border text-sm">
+                    <Link2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                    <a href={link} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-primary hover:underline">
+                      {link}
+                    </a>
+                    <button type="button" onClick={() => removeLink(idx)} className="text-muted-foreground hover:text-destructive flex-shrink-0">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <FormField

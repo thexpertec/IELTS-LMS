@@ -16,6 +16,13 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 
+## Assignment Links Feature
+
+- **Admin**: Can attach reference links (e.g. Google Forms, docs) when creating or editing assignments — stored as `attachedLinks jsonb` on `assignmentsTable`
+- **Students**: See admin's reference links on each assignment; can also submit their own links (e.g. Google Docs responses) alongside or instead of typed text — stored as `submissionLinks jsonb` on `assignmentSubmissionsTable`
+- **Admin marking view**: Shows each student's submitted links as clickable entries alongside their written content
+- Submission now requires *either* typed content *or* at least one link (no longer mandatory to type text)
+
 ## Quiz Feature (Admin LMS)
 
 - Admin sidebar now has a **Quizzes** section at `/quizzes`
