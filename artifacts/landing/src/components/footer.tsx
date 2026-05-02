@@ -1,56 +1,62 @@
 import { Link } from "wouter";
 
 export function Footer() {
+  const cols = [
+    {
+      title: "Platform",
+      links: ["IELTS Band Training", "Question Types", "Precision Scoring", "Multimedia Engine"],
+    },
+    {
+      title: "Solutions",
+      links: ["For Students", "For Tutors", "For Institutions", "Enterprise"],
+    },
+    {
+      title: "Company",
+      links: ["About", "Blog", "Careers", "Contact"],
+    },
+  ];
+
   return (
-    <footer className="bg-primary text-white py-16 md:py-24">
-      <div className="container mx-auto px-4 md:px-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
-          <div className="md:col-span-1">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-8 h-8 bg-white rounded flex items-center justify-center text-primary font-serif font-bold text-lg">
-                O
-              </div>
-              <span className="font-serif font-bold text-xl tracking-tight text-white">OneSoft LMS</span>
+    <footer className="bg-gray-950 text-white">
+      <div className="container mx-auto px-4 md:px-6 py-16 md:py-20">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-10">
+          <div className="col-span-2">
+            <div className="flex items-center gap-2.5 mb-5">
+              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-bold text-sm">O</div>
+              <span className="font-bold text-[1.05rem] tracking-tight">OneSoft LMS</span>
             </div>
-            <p className="text-white/80 text-sm leading-relaxed max-w-xs">
-              The advanced Learning Management System built specifically for serious IELTS exam preparation and professional language mastery.
+            <p className="text-gray-400 text-sm leading-relaxed max-w-xs mb-6">
+              The advanced Learning Management System purpose-built for serious IELTS exam preparation and professional language mastery.
             </p>
+            <div className="flex gap-3">
+              {["Twitter", "LinkedIn", "YouTube"].map((s) => (
+                <div key={s} className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-gray-400 hover:bg-primary hover:text-white transition-colors cursor-pointer text-[10px] font-bold">
+                  {s[0]}
+                </div>
+              ))}
+            </div>
           </div>
-          
-          <div>
-            <h4 className="font-bold mb-6 font-serif text-white">Platform</h4>
-            <ul className="space-y-4 text-sm text-white/75">
-              <li><Link href="#bands" className="hover:text-white transition-colors">IELTS Band Training</Link></li>
-              <li><Link href="#features" className="hover:text-white transition-colors">Question Types</Link></li>
-              <li><Link href="#scoring" className="hover:text-white transition-colors">Precision Scoring</Link></li>
-              <li><Link href="#multimedia" className="hover:text-white transition-colors">Multimedia Engine</Link></li>
-            </ul>
-          </div>
-          
-          <div>
-            <h4 className="font-bold mb-6 font-serif text-white">Solutions</h4>
-            <ul className="space-y-4 text-sm text-white/75">
-              <li><Link href="#students" className="hover:text-white transition-colors">For Ambitious Students</Link></li>
-              <li><Link href="#tutors" className="hover:text-white transition-colors">For Professional Tutors</Link></li>
-              <li><Link href="#institutions" className="hover:text-white transition-colors">For Institutions</Link></li>
-            </ul>
-          </div>
-          
-          <div>
-            <h4 className="font-bold mb-6 font-serif text-white">Contact</h4>
-            <ul className="space-y-4 text-sm text-white/75">
-              <li>contact@onesoftlms.com</li>
-              <li>+1 (555) 123-4567</li>
-              <li>San Francisco, CA</li>
-            </ul>
-          </div>
+
+          {cols.map((col) => (
+            <div key={col.title}>
+              <h4 className="font-semibold text-sm mb-5 text-white">{col.title}</h4>
+              <ul className="space-y-3.5">
+                {col.links.map((l) => (
+                  <li key={l}>
+                    <a href="#" className="text-sm text-gray-400 hover:text-white transition-colors">{l}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
-        
-        <div className="border-t border-white/20 mt-16 pt-8 flex flex-col md:flex-row items-center justify-between text-xs text-white/65">
+
+        <div className="border-t border-white/10 mt-14 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
           <p>&copy; {new Date().getFullYear()} OneSoft LMS. All rights reserved.</p>
-          <div className="flex gap-6 mt-4 md:mt-0">
-            <span>Privacy Policy</span>
-            <span>Terms of Service</span>
+          <div className="flex gap-6">
+            <a href="#" className="hover:text-gray-300 transition-colors">Privacy Policy</a>
+            <a href="#" className="hover:text-gray-300 transition-colors">Terms of Service</a>
+            <a href="#" className="hover:text-gray-300 transition-colors">Cookie Settings</a>
           </div>
         </div>
       </div>
