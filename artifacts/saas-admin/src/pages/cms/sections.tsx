@@ -9,8 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-
 /* Default content for each editable section */
 const DEFAULTS: Record<string, { label: string; description: string; defaultContent: object }> = {
   hero: {
@@ -93,13 +91,13 @@ type Section = {
 };
 
 async function fetchSections(): Promise<Section[]> {
-  const r = await fetch(`${BASE}/api/cms/sections`, { credentials: "include" });
+  const r = await fetch(`/api/cms/sections`, { credentials: "include" });
   if (!r.ok) throw new Error("Failed to load");
   return r.json();
 }
 
 async function saveSection(key: string, content: object, label: string) {
-  const r = await fetch(`${BASE}/api/cms/sections/${key}`, {
+  const r = await fetch(`/api/cms/sections/${key}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     credentials: "include",

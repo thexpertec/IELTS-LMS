@@ -14,8 +14,6 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-
 type Post = {
   id: number; title: string; slug: string; excerpt: string | null;
   author: string; status: string; tags: string[]; publishedAt: string | null;
@@ -23,18 +21,18 @@ type Post = {
 };
 
 async function fetchPosts(): Promise<Post[]> {
-  const r = await fetch(`${BASE}/api/cms/posts?all=true`, { credentials: "include" });
+  const r = await fetch(`/api/cms/posts?all=true`, { credentials: "include" });
   if (!r.ok) throw new Error("Failed to load posts");
   return r.json();
 }
 
 async function deletePost(id: number) {
-  const r = await fetch(`${BASE}/api/cms/posts/${id}`, { method: "DELETE", credentials: "include" });
+  const r = await fetch(`/api/cms/posts/${id}`, { method: "DELETE", credentials: "include" });
   if (!r.ok) throw new Error("Failed to delete");
 }
 
 async function toggleStatus(id: number, status: string) {
-  const r = await fetch(`${BASE}/api/cms/posts/${id}`, {
+  const r = await fetch(`/api/cms/posts/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     credentials: "include",

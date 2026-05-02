@@ -7,17 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-
 type Post = { id: number; title: string; status: string; createdAt: string; author: string };
 type Section = { id: number; sectionKey: string; label: string | null; updatedAt: string };
 
 async function fetchPosts(): Promise<Post[]> {
-  const r = await fetch(`${BASE}/api/cms/posts?all=true`, { credentials: "include" });
+  const r = await fetch(`/api/cms/posts?all=true`, { credentials: "include" });
   return r.ok ? r.json() : [];
 }
 async function fetchSections(): Promise<Section[]> {
-  const r = await fetch(`${BASE}/api/cms/sections`, { credentials: "include" });
+  const r = await fetch(`/api/cms/sections`, { credentials: "include" });
   return r.ok ? r.json() : [];
 }
 

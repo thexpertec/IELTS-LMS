@@ -13,8 +13,6 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-
 type Post = {
   id?: number; title: string; slug: string; excerpt: string;
   content: string; coverImage: string; author: string;
@@ -26,7 +24,7 @@ function slugify(str: string) {
 }
 
 async function fetchPost(slug: string) {
-  const r = await fetch(`${BASE}/api/cms/posts/${slug}`, { credentials: "include" });
+  const r = await fetch(`/api/cms/posts/${slug}`, { credentials: "include" });
   if (!r.ok) throw new Error("Not found");
   return r.json();
 }
@@ -49,7 +47,7 @@ export default function PostEditor() {
     queryKey: ["cms-post", idStr],
     queryFn: async () => {
       // idStr could be a numeric id, need to find by id then get slug
-      const allR = await fetch(`${BASE}/api/cms/posts?all=true`, { credentials: "include" });
+      const allR = await fetch(`/api/cms/posts?all=true`, { credentials: "include" });
       const all = await allR.json();
       return all.find((p: any) => p.id === Number(idStr));
     },
@@ -75,7 +73,7 @@ export default function PostEditor() {
 
   const saveMutation = useMutation({
     mutationFn: async (data: Post) => {
-      const url = isNew ? `${BASE}/api/cms/posts` : `${BASE}/api/cms/posts/${idStr}`;
+      const url = isNew ? `/api/cms/posts` : `/api/cms/posts/${idStr}`;
       const method = isNew ? "POST" : "PUT";
       const r = await fetch(url, {
         method,
