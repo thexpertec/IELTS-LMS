@@ -15,6 +15,7 @@ import tenantsRouter from "./tenants";
 import authRouter from "./auth";
 import lessonTypesRouter from "./lesson-types";
 import chatRouter from "./chat";
+import cmsRouter from "./cms";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(streamRouter);
 router.use(tenantsRouter);
 router.use(lessonTypesRouter);
 router.use(chatRouter);
+router.use(cmsRouter);
 
 export default router;

@@ -16,6 +16,32 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 
+## CMS Module
+
+### DB Tables
+- `cms_sections` — key/value store for landing page section content (hero, stats, testimonials, FAQ, pricing, site_settings) stored as JSONB. Fallback to built-in defaults if no row exists.
+- `cms_posts` — blog posts (title, slug, excerpt, content, coverImage, author, status, tags, publishedAt)
+
+### API Routes (`/api/cms/...`) — all under `artifacts/api-server/src/routes/cms.ts`
+- `GET /api/cms/sections` — public; returns all saved sections
+- `PUT /api/cms/sections/:key` — admin only; upserts a section's JSON content
+- `GET /api/cms/posts` — public (published only); pass `?all=true` with admin auth for all
+- `GET /api/cms/posts/:slug` — public; single post by slug
+- `POST /api/cms/posts` — admin only; create post
+- `PUT /api/cms/posts/:id` — admin only; update post (auto-sets publishedAt when status→published)
+- `DELETE /api/cms/posts/:id` — admin only
+
+### SaaS Admin CMS UI (`artifacts/saas-admin/src/pages/cms/`)
+- `/cms` — CMS overview dashboard (stats, recent posts, section status)
+- `/cms/sections` — edit any landing page section's JSON inline (expand/collapse per section, reset to default)
+- `/cms/posts` — blog post list (publish toggle, delete, search)
+- `/cms/posts/new` or `/cms/posts/:id` — full post editor (title, slug, excerpt, markdown content, tags, cover image, status)
+
+### Landing Page Blog (`artifacts/landing/src/pages/`)
+- `/blog` — public blog listing (tag filter, search, card grid)
+- `/blog/:slug` — public post detail (markdown rendered, share button, CTA footer)
+- Navbar updated to include "Blog" link
+
 ## Assignment Links Feature
 
 - **Admin**: Can attach reference links (e.g. Google Forms, docs) when creating or editing assignments — stored as `attachedLinks jsonb` on `assignmentsTable`

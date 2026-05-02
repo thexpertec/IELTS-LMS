@@ -11,6 +11,10 @@ import TenantDetail from "@/pages/tenants/detail";
 import PlatformHealth from "@/pages/health";
 import Settings from "@/pages/settings";
 import Login from "@/pages/login";
+import CmsIndex from "@/pages/cms/index";
+import CmsPosts from "@/pages/cms/posts";
+import PostEditor from "@/pages/cms/post-editor";
+import CmsSections from "@/pages/cms/sections";
 import { AuthProvider, useAuth } from "@/context/auth-context";
 import type { ReactNode } from "react";
 
@@ -44,6 +48,18 @@ function Router() {
       </Route>
       <Route path="/settings">
         <AuthGuard><Settings /></AuthGuard>
+      </Route>
+      <Route path="/cms">
+        <AuthGuard><CmsIndex /></AuthGuard>
+      </Route>
+      <Route path="/cms/sections">
+        <AuthGuard><CmsSections /></AuthGuard>
+      </Route>
+      <Route path="/cms/posts">
+        <AuthGuard><CmsPosts /></AuthGuard>
+      </Route>
+      <Route path="/cms/posts/:id">
+        <AuthGuard><PostEditor /></AuthGuard>
       </Route>
       <Route component={NotFound} />
     </Switch>

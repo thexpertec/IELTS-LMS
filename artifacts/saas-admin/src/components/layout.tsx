@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Users, Settings, Activity, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Settings, Activity, LogOut, Globe, FileText, LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,12 @@ export function Layout({ children }: LayoutProps) {
     { name: "Settings", href: "/settings", icon: Settings },
   ];
 
+  const cmsNavigation = [
+    { name: "CMS Overview", href: "/cms", icon: LayoutGrid, exact: true },
+    { name: "Page Sections", href: "/cms/sections", icon: Globe },
+    { name: "Blog Posts", href: "/cms/posts", icon: FileText },
+  ];
+
   return (
     <div className="min-h-screen bg-muted/30 flex">
       <aside className="w-64 border-r bg-card flex-col hidden md:flex">
@@ -31,7 +37,8 @@ export function Layout({ children }: LayoutProps) {
           </div>
         </div>
 
-        <nav className="flex-1 py-4 px-3 space-y-1">
+        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 pb-1">Platform</p>
           {navigation.map((item) => {
             const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
             return (
@@ -50,6 +57,30 @@ export function Layout({ children }: LayoutProps) {
               </Link>
             );
           })}
+
+          <div className="pt-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 pb-1">Website Content</p>
+            {cmsNavigation.map((item) => {
+              const isActive = item.exact
+                ? location === item.href
+                : location === item.href || location.startsWith(item.href + "/");
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.name}
+                </Link>
+              );
+            })}
+          </div>
         </nav>
 
         <div className="p-4 border-t">

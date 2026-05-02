@@ -14,11 +14,15 @@ export function Navbar() {
   }, []);
 
   const links = [
-    { label: "For Academies", href: "#academies" },
-    { label: "Features", href: "#features" },
-    { label: "IELTS Tools", href: "#ielts-tools" },
-    { label: "Pricing", href: "#pricing" },
+    { label: "For Academies", href: "#academies", isRoute: false },
+    { label: "Features", href: "#features", isRoute: false },
+    { label: "IELTS Tools", href: "#ielts-tools", isRoute: false },
+    { label: "Pricing", href: "#pricing", isRoute: false },
+    { label: "Blog", href: "/blog", isRoute: true },
   ];
+
+  const linkClass = "px-3.5 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-gray-50 transition-all";
+  const mobileLinkClass = "block px-3 py-2.5 text-sm font-medium text-foreground hover:bg-gray-50 rounded-lg transition-colors";
 
   return (
     <header
@@ -37,15 +41,17 @@ export function Navbar() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-1">
-          {links.map((l) => (
-            <a
-              key={l.label}
-              href={l.href}
-              className="px-3.5 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-gray-50 transition-all"
-            >
-              {l.label}
-            </a>
-          ))}
+          {links.map((l) =>
+            l.isRoute ? (
+              <Link key={l.label} href={l.href} className={linkClass}>
+                {l.label}
+              </Link>
+            ) : (
+              <a key={l.label} href={l.href} className={linkClass}>
+                {l.label}
+              </a>
+            )
+          )}
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
@@ -67,16 +73,27 @@ export function Navbar() {
 
       {mobileOpen && (
         <div className="md:hidden bg-white border-b border-gray-100 px-4 pb-4 space-y-1">
-          {links.map((l) => (
-            <a
-              key={l.label}
-              href={l.href}
-              className="block px-3 py-2.5 text-sm font-medium text-foreground hover:bg-gray-50 rounded-lg transition-colors"
-              onClick={() => setMobileOpen(false)}
-            >
-              {l.label}
-            </a>
-          ))}
+          {links.map((l) =>
+            l.isRoute ? (
+              <Link
+                key={l.label}
+                href={l.href}
+                className={mobileLinkClass}
+                onClick={() => setMobileOpen(false)}
+              >
+                {l.label}
+              </Link>
+            ) : (
+              <a
+                key={l.label}
+                href={l.href}
+                className={mobileLinkClass}
+                onClick={() => setMobileOpen(false)}
+              >
+                {l.label}
+              </a>
+            )
+          )}
           <div className="pt-2 flex flex-col gap-2">
             <a href="/lms/" className="block px-3 py-2.5 text-sm font-medium text-center border border-gray-200 rounded-lg">Sign In</a>
             <a href="/lms/" className="block px-3 py-2.5 text-sm font-semibold text-center bg-primary text-white rounded-lg">Book a Demo</a>
