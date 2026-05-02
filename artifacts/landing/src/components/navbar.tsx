@@ -14,9 +14,9 @@ export function Navbar() {
   }, []);
 
   const links = [
-    { label: "Platform", href: "#platform" },
-    { label: "IELTS Bands", href: "#bands" },
-    { label: "For Tutors", href: "#tutors" },
+    { label: "For Academies", href: "#academies" },
+    { label: "Features", href: "#features" },
+    { label: "IELTS Tools", href: "#ielts-tools" },
     { label: "Pricing", href: "#pricing" },
   ];
 
@@ -53,7 +53,7 @@ export function Navbar() {
             Sign In
           </a>
           <Button asChild className="rounded-lg px-5 h-9 text-sm font-semibold shadow-sm shadow-primary/20">
-            <a href="/lms/">Get Started →</a>
+            <a href="/lms/">Book a Demo →</a>
           </Button>
         </div>
 
@@ -79,7 +79,7 @@ export function Navbar() {
           ))}
           <div className="pt-2 flex flex-col gap-2">
             <a href="/lms/" className="block px-3 py-2.5 text-sm font-medium text-center border border-gray-200 rounded-lg">Sign In</a>
-            <a href="/lms/" className="block px-3 py-2.5 text-sm font-semibold text-center bg-primary text-white rounded-lg">Get Started</a>
+            <a href="/lms/" className="block px-3 py-2.5 text-sm font-semibold text-center bg-primary text-white rounded-lg">Book a Demo</a>
           </div>
         </div>
       )}
