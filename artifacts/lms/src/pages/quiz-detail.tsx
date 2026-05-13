@@ -37,6 +37,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -2169,7 +2170,7 @@ export default function QuizDetail() {
         <DialogContent className="max-w-lg flex flex-col max-h-[85vh]">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>Edit Quiz Settings</DialogTitle>
-            <DialogDescription>Update the quiz title, description, and options.</DialogDescription>
+            <DialogDescription>Update the quiz title, passage, and options.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2 overflow-y-auto flex-1 pr-1">
             <div>
@@ -2182,12 +2183,15 @@ export default function QuizDetail() {
               />
             </div>
             <div>
-              <Label>Description</Label>
-              <Textarea
-                className="mt-1.5 min-h-[160px]"
-                value={settingsForm.description}
-                onChange={(e) => setSettingsForm({ ...settingsForm, description: e.target.value })}
-              />
+              <Label>Passage</Label>
+              <div className="mt-1.5">
+                <RichTextEditor
+                  value={settingsForm.description}
+                  onChange={(value) => setSettingsForm({ ...settingsForm, description: value })}
+                  placeholder="Enter passage or exam instructions…"
+                  minHeight="180px"
+                />
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label>Link to Course / Unit / Lesson</Label>
