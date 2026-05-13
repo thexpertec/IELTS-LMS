@@ -14,7 +14,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
-import { PartsEditor, type QuizPart } from "@/components/quiz/parts-editor";
 import { CourseLessonPicker } from "@/components/ui/course-lesson-picker";
 import { MultiMediaUploadField } from "@/components/ui/multi-media-upload-field";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
@@ -39,7 +38,6 @@ export default function QuizNew() {
   const search = useSearch();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [parts, setParts] = useState<QuizPart[]>([]);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [audioUrls, setAudioUrls] = useState<string[]>([]);
 
@@ -81,7 +79,6 @@ export default function QuizNew() {
         title: values.title,
         description: values.description || "",
         passageText: values.passageText || undefined,
-        parts: parts.length > 0 ? parts : undefined,
         courseId: values.courseId && values.courseId !== "none" ? Number(values.courseId) : undefined,
         chapterId: values.chapterId && values.chapterId !== "none" ? Number(values.chapterId) : undefined,
         lessonId: values.lessonId && values.lessonId !== "none" ? Number(values.lessonId) : undefined,
@@ -199,10 +196,6 @@ export default function QuizNew() {
                   onChange={setAudioUrls}
                 />
               </div>
-            </div>
-
-            <div className="md:col-span-2">
-              <PartsEditor value={parts} onChange={setParts} hideAddButton />
             </div>
 
             <div className="md:col-span-2 space-y-1.5">
