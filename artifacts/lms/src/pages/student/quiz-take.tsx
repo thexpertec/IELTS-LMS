@@ -16,9 +16,16 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, Clock, List } from "lucide-react";
+
 import {
   DndContext, useDraggable, useDroppable, type DragEndEvent,
 } from "@dnd-kit/core";
+
+function getServingUrl(path: string): string {
+  if (!path) return "";
+  if (path.startsWith("http")) return path;
+  return `/api/storage${path}`;
+}
 
 // ─────────────────────────────────────────────
 // Types
@@ -1131,19 +1138,20 @@ export default function StudentQuizTake() {
             {hasLeftPanel ? (
               <>
                 {tabImages.map((src, i) => (
-                  <img key={i} src={src} alt={`Reading image ${i + 1}`} className="rounded-lg border mb-4 w-full object-contain max-h-72" />
+                  <img key={i} src={getServingUrl(src)} alt={`Reading image ${i + 1}`} className="rounded-lg border mb-4 w-full object-contain max-h-72" />
                 ))}
                 {tabAudios.map((src, i) => (
-                  <audio key={i} controls src={src} className="w-full mb-4" />
+                  <audio key={i} controls src={getServingUrl(src)} className="w-full mb-4" />
                 ))}
                 {leftPassage && (
                   <>
                     {currentTab.label !== "QUESTIONS" && currentTab.label && (
                       <h2 className="text-base font-bold mb-4 text-foreground">{quiz.title}</h2>
                     )}
-                    <div className="text-sm leading-7 text-foreground whitespace-pre-wrap">
-                      {leftPassage}
-                    </div>
+                    <div
+                      className="text-sm leading-7 text-foreground prose prose-sm max-w-none dark:prose-invert"
+                      dangerouslySetInnerHTML={{ __html: leftPassage }}
+                    />
                   </>
                 )}
               </>
@@ -1153,9 +1161,10 @@ export default function StudentQuizTake() {
                 <div>
                   <h2 className="text-base font-bold text-foreground">{quiz.title}</h2>
                   {(quiz as { description?: string }).description && (
-                    <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
-                      {(quiz as { description?: string }).description}
-                    </p>
+                    <div
+                      className="text-sm text-muted-foreground mt-1 leading-relaxed prose prose-sm max-w-none dark:prose-invert"
+                      dangerouslySetInnerHTML={{ __html: (quiz as { description?: string }).description! }}
+                    />
                   )}
                 </div>
                 {currentTab.instructions?.some(Boolean) && (
