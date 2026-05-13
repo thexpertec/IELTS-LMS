@@ -23,9 +23,10 @@ interface PartsEditorProps {
   value: QuizPart[];
   onChange: (parts: QuizPart[]) => void;
   totalQuestions?: number;
+  hideAddButton?: boolean;
 }
 
-export function PartsEditor({ value, onChange, totalQuestions }: PartsEditorProps) {
+export function PartsEditor({ value, onChange, totalQuestions, hideAddButton }: PartsEditorProps) {
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
 
   function toggleExpanded(i: number) {
@@ -96,10 +97,12 @@ export function PartsEditor({ value, onChange, totalQuestions }: PartsEditorProp
             (groups shown in the quiz footer, with instructions above each section)
           </span>
         </Label>
-        <Button type="button" variant="outline" size="sm" onClick={addPart}>
-          <Plus className="w-3.5 h-3.5 mr-1" />
-          Add Question Type
-        </Button>
+        {!hideAddButton && (
+          <Button type="button" variant="outline" size="sm" onClick={addPart}>
+            <Plus className="w-3.5 h-3.5 mr-1" />
+            Add Question Type
+          </Button>
+        )}
       </div>
 
       {value.length === 0 ? (

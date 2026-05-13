@@ -202,7 +202,7 @@ export default function QuizNew() {
             </div>
 
             <div className="md:col-span-2">
-              <PartsEditor value={parts} onChange={setParts} />
+              <PartsEditor value={parts} onChange={setParts} hideAddButton />
             </div>
 
             <div className="md:col-span-2 space-y-1.5">
