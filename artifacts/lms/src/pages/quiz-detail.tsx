@@ -1442,17 +1442,16 @@ export default function QuizDetail() {
       return;
     }
 
-    const ungrouped: number[] = [];
     const partGroups: number[][] = parts.map(() => []);
     qs.forEach((q, i) => {
       const pos = i + 1;
       const pi = parts.findIndex((p) => pos >= p.from && pos <= p.to);
-      if (pi >= 0) partGroups[pi].push(q.id);
-      else ungrouped.push(q.id);
+      // If no matching section, assign to last section so no question is orphaned
+      partGroups[pi >= 0 ? pi : parts.length - 1].push(q.id);
     });
 
     setGroups([
-      { key: "ungrouped", questionIds: ungrouped },
+      { key: "ungrouped", questionIds: [] },
       ...parts.map((p, i) => ({ key: `part-${i}`, part: p, questionIds: partGroups[i] })),
     ]);
   }, [quiz]);
