@@ -682,10 +682,10 @@ function MultiSelectEditor({ opts, onChange }: { opts: MultiSelectOpts; onChange
   return (
     <div className="space-y-4">
       <div>
-        <Label>Instruction Text</Label>
+        <Label>Question Statement</Label>
         <Textarea
           className="mt-1.5 min-h-[80px]"
-          placeholder={`e.g. Choose THREE letters A-${letters[opts.options.length - 1]}.\nNB Your answers may be given in any order.\nWhich THREE of the following statements are true?`}
+          placeholder={`e.g. Which THREE of the following statements are true?`}
           value={opts.instruction}
           onChange={(e) => onChange({ ...opts, instruction: e.target.value })}
         />
