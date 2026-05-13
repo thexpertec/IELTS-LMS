@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, sql, and, isNotNull } from "drizzle-orm";
+import { eq, sql, and, isNotNull, count } from "drizzle-orm";
 import { db, quizzesTable, quizQuestionsTable, quizAttemptsTable, enrollmentsTable, coursesTable } from "@workspace/db";
 import {
   ListQuizzesQueryParams,
@@ -34,6 +34,7 @@ router.get("/quizzes", async (req, res): Promise<void> => {
       id: quizzesTable.id,
       title: quizzesTable.title,
       description: quizzesTable.description,
+      passageText: quizzesTable.passageText,
       courseId: quizzesTable.courseId,
       chapterId: quizzesTable.chapterId,
       lessonId: quizzesTable.lessonId,
@@ -43,10 +44,12 @@ router.get("/quizzes", async (req, res): Promise<void> => {
       tenantId: quizzesTable.tenantId,
       createdAt: quizzesTable.createdAt,
       updatedAt: quizzesTable.updatedAt,
-      questionCount: sql<number>`(select coalesce(sum(case when type = 'matching' then jsonb_array_length(options->'leftItems') else 1 end)::int, 0) from quiz_questions where quiz_id = ${quizzesTable.id})`,
+      questionCount: sql<number>`coalesce(sum(case when ${quizQuestionsTable.type} = 'matching' then jsonb_array_length(${quizQuestionsTable.options}::jsonb->'leftItems') else 1 end)::int, 0)`,
     })
     .from(quizzesTable)
+    .leftJoin(quizQuestionsTable, eq(quizQuestionsTable.quizId, quizzesTable.id))
     .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .groupBy(quizzesTable.id)
     .orderBy(quizzesTable.createdAt);
 
   res.json(quizzes);
