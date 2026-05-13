@@ -44,7 +44,7 @@ export default function StudentQuizList() {
                   <div className="flex-1 min-w-0">
                     <CardTitle className="text-lg line-clamp-1">{quiz.title}</CardTitle>
                     {quiz.description && (
-                      <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{quiz.description}</p>
+                      <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{quiz.description.replace(/<[^>]*>/g, "")}</p>
                     )}
                   </div>
                 </div>

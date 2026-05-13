@@ -96,7 +96,7 @@ export default function Quizzes() {
                     </div>
                     <CardTitle className="text-lg line-clamp-1 mt-2">{quiz.title}</CardTitle>
                     {quiz.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-2">{quiz.description}</p>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{quiz.description.replace(/<[^>]*>/g, "")}</p>
                     )}
                   </div>
                 </div>

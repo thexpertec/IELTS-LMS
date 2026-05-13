@@ -492,7 +492,7 @@ function UnitSection({
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="font-medium text-sm truncate">{quiz.title}</h4>
-                      {quiz.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{quiz.description}</p>}
+                      {quiz.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{quiz.description.replace(/<[^>]*>/g, "")}</p>}
                       <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
                         <span>{quiz.questionCount} question{quiz.questionCount !== 1 ? "s" : ""}</span>
                         {quiz.timeLimitMinutes && <span className="flex items-center gap-1"><Timer className="w-3 h-3" />{quiz.timeLimitMinutes} min</span>}
