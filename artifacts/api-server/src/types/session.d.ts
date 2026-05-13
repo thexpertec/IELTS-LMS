@@ -7,5 +7,6 @@ declare module "express-session" {
     name?: string;
     role?: string;
     tenantId?: number;
+    tenantDbPrefix?: string;
   }
 }

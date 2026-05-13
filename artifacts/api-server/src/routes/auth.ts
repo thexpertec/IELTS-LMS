@@ -4,8 +4,21 @@ import { db } from "@workspace/db";
 import { usersTable, tenantsTable } from "@workspace/db/schema";
 import { ilike, eq } from "drizzle-orm";
 import { ensureTenantLessonTypes } from "../lib/ensure-tenant-lesson-types";
+import { generateDbPrefix } from "../lib/db-prefix";
+import { getTenantCached } from "../lib/tenant-cache";
 
 const router = Router();
+
+function regenerateSession(req: Parameters<typeof Router>[0] extends never ? never : import("express").Request): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const data = { ...req.session };
+    req.session.regenerate((err) => {
+      if (err) return reject(err);
+      Object.assign(req.session, data);
+      resolve();
+    });
+  });
+}
 
 router.post("/login", async (req, res) => {
   const { email, password } = req.body as { email?: string; password?: string };
@@ -32,11 +45,20 @@ router.post("/login", async (req, res) => {
     return;
   }
 
+  let tenantDbPrefix: string | undefined;
+  if (user.tenantId) {
+    const tenant = await getTenantCached(user.tenantId).catch(() => null);
+    if (tenant) tenantDbPrefix = tenant.dbPrefix;
+  }
+
   req.session.userId = user.id;
   req.session.email = user.email;
   req.session.name = user.name;
   req.session.role = user.role;
   req.session.tenantId = user.tenantId ?? undefined;
+  req.session.tenantDbPrefix = tenantDbPrefix;
+
+  await new Promise<void>((resolve) => req.session.save(resolve));
 
   res.json({
     id: user.id,
@@ -87,17 +109,19 @@ router.post("/register", async (req, res) => {
     .replace(/^-+|-+$/g, "")
     .slice(0, 60) + "-" + Date.now().toString(36);
 
+  const dbPrefix = generateDbPrefix();
   const passwordHash = await bcrypt.hash(password, 10);
 
   const baseUsername = normalizedEmail.split("@")[0]!.replace(/[^a-z0-9_]/g, "_");
   const username = `${baseUsername}_${Date.now().toString(36)}`;
 
-  const { user } = await db.transaction(async (tx) => {
+  const { tenant, user } = await db.transaction(async (tx) => {
     const [tenant] = await tx
       .insert(tenantsTable)
       .values({
         name: orgName.trim(),
         slug,
+        dbPrefix,
         adminEmail: normalizedEmail,
         adminName: name.trim(),
         plan: "trial",
@@ -125,12 +149,15 @@ router.post("/register", async (req, res) => {
   req.session.name = user.name;
   req.session.role = user.role;
   req.session.tenantId = user.tenantId ?? undefined;
+  req.session.tenantDbPrefix = tenant.dbPrefix;
 
   if (user.tenantId) {
     await ensureTenantLessonTypes(user.tenantId).catch((err) =>
       console.error("Failed to seed lesson types for new tenant:", err)
     );
   }
+
+  await new Promise<void>((resolve) => req.session.save(resolve));
 
   res.status(201).json({
     id: user.id,
@@ -143,7 +170,7 @@ router.post("/register", async (req, res) => {
 
 router.post("/logout", (req, res) => {
   req.session.destroy(() => {
-    res.clearCookie("connect.sid");
+    res.clearCookie("sid");
     res.json({ ok: true });
   });
 });

@@ -16,3 +16,4 @@ export * from "./quiz_attempts";
 export * from "./lesson-types";
 export * from "./chat_messages";
 export * from "./cms";
+export * from "./sessions";

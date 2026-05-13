@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { db, tenantsTable } from "@workspace/db";
 import { DEFAULT_TENANT_SETTINGS } from "@workspace/db/schema";
 import { usersTable } from "@workspace/db/schema";
+import { generateDbPrefix } from "../lib/db-prefix";
 import {
   ListTenantsQueryParams,
   ListTenantsResponse,
@@ -79,7 +80,10 @@ router.post("/tenants", async (req, res): Promise<void> => {
     return;
   }
 
-  const [tenant] = await db.insert(tenantsTable).values(parsed.data).returning();
+  const [tenant] = await db
+    .insert(tenantsTable)
+    .values({ ...parsed.data, dbPrefix: generateDbPrefix() })
+    .returning();
   res.status(201).json(GetTenantResponse.parse(tenant));
 });
 

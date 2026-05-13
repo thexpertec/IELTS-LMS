@@ -52,6 +52,7 @@ export const tenantsTable = pgTable("tenants", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
+  dbPrefix: text("db_prefix").notNull().unique(),
   domain: text("domain"),
   adminEmail: text("admin_email").notNull(),
   adminName: text("admin_name"),
