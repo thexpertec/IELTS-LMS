@@ -2051,10 +2051,6 @@ export default function QuizDetail() {
               <Plus className="w-4 h-4 mr-1.5" />
               Add Question Type
             </Button>
-            <Button onClick={openAddDialog} data-testid="btn-add-question">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Question
-            </Button>
           </div>
         </div>
 
