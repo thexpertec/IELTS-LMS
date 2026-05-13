@@ -884,11 +884,13 @@ export default function StudentQuizTake() {
   const clampedPart = Math.min(activePart, allTabs.length - 1);
   const currentTab = allTabs[clampedPart] ?? allTabs[0];
 
-  // Left panel: current tab media OR quiz-level passageText
+  // Left panel: current tab media OR quiz-level media/passageText
   const quizPassage = (quiz as { passageText?: string })?.passageText;
+  const quizImageUrls = ((quiz as { imageUrls?: string[] })?.imageUrls ?? []).filter(Boolean);
+  const quizAudioUrls = ((quiz as { audioUrls?: string[] })?.audioUrls ?? []).filter(Boolean);
   const tabPassage = currentTab.passageText;
-  const tabImages = currentTab.imageUrls ?? [];
-  const tabAudios = currentTab.audioUrls ?? [];
+  const tabImages = currentTab.imageUrls?.length ? currentTab.imageUrls : quizImageUrls;
+  const tabAudios = currentTab.audioUrls?.length ? currentTab.audioUrls : quizAudioUrls;
   const hasLeftPanel = !!(tabPassage || tabImages.length > 0 || tabAudios.length > 0 || quizPassage);
   const leftPassage = tabPassage || quizPassage;
 
