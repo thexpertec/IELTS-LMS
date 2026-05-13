@@ -16,11 +16,13 @@ import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { PartsEditor, type QuizPart } from "@/components/quiz/parts-editor";
 import { CourseLessonPicker } from "@/components/ui/course-lesson-picker";
+import { MultiMediaUploadField } from "@/components/ui/multi-media-upload-field";
 
 const formSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters."),
   description: z.string().optional().default(""),
   passageText: z.string().optional().default(""),
+  videoUrl: z.string().optional().default(""),
   courseId: z.string().optional().default("none"),
   chapterId: z.string().optional().default("none"),
   lessonId: z.string().optional().default("none"),
@@ -37,6 +39,8 @@ export default function QuizNew() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [parts, setParts] = useState<QuizPart[]>([]);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [audioUrls, setAudioUrls] = useState<string[]>([]);
 
   const params = new URLSearchParams(search);
   const prefilledCourseId = params.get("courseId") ?? "none";
@@ -49,6 +53,7 @@ export default function QuizNew() {
       title: "",
       description: "",
       passageText: "",
+      videoUrl: "",
       courseId: prefilledCourseId,
       chapterId: prefilledChapterId,
       lessonId: "none",
@@ -82,6 +87,10 @@ export default function QuizNew() {
         lessonType: values.lessonType ?? undefined,
         timeLimitMinutes: values.timeLimitMinutes ? Number(values.timeLimitMinutes) : undefined,
         isPublished: values.isPublished,
+        // @ts-expect-error — extra fields not yet in generated API types
+        videoUrl: values.videoUrl || undefined,
+        imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
+        audioUrls: audioUrls.length > 0 ? audioUrls : undefined,
       },
     });
   }
@@ -158,6 +167,38 @@ export default function QuizNew() {
                 </FormItem>
               )}
             />
+
+            {/* Media */}
+            <div className="md:col-span-2 space-y-2">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Media</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <MultiMediaUploadField
+                  type="image"
+                  label="Images"
+                  values={imageUrls}
+                  onChange={setImageUrls}
+                />
+                <FormField
+                  control={form.control}
+                  name="videoUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Video URL</FormLabel>
+                      <FormControl>
+                        <Input placeholder="https://youtube.com/..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <MultiMediaUploadField
+                  type="audio"
+                  label="Audio Files"
+                  values={audioUrls}
+                  onChange={setAudioUrls}
+                />
+              </div>
+            </div>
 
             <div className="md:col-span-2">
               <PartsEditor value={parts} onChange={setParts} />

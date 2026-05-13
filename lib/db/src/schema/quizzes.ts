@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, jsonb, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { coursesTable } from "./courses";
@@ -16,6 +16,9 @@ export const quizzesTable = pgTable("quizzes", {
   chapterId: integer("chapter_id").references(() => chaptersTable.id, { onDelete: "set null" }),
   lessonId: integer("lesson_id").references(() => lessonsTable.id, { onDelete: "set null" }),
   lessonType: text("lesson_type"),
+  videoUrl: text("video_url"),
+  imageUrls: json("image_urls").$type<string[]>(),
+  audioUrls: json("audio_urls").$type<string[]>(),
   timeLimitMinutes: integer("time_limit_minutes"),
   isPublished: boolean("is_published").notNull().default(false),
   tenantId: integer("tenant_id").references(() => tenantsTable.id, { onDelete: "set null" }),

@@ -242,38 +242,6 @@ export default function LessonNew() {
             )}
           />
 
-          {/* Media uploads */}
-          <div className="space-y-1">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Media</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-              <MultiMediaUploadField
-                type="image"
-                label="Images"
-                values={imageUrls}
-                onChange={setImageUrls}
-              />
-              <FormField
-                control={form.control}
-                name="videoUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Video URL</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://youtube.com/..." {...field} data-testid="input-video" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <MultiMediaUploadField
-                type="audio"
-                label="Audio Files"
-                values={audioUrls}
-                onChange={setAudioUrls}
-              />
-            </div>
-          </div>
-
           <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}

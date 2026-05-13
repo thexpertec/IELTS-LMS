@@ -59,6 +59,7 @@ router.post("/quizzes", async (req, res): Promise<void> => {
     return;
   }
 
+  const body = req.body as Record<string, unknown>;
   const [quiz] = await db.insert(quizzesTable).values({
     title: parsed.data.title,
     description: parsed.data.description ?? "",
@@ -68,6 +69,9 @@ router.post("/quizzes", async (req, res): Promise<void> => {
     chapterId: parsed.data.chapterId ?? null,
     lessonId: parsed.data.lessonId ?? null,
     lessonType: parsed.data.lessonType ?? null,
+    videoUrl: typeof body.videoUrl === "string" ? body.videoUrl : null,
+    imageUrls: Array.isArray(body.imageUrls) ? (body.imageUrls as string[]) : null,
+    audioUrls: Array.isArray(body.audioUrls) ? (body.audioUrls as string[]) : null,
     timeLimitMinutes: parsed.data.timeLimitMinutes ?? null,
     isPublished: parsed.data.isPublished ?? false,
     tenantId: req.session.tenantId ?? null,
