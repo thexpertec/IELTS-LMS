@@ -175,24 +175,35 @@ export default function MediaLibrary() {
 
   const { uploadFile, isUploading, progress } = useUpload({
     onSuccess: async (res) => {
-      const mediaType = guessMediaType(res.contentType ?? "");
-      await fetch("/api/media", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          name: uploadingName ?? "Untitled",
-          originalName: uploadingName ?? "Untitled",
-          mimeType: res.contentType ?? "application/octet-stream",
-          fileSize: res.size ?? null,
-          objectPath: res.objectPath,
-          mediaType,
-        }),
-      });
-      queryClient.invalidateQueries({ queryKey: ["media"] });
-      setUploadingName(null);
-      setUploadError(null);
-      toast({ title: "File uploaded successfully" });
+      const contentType = res.metadata?.contentType ?? "application/octet-stream";
+      const fileSize = res.metadata?.size ?? null;
+      const mediaType = guessMediaType(contentType);
+      try {
+        const saveRes = await fetch("/api/media", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            name: uploadingName ?? "Untitled",
+            originalName: uploadingName ?? "Untitled",
+            mimeType: contentType,
+            fileSize,
+            objectPath: res.objectPath,
+            mediaType,
+          }),
+        });
+        if (!saveRes.ok) {
+          const err = await saveRes.json().catch(() => ({}));
+          throw new Error(err.error ?? "Failed to save file record");
+        }
+        queryClient.invalidateQueries({ queryKey: ["media"] });
+        setUploadingName(null);
+        setUploadError(null);
+        toast({ title: "File uploaded successfully" });
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : "Failed to save file");
+        setUploadingName(null);
+      }
     },
     onError: (err) => {
       setUploadError(err.message);
