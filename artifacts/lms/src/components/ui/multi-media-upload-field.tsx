@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MediaUploadField } from "@/components/ui/media-upload-field";
+import { MediaLibraryPicker } from "@/components/ui/media-library-picker";
 import { Plus } from "lucide-react";
 
 interface MultiMediaUploadFieldProps {
@@ -10,6 +12,8 @@ interface MultiMediaUploadFieldProps {
 }
 
 export function MultiMediaUploadField({ type, label, values, onChange }: MultiMediaUploadFieldProps) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+
   function updateAt(idx: number, url: string | null) {
     if (url === null) {
       onChange(values.filter((_, i) => i !== idx));
@@ -20,8 +24,8 @@ export function MultiMediaUploadField({ type, label, values, onChange }: MultiMe
     }
   }
 
-  function addItem() {
-    onChange([...values, ""]);
+  function handlePickerSelect(path: string) {
+    onChange([...values, path]);
   }
 
   return (
@@ -32,9 +36,7 @@ export function MultiMediaUploadField({ type, label, values, onChange }: MultiMe
 
       {values.length === 0 && (
         <div className="rounded-lg border-2 border-dashed border-muted-foreground/25 p-4 text-center">
-          <p className="text-sm text-muted-foreground">
-            No files added yet
-          </p>
+          <p className="text-sm text-muted-foreground">No files added yet</p>
         </div>
       )}
 
@@ -52,11 +54,18 @@ export function MultiMediaUploadField({ type, label, values, onChange }: MultiMe
         variant="outline"
         size="sm"
         className="gap-1.5 text-xs w-full"
-        onClick={addItem}
+        onClick={() => setPickerOpen(true)}
       >
         <Plus className="w-3.5 h-3.5" />
         Add {label}
       </Button>
+
+      <MediaLibraryPicker
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        type={type}
+        onSelect={handlePickerSelect}
+      />
     </div>
   );
 }

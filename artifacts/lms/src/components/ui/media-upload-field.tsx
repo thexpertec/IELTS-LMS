@@ -1,10 +1,10 @@
-import { useRef, useState } from "react";
-import { useUpload } from "@workspace/object-storage-web";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-  ImageIcon, Music, Video, Upload, X, CheckCircle2, Loader2,
+  ImageIcon, Music, Video, Upload, X, CheckCircle2,
 } from "lucide-react";
+import { MediaLibraryPicker } from "@/components/ui/media-library-picker";
 
 interface MediaUploadFieldProps {
   type: "image" | "audio" | "video";
@@ -16,31 +16,28 @@ interface MediaUploadFieldProps {
 
 const CONFIG = {
   image: {
-    accept: "image/*",
     Icon: ImageIcon,
     color: "text-emerald-600",
     bg: "bg-emerald-50 dark:bg-emerald-950/20",
     border: "border-emerald-200 dark:border-emerald-800",
     label: "Image",
-    description: "PNG, JPG, GIF, WEBP",
+    description: "Pick from library or upload a new file",
   },
   audio: {
-    accept: "audio/*",
     Icon: Music,
     color: "text-amber-600",
     bg: "bg-amber-50 dark:bg-amber-950/20",
     border: "border-amber-200 dark:border-amber-800",
     label: "Audio",
-    description: "MP3, WAV, OGG, M4A",
+    description: "Pick from library or upload a new file",
   },
   video: {
-    accept: "video/*",
     Icon: Video,
     color: "text-blue-600",
     bg: "bg-blue-50 dark:bg-blue-950/20",
     border: "border-blue-200 dark:border-blue-800",
     label: "Video File",
-    description: "MP4, WEBM, MOV",
+    description: "Pick from library or upload a new file",
   },
 };
 
@@ -53,28 +50,7 @@ function getServingUrl(path: string) {
 export function MediaUploadField({ type, value, onChange, label, className }: MediaUploadFieldProps) {
   const config = CONFIG[type];
   const { Icon } = config;
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-
-  const { uploadFile, isUploading, progress } = useUpload({
-    onSuccess: (res) => {
-      onChange(res.objectPath);
-      setUploadError(null);
-    },
-    onError: (err) => {
-      setUploadError(err.message);
-    },
-  });
-
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setFileName(file.name);
-    setUploadError(null);
-    await uploadFile(file);
-    if (inputRef.current) inputRef.current.value = "";
-  }
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const servingUrl = value ? getServingUrl(value) : null;
   const hasValue = !!value;
@@ -97,89 +73,47 @@ export function MediaUploadField({ type, value, onChange, label, className }: Me
         {hasValue && servingUrl && (
           <div className="mb-3">
             {type === "image" && (
-              <div className="relative">
-                <img
-                  src={servingUrl}
-                  alt="Lesson image"
-                  className="max-h-48 w-full object-contain rounded-md bg-muted/30"
-                />
-              </div>
-            )}
-            {(type === "audio") && (
-              <audio
-                controls
-                className="w-full h-10 rounded-md"
+              <img
                 src={servingUrl}
-              >
+                alt="Uploaded image"
+                className="max-h-48 w-full object-contain rounded-md bg-muted/30"
+              />
+            )}
+            {type === "audio" && (
+              <audio controls className="w-full h-10 rounded-md" src={servingUrl}>
                 Your browser does not support the audio element.
               </audio>
             )}
             {type === "video" && (
-              <video
-                controls
-                className="max-h-40 w-full rounded-md bg-black"
-                src={servingUrl}
-              />
+              <video controls className="max-h-40 w-full rounded-md bg-black" src={servingUrl} />
             )}
           </div>
         )}
 
         {/* Empty state */}
-        {!hasValue && !isUploading && (
+        {!hasValue && (
           <div className="flex flex-col items-center justify-center py-4 gap-2">
             <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", config.bg)}>
               <Icon className={cn("w-5 h-5", config.color)} />
             </div>
             <div className="text-center">
-              <p className="text-sm text-muted-foreground">
-                Upload a {config.label.toLowerCase()} file
-              </p>
+              <p className="text-sm text-muted-foreground">No {config.label.toLowerCase()} selected</p>
               <p className="text-xs text-muted-foreground/70 mt-0.5">{config.description}</p>
             </div>
           </div>
         )}
 
-        {/* Upload progress */}
-        {isUploading && (
-          <div className="flex flex-col items-center justify-center py-4 gap-2">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              Uploading{fileName ? ` "${fileName}"` : ""}… {progress}%
-            </p>
-            <div className="w-full bg-muted rounded-full h-1.5 mt-1">
-              <div
-                className="bg-primary h-1.5 rounded-full transition-all duration-300"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Error */}
-        {uploadError && (
-          <p className="text-xs text-destructive mt-1">{uploadError}</p>
-        )}
-
         {/* Actions */}
         <div className={cn("flex items-center gap-2", hasValue ? "mt-2" : "mt-0 justify-center")}>
-          <input
-            ref={inputRef}
-            type="file"
-            accept={config.accept}
-            className="hidden"
-            onChange={handleFileChange}
-            disabled={isUploading}
-          />
           <Button
             type="button"
             variant={hasValue ? "outline" : "secondary"}
             size="sm"
             className={cn("gap-1.5 text-xs", hasValue ? "h-7" : "h-8")}
-            onClick={() => inputRef.current?.click()}
-            disabled={isUploading}
+            onClick={() => setPickerOpen(true)}
           >
             <Upload className="w-3.5 h-3.5" />
-            {hasValue ? "Replace" : `Upload ${config.label}`}
+            {hasValue ? "Replace" : `Select ${config.label}`}
           </Button>
           {hasValue && (
             <Button
@@ -187,13 +121,13 @@ export function MediaUploadField({ type, value, onChange, label, className }: Me
               variant="ghost"
               size="sm"
               className="h-7 text-xs text-destructive hover:text-destructive gap-1"
-              onClick={() => { onChange(null); setFileName(null); }}
+              onClick={() => onChange(null)}
             >
               <X className="w-3.5 h-3.5" />
               Remove
             </Button>
           )}
-          {hasValue && !isUploading && (
+          {hasValue && (
             <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
               Uploaded
@@ -201,6 +135,13 @@ export function MediaUploadField({ type, value, onChange, label, className }: Me
           )}
         </div>
       </div>
+
+      <MediaLibraryPicker
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        type={type}
+        onSelect={(path) => onChange(path)}
+      />
     </div>
   );
 }
