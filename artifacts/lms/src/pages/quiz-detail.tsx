@@ -2181,7 +2181,7 @@ export default function QuizDetail() {
             <div>
               <Label>Description</Label>
               <Textarea
-                className="mt-1.5"
+                className="mt-1.5 min-h-[160px]"
                 value={settingsForm.description}
                 onChange={(e) => setSettingsForm({ ...settingsForm, description: e.target.value })}
               />
