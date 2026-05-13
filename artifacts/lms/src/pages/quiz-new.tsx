@@ -17,6 +17,7 @@ import { useState } from "react";
 import { PartsEditor, type QuizPart } from "@/components/quiz/parts-editor";
 import { CourseLessonPicker } from "@/components/ui/course-lesson-picker";
 import { MultiMediaUploadField } from "@/components/ui/multi-media-upload-field";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 
 const formSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters."),
@@ -136,11 +137,11 @@ export default function QuizNew() {
                 <FormItem className="md:col-span-2">
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea
+                    <RichTextEditor
+                      value={field.value ?? ""}
+                      onChange={(val) => field.onChange(val)}
                       placeholder="Instructions or overview for students..."
-                      className="min-h-[100px]"
-                      {...field}
-                      data-testid="input-description"
+                      minHeight="120px"
                     />
                   </FormControl>
                   <FormMessage />
@@ -155,11 +156,11 @@ export default function QuizNew() {
                 <FormItem className="md:col-span-2">
                   <FormLabel>Reading Passage <span className="text-muted-foreground font-normal text-xs">(optional — shown to students on the left side during the quiz)</span></FormLabel>
                   <FormControl>
-                    <Textarea
+                    <RichTextEditor
+                      value={field.value ?? ""}
+                      onChange={(val) => field.onChange(val)}
                       placeholder="Paste the reading passage here. Students will see it on the left while answering questions on the right..."
-                      className="min-h-[200px] font-mono text-sm"
-                      {...field}
-                      data-testid="input-passage"
+                      minHeight="200px"
                     />
                   </FormControl>
                   <FormDescription>Leave empty if the quiz does not require a reading passage.</FormDescription>
