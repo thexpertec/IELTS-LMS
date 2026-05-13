@@ -29,6 +29,7 @@ import AdminLogin from "@/pages/admin-login";
 import LessonTypesPage from "@/pages/lesson-types";
 import Messages from "@/pages/messages";
 import OrganizationSettings from "@/pages/organization-settings";
+import MediaLibrary from "@/pages/media-library";
 import NotFound from "@/pages/not-found";
 
 // Student quiz pages
@@ -164,6 +165,9 @@ function Router() {
       </Route>
       <Route path="/organization-settings">
         <AdminGuard><OrganizationSettings /></AdminGuard>
+      </Route>
+      <Route path="/media">
+        <AdminGuard><MediaLibrary /></AdminGuard>
       </Route>
 
       <Route component={NotFound} />

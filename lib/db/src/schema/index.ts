@@ -17,3 +17,4 @@ export * from "./lesson-types";
 export * from "./chat_messages";
 export * from "./cms";
 export * from "./sessions";
+export * from "./media_files";

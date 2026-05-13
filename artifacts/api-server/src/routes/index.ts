@@ -16,6 +16,7 @@ import authRouter from "./auth";
 import lessonTypesRouter from "./lesson-types";
 import chatRouter from "./chat";
 import cmsRouter from "./cms";
+import mediaRouter from "./media";
 
 const router: IRouter = Router();
 
@@ -36,5 +37,6 @@ router.use(tenantsRouter);
 router.use(lessonTypesRouter);
 router.use(chatRouter);
 router.use(cmsRouter);
+router.use(mediaRouter);
 
 export default router;

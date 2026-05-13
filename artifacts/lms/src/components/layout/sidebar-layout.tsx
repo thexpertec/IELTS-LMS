@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, BookOpen, Users, UserPlus, Moon, Sun, GraduationCap, ClipboardList, Menu, FileText, LogOut, Settings2, MessageSquare, Building2, Eye } from "lucide-react";
+import { LayoutDashboard, BookOpen, Users, UserPlus, Moon, Sun, GraduationCap, ClipboardList, Menu, FileText, LogOut, Settings2, MessageSquare, Building2, Eye, Image } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     { name: "Assignments", href: "/assignments", icon: FileText },
     { name: "Enrollments", href: "/enrollments", icon: UserPlus },
     { name: "Students", href: "/students", icon: Users },
+    { name: "Media Library", href: "/media", icon: Image },
     { name: "Messages", href: "/messages", icon: MessageSquare },
     { name: "Lesson Types", href: "/lesson-types", icon: Settings2 },
     { name: "Organization", href: "/organization-settings", icon: Building2 },
