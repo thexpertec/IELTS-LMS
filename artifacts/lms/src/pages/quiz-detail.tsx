@@ -32,6 +32,7 @@ import {
   getGetQuizQueryKey,
 } from "@workspace/api-client-react";
 import { CourseLessonPicker } from "@/components/ui/course-lesson-picker";
+import { MultiMediaUploadField } from "@/components/ui/multi-media-upload-field";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -1333,7 +1334,9 @@ export default function QuizDetail() {
   const { toast } = useToast();
   // ── Quiz settings edit state
   const [editSettings, setEditSettings] = useState(false);
-  const [settingsForm, setSettingsForm] = useState({ title: "", description: "", courseId: "none", chapterId: "none", lessonId: "none", lessonType: "", timeLimitMinutes: "", isPublished: false });
+  const [settingsForm, setSettingsForm] = useState({ title: "", description: "", passageText: "", videoUrl: "", courseId: "none", chapterId: "none", lessonId: "none", lessonType: "", timeLimitMinutes: "", isPublished: false });
+  const [editImageUrls, setEditImageUrls] = useState<string[]>([]);
+  const [editAudioUrls, setEditAudioUrls] = useState<string[]>([]);
 
   // ── Question dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -1732,10 +1735,12 @@ export default function QuizDetail() {
 
   function openSettingsEdit() {
     if (!quiz) return;
-    const q = quiz as typeof quiz & { chapterId?: number | null; lessonId?: number | null; lessonType?: string | null };
+    const q = quiz as typeof quiz & { chapterId?: number | null; lessonId?: number | null; lessonType?: string | null; passageText?: string | null; videoUrl?: string | null; imageUrls?: string[] | null; audioUrls?: string[] | null };
     setSettingsForm({
       title: quiz.title,
       description: quiz.description,
+      passageText: q.passageText ?? "",
+      videoUrl: q.videoUrl ?? "",
       courseId: quiz.courseId ? String(quiz.courseId) : "none",
       chapterId: q.chapterId ? String(q.chapterId) : "none",
       lessonId: q.lessonId ? String(q.lessonId) : "none",
@@ -1743,6 +1748,8 @@ export default function QuizDetail() {
       timeLimitMinutes: quiz.timeLimitMinutes ? String(quiz.timeLimitMinutes) : "",
       isPublished: quiz.isPublished,
     });
+    setEditImageUrls(q.imageUrls ?? []);
+    setEditAudioUrls(q.audioUrls ?? []);
     setEditSettings(true);
   }
 
@@ -1753,6 +1760,11 @@ export default function QuizDetail() {
       data: {
         title: settingsForm.title,
         description: settingsForm.description,
+        // @ts-expect-error — extra fields not yet in generated API types
+        passageText: settingsForm.passageText || undefined,
+        videoUrl: settingsForm.videoUrl || undefined,
+        imageUrls: editImageUrls.length > 0 ? editImageUrls : undefined,
+        audioUrls: editAudioUrls.length > 0 ? editAudioUrls : undefined,
         parts: currentParts,
         courseId: settingsForm.courseId && settingsForm.courseId !== "none" ? Number(settingsForm.courseId) : undefined,
         chapterId: settingsForm.chapterId && settingsForm.chapterId !== "none" ? Number(settingsForm.chapterId) : null,
@@ -2183,13 +2195,50 @@ export default function QuizDetail() {
               />
             </div>
             <div>
-              <Label>Passage</Label>
+              <Label>Description</Label>
               <div className="mt-1.5">
                 <RichTextEditor
                   value={settingsForm.description}
                   onChange={(value) => setSettingsForm({ ...settingsForm, description: value })}
-                  placeholder="Enter passage or exam instructions…"
-                  minHeight="180px"
+                  placeholder="Instructions or overview for students…"
+                  minHeight="120px"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Reading Passage <span className="text-muted-foreground font-normal text-xs">(optional — shown on the left during the quiz)</span></Label>
+              <div className="mt-1.5">
+                <RichTextEditor
+                  value={settingsForm.passageText}
+                  onChange={(value) => setSettingsForm({ ...settingsForm, passageText: value })}
+                  placeholder="Paste the reading passage here…"
+                  minHeight="160px"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Media</h3>
+              <div className="grid grid-cols-1 gap-3">
+                <MultiMediaUploadField
+                  type="image"
+                  label="Images"
+                  values={editImageUrls}
+                  onChange={setEditImageUrls}
+                />
+                <div>
+                  <Label className="text-sm">Video URL</Label>
+                  <Input
+                    className="mt-1.5"
+                    placeholder="https://youtube.com/..."
+                    value={settingsForm.videoUrl}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, videoUrl: e.target.value })}
+                  />
+                </div>
+                <MultiMediaUploadField
+                  type="audio"
+                  label="Audio Files"
+                  values={editAudioUrls}
+                  onChange={setEditAudioUrls}
                 />
               </div>
             </div>
