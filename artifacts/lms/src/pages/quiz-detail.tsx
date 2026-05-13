@@ -1586,9 +1586,13 @@ export default function QuizDetail() {
     setGroups((prev) => {
       const target = prev.find((g) => g.key === key);
       const orphaned = target?.questionIds ?? [];
-      const next = prev
-        .map((g) => (g.key === "ungrouped" ? { ...g, questionIds: [...g.questionIds, ...orphaned] } : g))
-        .filter((g) => g.key !== key);
+      const remaining = prev.filter((g) => g.key !== key);
+      // Find first real section to absorb orphaned questions; fall back to ungrouped if none
+      const firstSection = remaining.find((g) => g.key !== "ungrouped" && g.part);
+      const fallbackKey = firstSection ? firstSection.key : "ungrouped";
+      const next = remaining.map((g) =>
+        g.key === fallbackKey ? { ...g, questionIds: [...g.questionIds, ...orphaned] } : g
+      );
       saveOrderAndParts(next);
       return next;
     });
