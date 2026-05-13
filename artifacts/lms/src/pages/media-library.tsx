@@ -143,7 +143,7 @@ export default function MediaLibrary() {
   const [activeTab, setActiveTab] = useState<MediaType>("all");
   const [search, setSearch] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [uploadingName, setUploadingName] = useState<string | null>(null);
+  const [uploadQueue, setUploadQueue] = useState<{ done: number; total: number; current: string } | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -177,6 +177,7 @@ export default function MediaLibrary() {
     onSuccess: async (res) => {
       const contentType = res.metadata?.contentType ?? "application/octet-stream";
       const fileSize = res.metadata?.size ?? null;
+      const fileName = res.metadata?.name ?? "Untitled";
       const mediaType = guessMediaType(contentType);
       try {
         const saveRes = await fetch("/api/media", {
@@ -184,8 +185,8 @@ export default function MediaLibrary() {
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-            name: uploadingName ?? "Untitled",
-            originalName: uploadingName ?? "Untitled",
+            name: fileName,
+            originalName: fileName,
             mimeType: contentType,
             fileSize,
             objectPath: res.objectPath,
@@ -197,24 +198,33 @@ export default function MediaLibrary() {
           throw new Error(err.error ?? "Failed to save file record");
         }
         queryClient.invalidateQueries({ queryKey: ["media"] });
-        setUploadingName(null);
-        setUploadError(null);
-        toast({ title: "File uploaded successfully" });
       } catch (err) {
         setUploadError(err instanceof Error ? err.message : "Failed to save file");
-        setUploadingName(null);
       }
     },
     onError: (err) => {
       setUploadError(err.message);
-      setUploadingName(null);
     },
   });
 
-  async function handleFile(file: File) {
-    setUploadingName(file.name);
+  async function handleFiles(fileList: FileList | File[]) {
+    const files = Array.from(fileList);
+    if (files.length === 0) return;
     setUploadError(null);
-    await uploadFile(file);
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      setUploadQueue({ done: i, total: files.length, current: file.name });
+      await uploadFile(file);
+    }
+
+    setUploadQueue(null);
+    queryClient.invalidateQueries({ queryKey: ["media"] });
+    toast({
+      title: files.length === 1
+        ? "File uploaded successfully"
+        : `${files.length} files uploaded successfully`,
+    });
   }
 
   const filtered = files.filter((f) =>
@@ -230,20 +240,20 @@ export default function MediaLibrary() {
           <p className="text-muted-foreground mt-1">Upload and manage your images, audio, and video files.</p>
         </div>
         <div className="flex items-center gap-2">
-          <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
-          <input ref={audioInputRef} type="file" accept="audio/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
-          <input ref={videoInputRef} type="file" accept="video/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
-          <input ref={anyInputRef} type="file" accept="*/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
-          <Button onClick={() => anyInputRef.current?.click()} disabled={isUploading} className="gap-2">
-            {isUploading ? (
+          <input ref={imageInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => e.target.files?.length && handleFiles(e.target.files)} />
+          <input ref={audioInputRef} type="file" accept="audio/*" multiple className="hidden" onChange={(e) => e.target.files?.length && handleFiles(e.target.files)} />
+          <input ref={videoInputRef} type="file" accept="video/*" multiple className="hidden" onChange={(e) => e.target.files?.length && handleFiles(e.target.files)} />
+          <input ref={anyInputRef} type="file" accept="*/*" multiple className="hidden" onChange={(e) => e.target.files?.length && handleFiles(e.target.files)} />
+          <Button onClick={() => anyInputRef.current?.click()} disabled={isUploading || !!uploadQueue} className="gap-2">
+            {uploadQueue ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Uploading {progress}%
+                Uploading {uploadQueue.done + 1}/{uploadQueue.total}
               </>
             ) : (
               <>
                 <Upload className="w-4 h-4" />
-                Upload File
+                Upload Files
               </>
             )}
           </Button>
@@ -257,10 +267,14 @@ export default function MediaLibrary() {
       )}
 
       {/* Upload progress bar */}
-      {isUploading && (
+      {uploadQueue && (
         <div className="space-y-1">
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Uploading {uploadingName}…</span>
+            <span>
+              {uploadQueue.total > 1
+                ? `Uploading ${uploadQueue.done + 1} of ${uploadQueue.total}: ${uploadQueue.current}`
+                : `Uploading ${uploadQueue.current}…`}
+            </span>
             <span>{progress}%</span>
           </div>
           <div className="w-full bg-muted rounded-full h-1.5">
@@ -277,21 +291,21 @@ export default function MediaLibrary() {
         <span className="text-sm text-muted-foreground self-center">Quick upload:</span>
         <button
           onClick={() => imageInputRef.current?.click()}
-          disabled={isUploading}
+          disabled={!!uploadQueue}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50"
         >
           <ImageIcon className="w-3.5 h-3.5 text-emerald-600" /> Image
         </button>
         <button
           onClick={() => audioInputRef.current?.click()}
-          disabled={isUploading}
+          disabled={!!uploadQueue}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50"
         >
           <Music className="w-3.5 h-3.5 text-amber-600" /> Audio
         </button>
         <button
           onClick={() => videoInputRef.current?.click()}
-          disabled={isUploading}
+          disabled={!!uploadQueue}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50"
         >
           <Video className="w-3.5 h-3.5 text-blue-600" /> Video
@@ -353,9 +367,9 @@ export default function MediaLibrary() {
             {search ? "No files match your search." : "Upload your first file to get started."}
           </p>
           {!search && (
-            <Button onClick={() => anyInputRef.current?.click()} disabled={isUploading} className="gap-2">
+            <Button onClick={() => anyInputRef.current?.click()} disabled={!!uploadQueue} className="gap-2">
               <Upload className="w-4 h-4" />
-              Upload File
+              Upload Files
             </Button>
           )}
         </div>
