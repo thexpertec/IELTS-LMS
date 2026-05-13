@@ -1830,7 +1830,7 @@ export default function QuizDetail() {
               )}
             </div>
             <h1 className="text-3xl font-bold tracking-tight">{quiz.title}</h1>
-            {quiz.description && <p className="text-muted-foreground mt-1">{quiz.description}</p>}
+            {quiz.description && <div className="text-muted-foreground mt-1 prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: quiz.description }} />}
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Button
