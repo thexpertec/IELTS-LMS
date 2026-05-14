@@ -3,7 +3,7 @@ import { useRoute, useLocation, useSearch } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { useGetQuiz } from "@workspace/api-client-react";
+import { useGetQuiz, useGetLesson } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -811,6 +811,15 @@ export default function StudentQuizTake() {
 
   const { data: quiz, isLoading } = useGetQuiz(quizId);
 
+  // Fetch the linked lesson so its content can serve as the reading passage fallback
+  const quizLessonId = (quiz as { lessonId?: number | null } | undefined)?.lessonId ?? null;
+  const quizCourseId = quiz?.courseId ?? null;
+  const { data: linkedLesson } = useGetLesson(
+    quizCourseId ?? 0,
+    quizLessonId ?? 0,
+    { query: { enabled: !!(quizCourseId && quizLessonId) } },
+  );
+
   const [answers, setAnswers] = useState<AnswerMap>({});
   const [submitted, setSubmitted] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -884,15 +893,17 @@ export default function StudentQuizTake() {
   const clampedPart = Math.min(activePart, allTabs.length - 1);
   const currentTab = allTabs[clampedPart] ?? allTabs[0];
 
-  // Left panel: current tab media OR quiz-level media/passageText
+  // Left panel: current tab media OR quiz-level media/passageText OR linked lesson content
   const quizPassage = (quiz as { passageText?: string })?.passageText;
   const quizImageUrls = ((quiz as { imageUrls?: string[] })?.imageUrls ?? []).filter(Boolean);
   const quizAudioUrls = ((quiz as { audioUrls?: string[] })?.audioUrls ?? []).filter(Boolean);
   const tabPassage = currentTab.passageText;
   const tabImages = currentTab.imageUrls?.length ? currentTab.imageUrls : quizImageUrls;
   const tabAudios = currentTab.audioUrls?.length ? currentTab.audioUrls : quizAudioUrls;
-  const hasLeftPanel = !!(tabPassage || tabImages.length > 0 || tabAudios.length > 0 || quizPassage);
-  const leftPassage = tabPassage || quizPassage;
+  // Fallback: use the linked lesson's content as the reading passage when no quiz/part passage is set
+  const lessonPassage = (!tabPassage && !quizPassage && linkedLesson?.content) ? linkedLesson.content : null;
+  const hasLeftPanel = !!(tabPassage || tabImages.length > 0 || tabAudios.length > 0 || quizPassage || lessonPassage);
+  const leftPassage = tabPassage || quizPassage || lessonPassage;
 
   // Slot-aware numbering
   const slotMap = (() => {
