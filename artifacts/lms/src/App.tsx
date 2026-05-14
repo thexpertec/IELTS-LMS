@@ -9,6 +9,9 @@ import { StudentProvider, useStudent } from "@/context/student-context";
 import { AuthProvider, useAuth } from "@/context/auth-context";
 import type { ReactNode } from "react";
 
+// Tenant landing page
+import TenantLanding from "@/pages/tenant-landing";
+
 // Admin pages
 import Dashboard from "@/pages/dashboard";
 import Courses from "@/pages/courses";
@@ -74,6 +77,13 @@ function AdminGuard({ children }: { children: ReactNode }) {
   return <SidebarLayout>{children}</SidebarLayout>;
 }
 
+function RootRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user?.role === "admin") return <SidebarLayout><Dashboard /></SidebarLayout>;
+  return <TenantLanding />;
+}
+
 function Router() {
   return (
     <Switch>
@@ -111,10 +121,8 @@ function Router() {
         <StudentGuard><StudentMessages /></StudentGuard>
       </Route>
 
-      {/* Admin area — all protected */}
-      <Route path="/">
-        <AdminGuard><Dashboard /></AdminGuard>
-      </Route>
+      {/* Root — landing page for guests, dashboard for admins */}
+      <Route path="/" component={RootRoute} />
       <Route path="/courses">
         <AdminGuard><Courses /></AdminGuard>
       </Route>

@@ -228,6 +228,45 @@ router.post("/tenants/:id/credentials", async (req, res): Promise<void> => {
   }
 });
 
+// ── Public tenant info (no auth required) ─────────────────────────────────
+
+// GET /api/tenant/public — returns safe public info for unauthenticated visitors
+router.get("/tenant/public", async (req, res): Promise<void> => {
+  const tenantId = req.session?.tenantId;
+
+  // Try domain-based lookup first, then session-based
+  const host = (req.headers["x-forwarded-host"] ?? req.headers.host ?? "") as string;
+  const domain = host.split(":")[0];
+
+  let tenant = null;
+
+  if (tenantId) {
+    const rows = await db.select().from(tenantsTable).where(eq(tenantsTable.id, tenantId)).limit(1);
+    tenant = rows[0] ?? null;
+  }
+
+  if (!tenant && domain) {
+    const rows = await db.select().from(tenantsTable).where(eq(tenantsTable.domain, domain)).limit(1);
+    tenant = rows[0] ?? null;
+  }
+
+  if (!tenant) {
+    res.json(null);
+    return;
+  }
+
+  res.json({
+    name: tenant.name,
+    slug: tenant.slug,
+    description: tenant.description ?? "",
+    logoUrl: tenant.logoUrl ?? "",
+    adminEmail: tenant.adminEmail,
+    tagline: (tenant.settings as any)?.branding?.tagline ?? "",
+    welcomeMessage: (tenant.settings as any)?.portal?.welcomeMessage ?? "",
+    accentColor: (tenant.settings as any)?.branding?.accentColor ?? "",
+  });
+});
+
 // ── Tenant self-service settings (for LMS admin of a specific tenant) ────────
 
 // GET /api/tenant/settings — returns the current tenant's profile + settings
