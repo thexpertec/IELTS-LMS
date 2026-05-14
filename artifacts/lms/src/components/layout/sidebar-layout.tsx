@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, BookOpen, Users, UserPlus, Moon, Sun, GraduationCap, ClipboardList, Menu, FileText, LogOut, Settings2, MessageSquare, Building2, Eye, Image } from "lucide-react";
+import {
+  LayoutDashboard, BookOpen, Users, UserPlus, GraduationCap, ClipboardList,
+  Menu, FileText, LogOut, Settings2, MessageSquare, Building2, Eye, Image, X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useTheme } from "@/components/theme-provider";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
@@ -15,7 +16,6 @@ interface SidebarLayoutProps {
 
 export function SidebarLayout({ children }: SidebarLayoutProps) {
   const [location, setLocation] = useLocation();
-  const { theme, setTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, logout } = useAuth();
   const { startAdminPreview } = useStudent();
@@ -52,17 +52,22 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   ];
 
   const SidebarContent = () => (
-    <>
-      <div className="h-16 flex items-center px-6 border-b shrink-0">
-        <div className="flex items-center gap-2 font-bold text-lg tracking-tight">
-          <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
-            <BookOpen className="w-4 h-4 text-primary-foreground" />
+    <div className="flex flex-col h-full bg-[#0d1b60]">
+      {/* Logo area */}
+      <div className="h-14 flex items-center px-5 bg-[#0a1550] border-b border-white/10 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded bg-white flex items-center justify-center flex-shrink-0">
+            <GraduationCap className="w-5 h-5 text-[#0d1b60]" />
           </div>
-          LMS Admin
+          <div className="leading-tight min-w-0">
+            <span className="text-white font-bold text-sm tracking-tight">IELTS</span>
+            <span className="text-white/55 font-normal text-sm"> Admin</span>
+          </div>
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+      {/* Nav items */}
+      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
         {navigation.map((item) => {
           const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
           return (
@@ -72,107 +77,99 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
               data-testid={`nav-${item.name.toLowerCase()}`}
               onClick={() => setMobileOpen(false)}
               className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                "flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors relative",
                 isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  ? "bg-[#CC0000] text-white"
+                  : "text-white/65 hover:bg-white/8 hover:text-white"
               )}
             >
-              <item.icon className="w-4 h-4" />
+              <item.icon className="w-4 h-4 flex-shrink-0" />
               {item.name}
               {item.name === "Messages" && unreadMessages > 0 && (
-                <Badge className="ml-auto h-5 w-5 p-0 flex items-center justify-center text-xs bg-destructive">
+                <span className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-white text-[#CC0000] text-[10px] font-bold">
                   {unreadMessages > 9 ? "9+" : unreadMessages}
-                </Badge>
+                </span>
               )}
             </Link>
           );
         })}
       </nav>
 
-      <div className="p-4 border-t space-y-1 shrink-0">
+      {/* Bottom actions */}
+      <div className="p-3 border-t border-white/10 space-y-0.5 shrink-0 bg-[#0a1550]">
         <button
           onClick={handlePreviewStudent}
           data-testid="btn-preview-student"
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-white/60 hover:bg-white/8 hover:text-white transition-colors"
         >
           <Eye className="w-4 h-4" />
           Preview Student Portal
         </button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start gap-3 text-muted-foreground"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          data-testid="btn-toggle-theme"
-        >
-          {theme === "dark" ? (
-            <><Sun className="w-4 h-4" />Light Mode</>
-          ) : (
-            <><Moon className="w-4 h-4" />Dark Mode</>
-          )}
-        </Button>
         {user && (
-          <div className="pt-2 border-t mt-2">
-            <div className="px-3 pb-1">
-              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+          <>
+            <div className="px-3 py-2 border-t border-white/10 mt-1">
+              <p className="text-xs text-white/40 truncate">{user.email}</p>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start gap-3 text-muted-foreground"
+            <button
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-white/60 hover:bg-white/8 hover:text-red-300 transition-colors"
               onClick={() => { void logout(); }}
               data-testid="btn-logout"
             >
               <LogOut className="w-4 h-4" />
               Sign Out
-            </Button>
-          </div>
+            </button>
+          </>
         )}
       </div>
-    </>
+    </div>
   );
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
 
-      {/* ── Desktop sidebar (always visible on lg+) ── */}
-      <aside className="hidden lg:flex w-64 flex-shrink-0 border-r bg-card flex-col">
+      {/* ── Desktop sidebar ── */}
+      <aside className="hidden lg:flex w-60 flex-shrink-0 flex-col border-r border-[#0a1550]">
         <SidebarContent />
       </aside>
 
       {/* ── Mobile overlay ── */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/60 lg:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* ── Mobile sidebar drawer ── */}
       <aside className={cn(
-        "fixed top-0 left-0 z-50 h-full w-64 bg-card border-r flex flex-col transition-transform duration-200 lg:hidden",
+        "fixed top-0 left-0 z-50 h-full w-60 flex flex-col transition-transform duration-200 lg:hidden border-r border-[#0a1550]",
         mobileOpen ? "translate-x-0" : "-translate-x-full"
       )}>
+        <div className="absolute top-3 right-3 z-10">
+          <button onClick={() => setMobileOpen(false)} className="text-white/60 hover:text-white p-1">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
         <SidebarContent />
       </aside>
 
       {/* ── Main content ── */}
       <div className="flex-1 flex flex-col overflow-hidden">
+
         {/* Mobile top bar */}
-        <div className="lg:hidden flex items-center gap-3 h-14 px-4 border-b bg-card shrink-0">
+        <div className="lg:hidden flex items-center gap-3 h-12 px-4 bg-[#0d1b60] shrink-0">
           <button
             onClick={() => setMobileOpen(true)}
-            className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            className="p-1.5 text-white/70 hover:text-white transition-colors"
             aria-label="Open menu"
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2 font-bold text-base tracking-tight">
-            <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
-              <BookOpen className="w-3.5 h-3.5 text-primary-foreground" />
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded bg-white flex items-center justify-center">
+              <GraduationCap className="w-4 h-4 text-[#0d1b60]" />
             </div>
-            LMS Admin
+            <span className="text-white font-bold text-sm tracking-tight">IELTS Admin</span>
           </div>
         </div>
 
