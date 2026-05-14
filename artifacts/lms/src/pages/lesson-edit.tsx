@@ -3,7 +3,7 @@ import { useLocation, useParams } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -73,6 +73,7 @@ export default function LessonEdit() {
 
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [audioUrls, setAudioUrls] = useState<string[]>([]);
+  const hasInitialized = useRef(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -89,7 +90,8 @@ export default function LessonEdit() {
   });
 
   useEffect(() => {
-    if (lesson) {
+    if (lesson && !hasInitialized.current) {
+      hasInitialized.current = true;
       const l = lesson as unknown as {
         lessonType?: string;
         description?: string;
