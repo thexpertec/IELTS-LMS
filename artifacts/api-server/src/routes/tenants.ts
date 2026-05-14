@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, ilike, and, type SQL } from "drizzle-orm";
+import { eq, ilike, and, inArray, type SQL } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db, tenantsTable, coursesTable } from "@workspace/db";
 import { DEFAULT_TENANT_SETTINGS } from "@workspace/db/schema";
@@ -230,13 +230,37 @@ router.post("/tenants/:id/credentials", async (req, res): Promise<void> => {
 
 // ── Public tenant info (no auth required) ─────────────────────────────────
 
+/**
+ * Build an ordered list of domain strings to try when looking up a tenant.
+ * Priority: exact match → strip one subdomain level (e.g. lms.erp360.org → erp360.org).
+ * This lets the tenant work even if they stored the root domain in their settings.
+ */
+function domainVariants(host: string): string[] {
+  const domain = host.split(":")[0]; // strip port
+  if (!domain) return [];
+  const variants: string[] = [domain];
+  const parts = domain.split(".");
+  if (parts.length > 2) {
+    variants.push(parts.slice(1).join(".")); // e.g. erp360.org
+  }
+  return variants;
+}
+
+async function findTenantByDomain(host: string) {
+  const variants = domainVariants(host);
+  if (variants.length === 0) return null;
+  const rows = await db
+    .select()
+    .from(tenantsTable)
+    .where(inArray(tenantsTable.domain, variants))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 // GET /api/tenant/public — returns safe public info for unauthenticated visitors
 router.get("/tenant/public", async (req, res): Promise<void> => {
   const tenantId = req.session?.tenantId;
-
-  // Try domain-based lookup first, then session-based
   const host = (req.headers["x-forwarded-host"] ?? req.headers.host ?? "") as string;
-  const domain = host.split(":")[0];
 
   let tenant = null;
 
@@ -245,9 +269,8 @@ router.get("/tenant/public", async (req, res): Promise<void> => {
     tenant = rows[0] ?? null;
   }
 
-  if (!tenant && domain) {
-    const rows = await db.select().from(tenantsTable).where(eq(tenantsTable.domain, domain)).limit(1);
-    tenant = rows[0] ?? null;
+  if (!tenant) {
+    tenant = await findTenantByDomain(host);
   }
 
   if (!tenant) {
@@ -271,14 +294,12 @@ router.get("/tenant/public", async (req, res): Promise<void> => {
 router.get("/tenant/courses", async (req, res): Promise<void> => {
   const tenantId = req.session?.tenantId;
   const host = (req.headers["x-forwarded-host"] ?? req.headers.host ?? "") as string;
-  const domain = host.split(":")[0];
 
   let resolvedTenantId: number | null = tenantId ?? null;
 
-  if (!resolvedTenantId && domain) {
-    const rows = await db.select({ id: tenantsTable.id })
-      .from(tenantsTable).where(eq(tenantsTable.domain, domain)).limit(1);
-    resolvedTenantId = rows[0]?.id ?? null;
+  if (!resolvedTenantId) {
+    const tenant = await findTenantByDomain(host);
+    resolvedTenantId = tenant?.id ?? null;
   }
 
   if (!resolvedTenantId) {
