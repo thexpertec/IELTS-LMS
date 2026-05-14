@@ -37,7 +37,7 @@ const BC_CYAN   = "#3DBBDB";   // active tab / accent
 
 const navTabs = [
   { label: "My Learning", href: "#learning" },
-  { label: "Courses", href: "#courses" },
+  { label: "Courses", href: "/courses-list" },
   { label: "IELTS Skills", href: "#skills" },
   { label: "Results & Progress", href: "#progress" },
 ];

@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 
 // Tenant landing page
 import TenantLanding from "@/pages/tenant-landing";
+import PublicCourses from "@/pages/public-courses";
 
 // Admin pages
 import Dashboard from "@/pages/dashboard";
@@ -123,6 +124,10 @@ function Router() {
 
       {/* Root — landing page for guests, dashboard for admins */}
       <Route path="/" component={RootRoute} />
+
+      {/* Public courses listing — no auth required */}
+      <Route path="/courses-list" component={PublicCourses} />
+
       <Route path="/courses">
         <AdminGuard><Courses /></AdminGuard>
       </Route>

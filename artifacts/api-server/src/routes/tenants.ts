@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, ilike, and, type SQL } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import { db, tenantsTable } from "@workspace/db";
+import { db, tenantsTable, coursesTable } from "@workspace/db";
 import { DEFAULT_TENANT_SETTINGS } from "@workspace/db/schema";
 import { usersTable } from "@workspace/db/schema";
 import { generateDbPrefix } from "../lib/db-prefix";
@@ -265,6 +265,46 @@ router.get("/tenant/public", async (req, res): Promise<void> => {
     welcomeMessage: (tenant.settings as any)?.portal?.welcomeMessage ?? "",
     accentColor: (tenant.settings as any)?.branding?.accentColor ?? "",
   });
+});
+
+// GET /api/tenant/courses — public: returns published courses for this tenant
+router.get("/tenant/courses", async (req, res): Promise<void> => {
+  const tenantId = req.session?.tenantId;
+  const host = (req.headers["x-forwarded-host"] ?? req.headers.host ?? "") as string;
+  const domain = host.split(":")[0];
+
+  let resolvedTenantId: number | null = tenantId ?? null;
+
+  if (!resolvedTenantId && domain) {
+    const rows = await db.select({ id: tenantsTable.id })
+      .from(tenantsTable).where(eq(tenantsTable.domain, domain)).limit(1);
+    resolvedTenantId = rows[0]?.id ?? null;
+  }
+
+  if (!resolvedTenantId) {
+    res.json([]);
+    return;
+  }
+
+  const courses = await db
+    .select({
+      id: coursesTable.id,
+      title: coursesTable.title,
+      description: coursesTable.description,
+      category: coursesTable.category,
+      level: coursesTable.level,
+      durationHours: coursesTable.durationHours,
+      instructor: coursesTable.instructor,
+      imageUrl: coursesTable.imageUrl,
+    })
+    .from(coursesTable)
+    .where(and(
+      eq(coursesTable.tenantId, resolvedTenantId),
+      eq(coursesTable.isPublished, true),
+    ))
+    .orderBy(coursesTable.createdAt);
+
+  res.json(courses);
 });
 
 // ── Tenant self-service settings (for LMS admin of a specific tenant) ────────
