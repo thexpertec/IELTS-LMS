@@ -317,6 +317,9 @@ router.get("/tenant/courses", async (req, res): Promise<void> => {
       durationHours: coursesTable.durationHours,
       instructor: coursesTable.instructor,
       imageUrl: coursesTable.imageUrl,
+      enrollmentType: coursesTable.enrollmentType,
+      price: coursesTable.price,
+      currency: coursesTable.currency,
     })
     .from(coursesTable)
     .where(and(
@@ -326,6 +329,95 @@ router.get("/tenant/courses", async (req, res): Promise<void> => {
     .orderBy(coursesTable.createdAt);
 
   res.json(courses);
+});
+
+// GET /api/tenant/courses/:id — public: full detail for a single published course
+router.get("/tenant/courses/:id", async (req, res): Promise<void> => {
+  const courseId = parseInt(req.params.id, 10);
+  if (isNaN(courseId)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const tenantId = req.session?.tenantId;
+  const host = (req.headers["x-forwarded-host"] ?? req.headers.host ?? "") as string;
+
+  let resolvedTenantId: number | null = tenantId ?? null;
+  if (!resolvedTenantId) {
+    const tenant = await findTenantByDomain(host);
+    resolvedTenantId = tenant?.id ?? null;
+  }
+
+  if (!resolvedTenantId) {
+    res.status(404).json({ error: "Tenant not found" });
+    return;
+  }
+
+  const [course] = await db
+    .select()
+    .from(coursesTable)
+    .where(and(
+      eq(coursesTable.id, courseId),
+      eq(coursesTable.tenantId, resolvedTenantId),
+      eq(coursesTable.isPublished, true),
+    ))
+    .limit(1);
+
+  if (!course) {
+    res.status(404).json({ error: "Course not found" });
+    return;
+  }
+
+  // Load chapters + lessons (no content, just metadata for public view)
+  const { chaptersTable, lessonsTable } = await import("@workspace/db");
+
+  const chapters = await db
+    .select({ id: chaptersTable.id, title: chaptersTable.title, order: chaptersTable.order })
+    .from(chaptersTable)
+    .where(eq(chaptersTable.courseId, courseId))
+    .orderBy(chaptersTable.order);
+
+  const lessons = await db
+    .select({
+      id: lessonsTable.id,
+      chapterId: lessonsTable.chapterId,
+      title: lessonsTable.title,
+      lessonType: lessonsTable.lessonType,
+      durationMinutes: lessonsTable.durationMinutes,
+      order: lessonsTable.order,
+    })
+    .from(lessonsTable)
+    .where(eq(lessonsTable.courseId, courseId))
+    .orderBy(lessonsTable.order);
+
+  // Enrollment count (active/completed)
+  const { enrollmentsTable } = await import("@workspace/db");
+  const { count } = await import("drizzle-orm");
+  const [{ enrolled }] = await db
+    .select({ enrolled: count() })
+    .from(enrollmentsTable)
+    .where(eq(enrollmentsTable.courseId, courseId));
+
+  const curriculum = chapters.map((ch) => ({
+    ...ch,
+    lessons: lessons.filter((l) => l.chapterId === ch.id),
+  }));
+
+  res.json({
+    id: course.id,
+    title: course.title,
+    description: course.description,
+    category: course.category,
+    level: course.level,
+    durationHours: course.durationHours,
+    instructor: course.instructor,
+    imageUrl: course.imageUrl,
+    enrollmentType: course.enrollmentType,
+    price: course.price,
+    currency: course.currency,
+    maxStudents: course.maxStudents,
+    whatYouLearn: course.whatYouLearn ?? [],
+    prerequisites: course.prerequisites ?? "",
+    enrolledCount: Number(enrolled),
+    curriculum,
+  });
 });
 
 // ── Tenant self-service settings (for LMS admin of a specific tenant) ────────
@@ -405,6 +497,58 @@ router.patch("/tenant/settings", async (req, res): Promise<void> => {
   }
 
   res.json({ ok: true });
+});
+
+// POST /api/tenant/register-interest — public: capture interest in a course (no auth)
+router.post("/tenant/register-interest", async (req, res): Promise<void> => {
+  const { courseId, name, email, phone } = req.body as {
+    courseId?: number; name?: string; email?: string; phone?: string;
+  };
+
+  if (!courseId || !name?.trim() || !email?.trim()) {
+    res.status(400).json({ error: "courseId, name and email are required" });
+    return;
+  }
+
+  const tenantId = req.session?.tenantId;
+  const host = (req.headers["x-forwarded-host"] ?? req.headers.host ?? "") as string;
+  let resolvedTenantId: number | null = tenantId ?? null;
+  if (!resolvedTenantId) {
+    const tenant = await findTenantByDomain(host);
+    resolvedTenantId = tenant?.id ?? null;
+  }
+  if (!resolvedTenantId) {
+    res.status(404).json({ error: "Tenant not found" });
+    return;
+  }
+
+  // Verify the course belongs to this tenant
+  const { coursesTable: ct } = await import("@workspace/db");
+  const [course] = await db
+    .select({ id: ct.id, title: ct.title })
+    .from(ct)
+    .where(and(eq(ct.id, courseId), eq(ct.tenantId, resolvedTenantId)))
+    .limit(1);
+
+  if (!course) {
+    res.status(404).json({ error: "Course not found" });
+    return;
+  }
+
+  // Store as a pending enrollment record (reuse the enrollments table)
+  const { enrollmentsTable: et } = await import("@workspace/db");
+  await db
+    .insert(et)
+    .values({
+      courseId,
+      studentName: name.trim(),
+      studentEmail: email.trim().toLowerCase(),
+      status: "active",
+      progressPercent: 0,
+    })
+    .onConflictDoNothing();
+
+  res.json({ ok: true, course: course.title });
 });
 
 // POST /api/tenants/:id/login-as — SaaS admin assumes the tenant's admin session

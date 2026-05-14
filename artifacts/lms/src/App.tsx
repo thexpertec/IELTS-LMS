@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 // Tenant landing page
 import TenantLanding from "@/pages/tenant-landing";
 import PublicCourses from "@/pages/public-courses";
+import PublicCourseDetail from "@/pages/public-course-detail";
 
 // Admin pages
 import Dashboard from "@/pages/dashboard";
@@ -125,8 +126,9 @@ function Router() {
       {/* Root — landing page for guests, dashboard for admins */}
       <Route path="/" component={RootRoute} />
 
-      {/* Public courses listing — no auth required */}
+      {/* Public courses — no auth required */}
       <Route path="/courses-list" component={PublicCourses} />
+      <Route path="/courses-list/:id" component={PublicCourseDetail} />
 
       <Route path="/courses">
         <AdminGuard><Courses /></AdminGuard>

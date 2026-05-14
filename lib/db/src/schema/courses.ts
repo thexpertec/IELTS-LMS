@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, boolean, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, real, json } from "drizzle-orm/pg-core";
 import { tenantsTable } from "./tenants";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -14,6 +14,14 @@ export const coursesTable = pgTable("courses", {
   durationHours: real("duration_hours"),
   tenantId: integer("tenant_id").references(() => tenantsTable.id, { onDelete: "set null" }),
   isPublished: boolean("is_published").notNull().default(false),
+  // Pricing & enrollment
+  enrollmentType: text("enrollment_type").notNull().default("free"),
+  price: real("price"),
+  currency: text("currency").notNull().default("USD"),
+  maxStudents: integer("max_students"),
+  // Rich course info
+  whatYouLearn: json("what_you_learn").$type<string[]>(),
+  prerequisites: text("prerequisites"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

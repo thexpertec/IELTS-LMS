@@ -401,12 +401,12 @@ export default function PublicCourses() {
                         </div>
 
                         {/* CTA */}
-                        <Link href="/student/login">
+                        <Link href={`/courses-list/${course.id}`}>
                           <button
                             className="w-full py-2.5 text-white text-[13px] font-semibold hover:opacity-90 transition-opacity"
                             style={{ backgroundColor: BC_RED }}
                           >
-                            Log in to access →
+                            View Course →
                           </button>
                         </Link>
                       </div>
