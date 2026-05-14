@@ -46,28 +46,28 @@ const ieltsPillars = [
   {
     icon: BookOpen,
     title: "Academic Reading",
-    img: "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=600&q=80",
+    img: "/lms/images/reading.jpg",
     desc: "Develop skills for every IELTS reading question type — matching headings, True/False/Not Given, sentence completion, and multiple choice.",
     color: BC_BLUE,
   },
   {
     icon: PenTool,
     title: "Academic Writing",
-    img: "https://images.unsplash.com/photo-1455390582262-044cdead277a?w=600&q=80",
+    img: "/lms/images/writing.jpg",
     desc: "Master Task 1 and Task 2 with structured writing exercises, vocabulary building, and detailed tutor feedback on every submission.",
     color: BC_RED,
   },
   {
     icon: Headphones,
     title: "Listening",
-    img: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&q=80",
+    img: "/lms/images/listening.jpg",
     desc: "Practise with authentic listening exercises using an integrated audio player and IELTS-format question panels including maps and forms.",
     color: BC_CYAN,
   },
   {
     icon: Mic,
     title: "Speaking",
-    img: "https://images.unsplash.com/photo-1560439513-74b037a25d84?w=600&q=80",
+    img: "/lms/images/speaking.jpg",
     desc: "Record your answers for Parts 1, 2 & 3 directly in the browser. Receive pinpoint audio feedback from your tutor on each response.",
     color: "#6B2D8B",
   },
@@ -225,7 +225,7 @@ export default function TenantLanding() {
       <div
         className="relative w-full shrink-0"
         style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=1600&q=80')",
+          backgroundImage: "url('/lms/images/hero.jpg')",
           backgroundSize: "cover",
           backgroundPosition: "center 30%",
           minHeight: "480px",
