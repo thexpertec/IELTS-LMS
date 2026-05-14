@@ -188,6 +188,25 @@ function Router() {
   );
 }
 
+/**
+ * Detect the effective Wouter base at runtime.
+ * In the Replit preview the URL contains the BASE_PATH prefix (e.g. /lms).
+ * On a custom domain (e.g. lms.erp360.org) the prefix is stripped by the
+ * proxy, so window.location.pathname starts with "/" not "/lms/…".
+ * We fall back to "" in that case so all routes still resolve correctly.
+ */
+function resolveRouterBase(): string {
+  const configured = import.meta.env.BASE_URL.replace(/\/$/, ""); // e.g. "/lms"
+  if (!configured) return "";
+  const { pathname } = window.location;
+  if (pathname === configured || pathname.startsWith(configured + "/")) {
+    return configured;
+  }
+  return "";
+}
+
+const ROUTER_BASE = resolveRouterBase();
+
 function App() {
   return (
     <ThemeProvider defaultTheme="system" storageKey="lms-ui-theme">
@@ -195,7 +214,7 @@ function App() {
         <TooltipProvider>
           <AuthProvider>
             <StudentProvider>
-              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <WouterRouter base={ROUTER_BASE}>
                 <Router />
               </WouterRouter>
               <Toaster />
