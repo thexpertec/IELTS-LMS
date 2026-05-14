@@ -1,4 +1,4 @@
-import { useGetLesson, useUpdateLesson, useListChapters, getListLessonsQueryKey } from "@workspace/api-client-react";
+import { useGetLesson, useUpdateLesson, useListChapters, useListLessonTypes, getListLessonsQueryKey } from "@workspace/api-client-react";
 import { useLocation, useParams } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -28,17 +28,6 @@ import { MultiMediaUploadField } from "@/components/ui/multi-media-upload-field"
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
-
-const LESSON_TYPES = [
-  { id: "reading",       label: "Reading" },
-  { id: "writing",       label: "Writing" },
-  { id: "listening",     label: "Listening" },
-  { id: "speaking",      label: "Speaking" },
-  { id: "grammar",       label: "Grammar" },
-  { id: "vocabulary",    label: "Vocabulary" },
-  { id: "pronunciation", label: "Pronunciation" },
-  { id: "translation",   label: "Translation" },
-] as const;
 
 function stripHtml(html: string) {
   return html.replace(/<[^>]*>/g, "").trim();
@@ -70,6 +59,7 @@ export default function LessonEdit() {
 
   const { data: lesson, isLoading, isError } = useGetLesson(courseId, lessonId);
   const { data: chapters = [] } = useListChapters(courseId);
+  const { data: lessonTypes = [] } = useListLessonTypes();
 
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [audioUrls, setAudioUrls] = useState<string[]>([]);
@@ -103,7 +93,7 @@ export default function LessonEdit() {
       form.reset({
         title: lesson.title,
         description: l.description ?? "",
-        lessonType: l.lessonType ?? "reading",
+        lessonType: lesson.lessonType || "reading",
         content: lesson.content ?? "",
         videoUrl: lesson.videoUrl ?? "",
         durationMinutes: lesson.durationMinutes ?? "",
@@ -227,8 +217,8 @@ export default function LessonEdit() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {LESSON_TYPES.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
+                      {lessonTypes.map((t) => (
+                        <SelectItem key={t.key} value={t.key}>{t.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
