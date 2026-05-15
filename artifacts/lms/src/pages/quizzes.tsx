@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -93,6 +94,27 @@ export default function Quizzes() {
                           <><EyeOff className="w-3 h-3 mr-1" /> Draft</>
                         )}
                       </Badge>
+                      <button
+                        onClick={async () => {
+                          const isPaid = (quiz as typeof quiz & { enrollmentType?: string }).enrollmentType === "paid";
+                          await fetch(`/api/quizzes/${quiz.id}`, {
+                            method: "PUT",
+                            credentials: "include",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ enrollmentType: isPaid ? "free" : "paid" }),
+                          });
+                          queryClient.invalidateQueries({ queryKey: getListQuizzesQueryKey() });
+                        }}
+                        title={(quiz as typeof quiz & { enrollmentType?: string }).enrollmentType === "paid" ? "Click to make Free" : "Click to make Paid"}
+                        className={cn(
+                          "text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors cursor-pointer",
+                          (quiz as typeof quiz & { enrollmentType?: string }).enrollmentType === "paid"
+                            ? "border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400"
+                            : "border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400"
+                        )}
+                      >
+                        {(quiz as typeof quiz & { enrollmentType?: string }).enrollmentType === "paid" ? "Paid" : "Free"}
+                      </button>
                     </div>
                     <CardTitle className="text-lg line-clamp-1 mt-2">{quiz.title}</CardTitle>
                     {quiz.description && (
