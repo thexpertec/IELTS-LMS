@@ -7,6 +7,7 @@ import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { StudentLayout } from "@/components/layout/student-layout";
 import { StudentProvider, useStudent } from "@/context/student-context";
 import { AuthProvider, useAuth } from "@/context/auth-context";
+import { GamificationProvider } from "@/context/gamification-context";
 import type { ReactNode } from "react";
 
 // Tenant landing page
@@ -50,6 +51,18 @@ import Assignments from "@/pages/student/assignments";
 import StudentNotifications from "@/pages/student/notifications";
 import StudentProfile from "@/pages/student/profile";
 import StudentMessages from "@/pages/student/messages";
+
+// New IELTS modules
+import ListeningPage from "@/pages/student/listening";
+import ReadingPage from "@/pages/student/reading";
+import WritingPage from "@/pages/student/writing";
+import SpeakingPage from "@/pages/student/speaking";
+import VocabularyPage from "@/pages/student/vocabulary";
+import MockTestPage from "@/pages/student/mock-test";
+import AnalyticsPage from "@/pages/student/analytics";
+import CertificatesPage from "@/pages/student/certificates";
+import NotesPage from "@/pages/student/notes";
+import SettingsPage from "@/pages/student/settings";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -123,10 +136,42 @@ function Router() {
         <StudentGuard><StudentMessages /></StudentGuard>
       </Route>
 
-      {/* Root — landing page for guests, dashboard for admins */}
+      {/* IELTS Modules */}
+      <Route path="/student/listening">
+        <StudentGuard><ListeningPage /></StudentGuard>
+      </Route>
+      <Route path="/student/reading">
+        <StudentGuard><ReadingPage /></StudentGuard>
+      </Route>
+      <Route path="/student/writing">
+        <StudentGuard><WritingPage /></StudentGuard>
+      </Route>
+      <Route path="/student/speaking">
+        <StudentGuard><SpeakingPage /></StudentGuard>
+      </Route>
+      <Route path="/student/vocabulary">
+        <StudentGuard><VocabularyPage /></StudentGuard>
+      </Route>
+      <Route path="/student/mock-tests">
+        <StudentGuard><MockTestPage /></StudentGuard>
+      </Route>
+      <Route path="/student/analytics">
+        <StudentGuard><AnalyticsPage /></StudentGuard>
+      </Route>
+      <Route path="/student/certificates">
+        <StudentGuard><CertificatesPage /></StudentGuard>
+      </Route>
+      <Route path="/student/notes">
+        <StudentGuard><NotesPage /></StudentGuard>
+      </Route>
+      <Route path="/student/settings">
+        <StudentGuard><SettingsPage /></StudentGuard>
+      </Route>
+
+      {/* Root */}
       <Route path="/" component={RootRoute} />
 
-      {/* Public courses — no auth required */}
+      {/* Public courses */}
       <Route path="/courses-list" component={PublicCourses} />
       <Route path="/courses-list/:id" component={PublicCourseDetail} />
 
@@ -190,15 +235,8 @@ function Router() {
   );
 }
 
-/**
- * Detect the effective Wouter base at runtime.
- * In the Replit preview the URL contains the BASE_PATH prefix (e.g. /lms).
- * On a custom domain (e.g. lms.erp360.org) the prefix is stripped by the
- * proxy, so window.location.pathname starts with "/" not "/lms/…".
- * We fall back to "" in that case so all routes still resolve correctly.
- */
 function resolveRouterBase(): string {
-  const configured = import.meta.env.BASE_URL.replace(/\/$/, ""); // e.g. "/lms"
+  const configured = import.meta.env.BASE_URL.replace(/\/$/, "");
   if (!configured) return "";
   const { pathname } = window.location;
   if (pathname === configured || pathname.startsWith(configured + "/")) {
@@ -216,10 +254,12 @@ function App() {
         <TooltipProvider>
           <AuthProvider>
             <StudentProvider>
-              <WouterRouter base={ROUTER_BASE}>
-                <Router />
-              </WouterRouter>
-              <Toaster />
+              <GamificationProvider>
+                <WouterRouter base={ROUTER_BASE}>
+                  <Router />
+                </WouterRouter>
+                <Toaster />
+              </GamificationProvider>
             </StudentProvider>
           </AuthProvider>
         </TooltipProvider>
