@@ -1147,14 +1147,14 @@ export default function StudentQuizTake() {
 
         {/* LEFT: Passage / Media — always visible; falls back to quiz info when no content */}
         <div className="w-1/2 overflow-y-auto border-r bg-card">
-          {/* Single-image-only: fill the panel with no padding */}
+          {/* Single-image-only: fill the panel with minimal padding */}
           {hasLeftPanel && tabImages.length === 1 && !leftPassage && tabAudios.length === 0 ? (
-            <div className="flex items-start justify-center w-full h-full p-4">
+            <div className="flex items-start justify-center w-full h-full p-1">
               <img
                 src={getServingUrl(tabImages[0])}
                 alt="Reading image"
-                className="rounded-lg border w-full h-full object-contain"
-                style={{ maxHeight: "calc(100vh - 3rem)" }}
+                className="rounded-lg border w-full object-contain"
+                style={{ maxHeight: "calc(100vh - 3.5rem)", minHeight: "min(600px, calc(100vh - 3.5rem))" }}
               />
             </div>
           ) : (
