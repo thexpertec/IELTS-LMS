@@ -429,7 +429,7 @@ export default function CourseDetail() {
               </div>
               <p className="text-xs text-rose-500 font-semibold mt-0.5">⏰ Offer ends in 2 days</p>
             </div>
-            <a href="/lms/" className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm whitespace-nowrap transition-colors shadow-lg shadow-indigo-200">
+            <a href={`/checkout?course=${COURSE.id}`} className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm whitespace-nowrap transition-colors shadow-lg shadow-indigo-200">
               Enroll Now
             </a>
           </>
@@ -442,7 +442,7 @@ export default function CourseDetail() {
             </div>
             <p className="text-xs text-rose-500 font-semibold mb-4">⏰ This price ends in <span className="font-bold">2 days</span></p>
 
-            <a href="/lms/" className="block w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-center text-base transition-all hover:scale-[1.02] shadow-md shadow-indigo-200 mb-3">
+            <a href={`/checkout?course=${COURSE.id}`} className="block w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-center text-base transition-all hover:scale-[1.02] shadow-md shadow-indigo-200 mb-3">
               Enroll Now — ${effectivePrice}
             </a>
             <a href="/lms/" className="block w-full py-3 rounded-xl border-2 border-indigo-200 hover:border-indigo-400 text-indigo-700 font-bold text-center text-sm transition-colors mb-4">

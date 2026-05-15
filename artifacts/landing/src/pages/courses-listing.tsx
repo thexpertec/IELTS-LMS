@@ -224,8 +224,8 @@ function CourseGridCard({ course, wishlist, onWishlist }: { course: Course; wish
               </>
             )}
           </div>
-          <a href="/lms/" className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-colors">
-            Enroll
+          <a href={course.isFree ? "/lms/" : `/checkout?course=${course.id}`} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-colors">
+            {course.isFree ? "Enroll Free" : "Enroll"}
           </a>
         </div>
       </div>
@@ -282,8 +282,8 @@ function CourseListCard({ course, wishlist, onWishlist }: { course: Course; wish
             )}
           </div>
           <div className="flex flex-col gap-2">
-            <a href="/lms/" className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold transition-colors whitespace-nowrap">
-              Enroll Now
+            <a href={course.isFree ? "/lms/" : `/checkout?course=${course.id}`} className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold transition-colors whitespace-nowrap">
+              {course.isFree ? "Enroll Free" : "Enroll Now"}
             </a>
             <button
               onClick={() => onWishlist(course.id)}

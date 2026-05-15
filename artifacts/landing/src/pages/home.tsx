@@ -325,7 +325,7 @@ function CourseCard({ course }: { course: typeof courses[0] }) {
             <span className="text-lg font-bold text-slate-900">${course.price}</span>
             <span className="text-sm text-slate-400 line-through">${course.originalPrice}</span>
           </div>
-          <a href="/lms/" className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors">
+          <a href={`/checkout?course=${course.id ?? 1}`} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors">
             Enroll Now
           </a>
         </div>
