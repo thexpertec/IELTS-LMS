@@ -21,6 +21,7 @@ export const quizzesTable = pgTable("quizzes", {
   audioUrls: json("audio_urls").$type<string[]>(),
   timeLimitMinutes: integer("time_limit_minutes"),
   isPublished: boolean("is_published").notNull().default(false),
+  enrollmentType: text("enrollment_type").notNull().default("free"),
   tenantId: integer("tenant_id").references(() => tenantsTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
