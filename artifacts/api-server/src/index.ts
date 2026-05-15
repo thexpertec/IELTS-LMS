@@ -3,7 +3,7 @@ import { logger } from "./lib/logger";
 import { seedUsersIfEmpty } from "./lib/seed-users";
 import { seedLessonTypesIfEmpty } from "./lib/seed-lesson-types";
 import { repairDuplicateEnrollments, ensureEnrollmentUniqueConstraint, backfillTenantIds } from "./lib/repair-enrollments";
-import { migrateCoursesTable, migrateQuizzesTable } from "./lib/migrate-courses";
+import { migrateCoursesTable, migrateQuizzesTable, migrateLessonsTable } from "./lib/migrate-courses";
 
 const rawPort = process.env["PORT"];
 
@@ -28,6 +28,7 @@ app.listen(port, (err) => {
   logger.info({ port }, "Server listening");
   void migrateCoursesTable()
     .then(() => migrateQuizzesTable())
+    .then(() => migrateLessonsTable())
     .then(() => repairDuplicateEnrollments())
     .then(() => ensureEnrollmentUniqueConstraint())
     .then(() => backfillTenantIds())

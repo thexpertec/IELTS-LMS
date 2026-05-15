@@ -72,6 +72,8 @@ type Lesson = {
   durationMinutes?: number | null;
   chapterId?: number | null;
   lessonType?: string | null;
+  enrollmentType?: string | null;
+  courseId?: number;
   order: number;
 };
 
@@ -84,14 +86,16 @@ type Chapter = {
 // ── LessonCard ───────────────────────────────────────────────────────────────
 
 function LessonCardInner({
-  lesson, index, onEdit, onDelete, dragHandleProps, isDragging = false,
+  lesson, index, courseId, onEdit, onDelete, dragHandleProps, isDragging = false,
 }: {
-  lesson: Lesson; index: number;
+  lesson: Lesson; index: number; courseId?: number;
   onEdit: () => void; onDelete: () => void;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
   isDragging?: boolean;
 }) {
+  const queryClient = useQueryClient();
   const TypeIcon = ICON_MAP[lesson.lessonType ?? "BookOpen"] ?? ICON_MAP["BookOpen"]!;
+  const isPaid = lesson.enrollmentType === "paid";
   return (
     <Card className={cn(
       "flex flex-row items-center p-3.5 transition-colors gap-3",
@@ -122,6 +126,28 @@ function LessonCardInner({
         </div>
       </div>
       <div className="flex items-center gap-1 ml-2">
+        {courseId && (
+          <button
+            onClick={async () => {
+              await fetch(`/api/courses/${courseId}/lessons/${lesson.id}`, {
+                method: "PATCH",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ enrollmentType: isPaid ? "free" : "paid" }),
+              });
+              queryClient.invalidateQueries({ queryKey: getListLessonsQueryKey(courseId) });
+            }}
+            title={isPaid ? "Click to make Free" : "Click to make Paid"}
+            className={cn(
+              "text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors cursor-pointer",
+              isPaid
+                ? "border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400"
+                : "border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400"
+            )}
+          >
+            {isPaid ? "Paid" : "Free"}
+          </button>
+        )}
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
           <Edit className="w-3.5 h-3.5" />
         </Button>
@@ -169,6 +195,7 @@ function SortableLessonCard({
       <LessonCardInner
         lesson={lesson}
         index={index}
+        courseId={courseId}
         onEdit={onEdit}
         onDelete={onDelete}
         dragHandleProps={{ ...attributes, ...listeners }}
@@ -477,6 +504,7 @@ function UnitSection({
                       <LessonCardInner
                         lesson={activeDragLesson}
                         index={localLessons.findIndex((l) => l.id === activeDragLesson.id)}
+                        courseId={courseId}
                         onEdit={() => {}}
                         onDelete={() => {}}
                         isDragging
@@ -854,6 +882,7 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
                         key={lesson.id}
                         lesson={lesson}
                         index={index}
+                        courseId={courseId}
                         onEdit={() => setLocation(`/courses/${courseId}/lessons/${lesson.id}/edit`)}
                         onDelete={() => deleteLesson.mutate({ courseId, id: lesson.id })}
                       />

@@ -33,6 +33,7 @@ async function lessonWithChapter(courseId: number, lessonId?: number) {
       audioUrls: lessonsTable.audioUrls,
       durationMinutes: lessonsTable.durationMinutes,
       lessonType: lessonsTable.lessonType,
+      enrollmentType: lessonsTable.enrollmentType,
       order: lessonsTable.order,
       createdAt: lessonsTable.createdAt,
       updatedAt: lessonsTable.updatedAt,

@@ -18,6 +18,7 @@ export const lessonsTable = pgTable("lessons", {
   audioUrls: json("audio_urls").$type<string[]>(),
   durationMinutes: integer("duration_minutes"),
   lessonType: text("lesson_type").notNull().default("reading"),
+  enrollmentType: text("enrollment_type").notNull().default("free"),
   order: integer("order").notNull().default(1),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

@@ -32,3 +32,14 @@ export async function migrateQuizzesTable(): Promise<void> {
     logger.error({ err }, "migrateQuizzesTable failed");
   }
 }
+
+export async function migrateLessonsTable(): Promise<void> {
+  try {
+    await db.execute(sql`
+      ALTER TABLE lessons ADD COLUMN IF NOT EXISTS enrollment_type text NOT NULL DEFAULT 'free';
+    `);
+    logger.info("migrateLessonsTable: columns ensured");
+  } catch (err) {
+    logger.error({ err }, "migrateLessonsTable failed");
+  }
+}
