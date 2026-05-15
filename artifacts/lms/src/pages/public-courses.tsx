@@ -22,6 +22,7 @@ interface PublicCourse {
   durationHours: number | null;
   instructor: string | null;
   imageUrl: string | null;
+  enrollmentType?: string | null;
 }
 
 interface PublicTenantInfo {
@@ -76,6 +77,25 @@ const navTabs = [
 export default function PublicCourses() {
   const [search, setSearch] = React.useState("");
   const [activeCategory, setActiveCategory] = React.useState<string | null>(null);
+  const [togglingId, setTogglingId] = React.useState<number | null>(null);
+
+  async function handleToggleEnrollment(course: PublicCourse) {
+    setTogglingId(course.id);
+    const next = course.enrollmentType === "paid" ? "free" : "paid";
+    try {
+      await fetch(`/api/courses/${course.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enrollmentType: next }),
+      });
+      await refetchCourses();
+    } catch {
+      /* ignore */
+    } finally {
+      setTogglingId(null);
+    }
+  }
 
   const { data: tenant } = useQuery<PublicTenantInfo | null>({
     queryKey: ["tenant-public"],
@@ -87,7 +107,7 @@ export default function PublicCourses() {
     staleTime: 1000 * 60 * 10,
   });
 
-  const { data: courses = [], isLoading } = useQuery<PublicCourse[]>({
+  const { data: courses = [], isLoading, refetch: refetchCourses } = useQuery<PublicCourse[]>({
     queryKey: ["tenant-courses-public"],
     queryFn: async () => {
       const res = await fetch("/api/tenant/courses", { credentials: "include" });
@@ -398,6 +418,20 @@ export default function PublicCourses() {
                               {course.durationHours}h
                             </span>
                           )}
+                          {/* Free / Paid toggle */}
+                          <button
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleToggleEnrollment(course); }}
+                            disabled={togglingId === course.id}
+                            title={course.enrollmentType === "paid" ? "Click to make Free" : "Click to make Paid"}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold border transition-colors cursor-pointer disabled:opacity-60"
+                            style={
+                              course.enrollmentType === "paid"
+                                ? { backgroundColor: "#FEF3C7", color: "#92400E", borderColor: "#FCD34D" }
+                                : { backgroundColor: "#D1FAE5", color: "#065F46", borderColor: "#6EE7B7" }
+                            }
+                          >
+                            {togglingId === course.id ? "…" : course.enrollmentType === "paid" ? "Paid" : "Free"}
+                          </button>
                         </div>
 
                         {/* CTA */}

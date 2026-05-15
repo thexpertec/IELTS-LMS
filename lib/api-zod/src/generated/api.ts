@@ -33,6 +33,7 @@ export const ListCoursesResponseItem = zod.object({
   imageUrl: zod.string().nullable(),
   durationHours: zod.number().nullable(),
   isPublished: zod.boolean(),
+  enrollmentType: zod.enum(["free", "paid"]).optional(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -69,6 +70,7 @@ export const GetCourseResponse = zod.object({
   imageUrl: zod.string().nullable(),
   durationHours: zod.number().nullable(),
   isPublished: zod.boolean(),
+  enrollmentType: zod.enum(["free", "paid"]).optional(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -102,6 +104,7 @@ export const UpdateCourseResponse = zod.object({
   imageUrl: zod.string().nullable(),
   durationHours: zod.number().nullable(),
   isPublished: zod.boolean(),
+  enrollmentType: zod.enum(["free", "paid"]).optional(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
