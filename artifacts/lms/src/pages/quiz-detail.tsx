@@ -1334,7 +1334,7 @@ export default function QuizDetail() {
   const { toast } = useToast();
   // ── Quiz settings edit state
   const [editSettings, setEditSettings] = useState(false);
-  const [settingsForm, setSettingsForm] = useState({ title: "", description: "", passageText: "", videoUrl: "", courseId: "none", chapterId: "none", lessonId: "none", lessonType: "", timeLimitMinutes: "", isPublished: false });
+  const [settingsForm, setSettingsForm] = useState({ title: "", description: "", passageText: "", videoUrl: "", courseId: "none", chapterId: "none", lessonId: "none", lessonType: "", timeLimitMinutes: "", isPublished: false, enrollmentType: "free" as "free" | "paid" });
   const [editImageUrls, setEditImageUrls] = useState<string[]>([]);
   const [editAudioUrls, setEditAudioUrls] = useState<string[]>([]);
 
@@ -1747,6 +1747,7 @@ export default function QuizDetail() {
       lessonType: q.lessonType ?? "",
       timeLimitMinutes: quiz.timeLimitMinutes ? String(quiz.timeLimitMinutes) : "",
       isPublished: quiz.isPublished,
+      enrollmentType: ((q as any).enrollmentType ?? "free") as "free" | "paid",
     });
     setEditImageUrls(q.imageUrls ?? []);
     setEditAudioUrls(q.audioUrls ?? []);
@@ -1772,6 +1773,8 @@ export default function QuizDetail() {
         lessonType: settingsForm.lessonType || null,
         timeLimitMinutes: settingsForm.timeLimitMinutes ? Number(settingsForm.timeLimitMinutes) : undefined,
         isPublished: settingsForm.isPublished,
+        // @ts-expect-error — extra field not in generated API types
+        enrollmentType: settingsForm.enrollmentType,
       },
     });
   }
@@ -1817,6 +1820,22 @@ export default function QuizDetail() {
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <Badge variant={quiz.isPublished ? "default" : "secondary"}>
                 {quiz.isPublished ? <><Eye className="w-3 h-3 mr-1" />Published</> : <><EyeOff className="w-3 h-3 mr-1" />Draft</>}
+              </Badge>
+              <Badge
+                variant="outline"
+                className={cn(
+                  "cursor-pointer select-none transition-colors",
+                  (quiz as any).enrollmentType === "paid"
+                    ? "border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400"
+                    : "border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400"
+                )}
+                onClick={() => {
+                  const next = (quiz as any).enrollmentType === "paid" ? "free" : "paid";
+                  updateQuiz.mutate({ id: quizId, data: { enrollmentType: next } as any });
+                }}
+                title="Click to toggle Free / Paid"
+              >
+                {(quiz as any).enrollmentType === "paid" ? "Paid" : "Free"}
               </Badge>
               <Badge variant="outline">
                 <ClipboardList className="w-3 h-3 mr-1" />
@@ -2272,6 +2291,25 @@ export default function QuizDetail() {
                 checked={settingsForm.isPublished}
                 onCheckedChange={(v) => setSettingsForm({ ...settingsForm, isPublished: v })}
               />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <Label className="text-sm font-medium">Enrollment Type</Label>
+                <p className="text-xs text-muted-foreground">
+                  {settingsForm.enrollmentType === "paid"
+                    ? "Paid — students must purchase to access"
+                    : "Free — open to all students"}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={cn("text-sm font-medium", settingsForm.enrollmentType === "paid" ? "text-amber-600" : "text-emerald-600")}>
+                  {settingsForm.enrollmentType === "paid" ? "Paid" : "Free"}
+                </span>
+                <Switch
+                  checked={settingsForm.enrollmentType === "paid"}
+                  onCheckedChange={(v) => setSettingsForm({ ...settingsForm, enrollmentType: v ? "paid" : "free" })}
+                />
+              </div>
             </div>
           </div>
           <DialogFooter className="flex-shrink-0 pt-2 border-t">

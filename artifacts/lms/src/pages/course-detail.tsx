@@ -39,6 +39,7 @@ type SettingsForm = {
   durationHours: string;
   imageUrl: string;
   isPublished: boolean;
+  enrollmentType: "free" | "paid";
 };
 
 export default function CourseDetail() {
@@ -52,6 +53,7 @@ export default function CourseDetail() {
   const [settingsForm, setSettingsForm] = useState<SettingsForm>({
     title: "", description: "", instructor: "", category: "",
     level: "beginner", durationHours: "", imageUrl: "", isPublished: false,
+    enrollmentType: "free",
   });
   const [settingsDirty, setSettingsDirty] = useState(false);
 
@@ -71,6 +73,7 @@ export default function CourseDetail() {
         durationHours: course.durationHours ? String(course.durationHours) : "",
         imageUrl: (course as any).imageUrl ?? "",
         isPublished: course.isPublished,
+        enrollmentType: ((course as any).enrollmentType ?? "free") as "free" | "paid",
       });
       setSettingsDirty(false);
     }
@@ -107,6 +110,7 @@ export default function CourseDetail() {
         durationHours: settingsForm.durationHours ? Number(settingsForm.durationHours) : undefined,
         imageUrl: settingsForm.imageUrl || undefined,
         isPublished: settingsForm.isPublished,
+        enrollmentType: settingsForm.enrollmentType,
       } as any,
     });
   }
@@ -374,6 +378,33 @@ export default function CourseDetail() {
                       checked={settingsForm.isPublished}
                       onCheckedChange={(v) => patchForm({ isPublished: v })}
                       data-testid="switch-published"
+                    />
+                  </div>
+                </div>
+
+                {/* Free / Paid toggle */}
+                <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    {settingsForm.enrollmentType === "paid"
+                      ? <ToggleRight className="w-5 h-5 text-amber-500" />
+                      : <ToggleLeft className="w-5 h-5 text-muted-foreground" />}
+                    <div>
+                      <p className="text-sm font-semibold">Enrollment Type</p>
+                      <p className="text-xs text-muted-foreground">
+                        {settingsForm.enrollmentType === "paid"
+                          ? "Paid — students must purchase to enroll"
+                          : "Free — open enrollment for all students"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={cn("text-sm font-medium", settingsForm.enrollmentType === "paid" ? "text-amber-600" : "text-muted-foreground")}>
+                      {settingsForm.enrollmentType === "paid" ? "Paid" : "Free"}
+                    </span>
+                    <Switch
+                      checked={settingsForm.enrollmentType === "paid"}
+                      onCheckedChange={(v) => patchForm({ enrollmentType: v ? "paid" : "free" })}
+                      data-testid="switch-enrollment-type"
                     />
                   </div>
                 </div>

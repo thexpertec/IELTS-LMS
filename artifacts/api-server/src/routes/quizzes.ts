@@ -134,6 +134,7 @@ router.put("/quizzes/:id", async (req, res): Promise<void> => {
       ...(parsed.data.lessonType !== undefined && { lessonType: parsed.data.lessonType }),
       ...(parsed.data.timeLimitMinutes !== undefined && { timeLimitMinutes: parsed.data.timeLimitMinutes }),
       ...(parsed.data.isPublished !== undefined && { isPublished: parsed.data.isPublished }),
+      ...("enrollmentType" in req.body && typeof req.body.enrollmentType === "string" && { enrollmentType: req.body.enrollmentType }),
     })
     .where(eq(quizzesTable.id, params.data.id))
     .returning();

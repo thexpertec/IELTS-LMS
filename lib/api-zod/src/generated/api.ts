@@ -89,6 +89,7 @@ export const UpdateCourseBody = zod.object({
   imageUrl: zod.string().nullish(),
   durationHours: zod.number().nullish(),
   isPublished: zod.boolean().optional(),
+  enrollmentType: zod.enum(["free", "paid"]).optional(),
 });
 
 export const UpdateCourseResponse = zod.object({
