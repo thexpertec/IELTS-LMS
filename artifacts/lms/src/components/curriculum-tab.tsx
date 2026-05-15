@@ -9,7 +9,6 @@ import {
   useUpdateChapter,
   useDeleteChapter,
   useListQuizzes,
-  useUpdateQuiz,
   useListAssignments,
   useDeleteQuiz,
   useDeleteAssignment,
@@ -226,17 +225,6 @@ function UnitSection({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [collapsed, setCollapsed] = useState(false);
-
-  const updateQuiz = useUpdateQuiz({
-    mutation: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListQuizzesQueryKey({ courseId }) });
-      },
-      onError: () => {
-        toast({ title: "Failed to update quiz", variant: "destructive" });
-      },
-    },
-  });
   const firstTypeKey = lessonTypes[0]?.key ?? "";
   // Prefer the type passed from the URL (e.g. after lesson creation redirect),
   // fall back to the first lesson type in the ordered list.
@@ -514,7 +502,16 @@ function UnitSection({
                       </div>
                       {/* Free / Paid toggle badge */}
                       <button
-                        onClick={() => updateQuiz.mutate({ id: quiz.id, data: { enrollmentType: isPaid ? "free" : "paid" } as any })}
+                        onClick={async () => {
+                          const next = isPaid ? "free" : "paid";
+                          await fetch(`/api/quizzes/${quiz.id}`, {
+                            method: "PUT",
+                            credentials: "include",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ enrollmentType: next }),
+                          });
+                          queryClient.invalidateQueries({ queryKey: getListQuizzesQueryKey({ courseId }) });
+                        }}
                         title={isPaid ? "Click to make Free" : "Click to make Paid"}
                         className={cn(
                           "shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors cursor-pointer",
@@ -917,6 +914,28 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
                 ) : (
                   <Badge variant="outline" className="text-muted-foreground text-xs">Draft</Badge>
                 )}
+                {/* Free / Paid toggle */}
+                <button
+                  onClick={async () => {
+                    const isPaid = (quiz as QuizItem).enrollmentType === "paid";
+                    await fetch(`/api/quizzes/${quiz.id}`, {
+                      method: "PUT",
+                      credentials: "include",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ enrollmentType: isPaid ? "free" : "paid" }),
+                    });
+                    queryClient.invalidateQueries({ queryKey: getListQuizzesQueryKey({ courseId }) });
+                  }}
+                  title={(quiz as QuizItem).enrollmentType === "paid" ? "Click to make Free" : "Click to make Paid"}
+                  className={cn(
+                    "text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors cursor-pointer",
+                    (quiz as QuizItem).enrollmentType === "paid"
+                      ? "border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                      : "border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                  )}
+                >
+                  {(quiz as QuizItem).enrollmentType === "paid" ? "Paid" : "Free"}
+                </button>
                 <Link href={`/quizzes/${quiz.id}`}>
                   <Button variant="ghost" size="icon" className="h-8 w-8"><Edit className="w-4 h-4" /></Button>
                 </Link>
