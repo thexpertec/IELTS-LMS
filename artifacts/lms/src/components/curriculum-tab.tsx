@@ -9,6 +9,7 @@ import {
   useUpdateChapter,
   useDeleteChapter,
   useListQuizzes,
+  useUpdateQuiz,
   useListAssignments,
   useDeleteQuiz,
   useDeleteAssignment,
@@ -180,7 +181,7 @@ function SortableLessonCard({
 
 // ── UnitSection ──────────────────────────────────────────────────────────────
 
-type QuizItem = { id: number; title: string; description?: string | null; questionCount: number; timeLimitMinutes?: number | null; chapterId?: number | null; lessonType?: string | null };
+type QuizItem = { id: number; title: string; description?: string | null; questionCount: number; timeLimitMinutes?: number | null; chapterId?: number | null; lessonType?: string | null; enrollmentType?: string | null };
 type AssignmentItem = { id: number; title: string; description?: string | null; dueDate: string; maxScore: number; chapterId?: number | null; lessonType?: string | null };
 
 function SortableTypeRow({
@@ -225,6 +226,17 @@ function UnitSection({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [collapsed, setCollapsed] = useState(false);
+
+  const updateQuiz = useUpdateQuiz({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListQuizzesQueryKey({ courseId }) });
+      },
+      onError: () => {
+        toast({ title: "Failed to update quiz", variant: "destructive" });
+      },
+    },
+  });
   const firstTypeKey = lessonTypes[0]?.key ?? "";
   // Prefer the type passed from the URL (e.g. after lesson creation redirect),
   // fall back to the first lesson type in the ordered list.
@@ -485,26 +497,42 @@ function UnitSection({
                   </DragOverlay>
                 </DndContext>
                 {/* Inline Quizzes */}
-                {activeQuizzes.map((quiz) => (
-                  <Card key={quiz.id} className="flex flex-row items-center p-3.5 hover:border-violet-400/60 transition-colors gap-3 border-violet-200/80 bg-violet-50/40 dark:bg-violet-950/10">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 bg-violet-100 dark:bg-violet-900/40">
-                      <ClipboardList className="w-3.5 h-3.5 text-violet-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-sm truncate">{quiz.title}</h4>
-                      {quiz.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{quiz.description.replace(/<[^>]*>/g, "")}</p>}
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                        <span>{quiz.questionCount} question{quiz.questionCount !== 1 ? "s" : ""}</span>
-                        {quiz.timeLimitMinutes && <span className="flex items-center gap-1"><Timer className="w-3 h-3" />{quiz.timeLimitMinutes} min</span>}
+                {activeQuizzes.map((quiz) => {
+                  const isPaid = quiz.enrollmentType === "paid";
+                  return (
+                    <Card key={quiz.id} className="flex flex-row items-center p-3.5 hover:border-violet-400/60 transition-colors gap-3 border-violet-200/80 bg-violet-50/40 dark:bg-violet-950/10">
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 bg-violet-100 dark:bg-violet-900/40">
+                        <ClipboardList className="w-3.5 h-3.5 text-violet-600" />
                       </div>
-                    </div>
-                    <Link href={`/quizzes/${quiz.id}`}>
-                      <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <Edit className="w-3.5 h-3.5" />
-                      </Button>
-                    </Link>
-                  </Card>
-                ))}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm truncate">{quiz.title}</h4>
+                        {quiz.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{quiz.description.replace(/<[^>]*>/g, "")}</p>}
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                          <span>{quiz.questionCount} question{quiz.questionCount !== 1 ? "s" : ""}</span>
+                          {quiz.timeLimitMinutes && <span className="flex items-center gap-1"><Timer className="w-3 h-3" />{quiz.timeLimitMinutes} min</span>}
+                        </div>
+                      </div>
+                      {/* Free / Paid toggle badge */}
+                      <button
+                        onClick={() => updateQuiz.mutate({ id: quiz.id, data: { enrollmentType: isPaid ? "free" : "paid" } as any })}
+                        title={isPaid ? "Click to make Free" : "Click to make Paid"}
+                        className={cn(
+                          "shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors cursor-pointer",
+                          isPaid
+                            ? "border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400"
+                            : "border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400"
+                        )}
+                      >
+                        {isPaid ? "Paid" : "Free"}
+                      </button>
+                      <Link href={`/quizzes/${quiz.id}`}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                          <Edit className="w-3.5 h-3.5" />
+                        </Button>
+                      </Link>
+                    </Card>
+                  );
+                })}
                 {/* Inline Assignments */}
                 {activeAssignments.map((a) => (
                   <Card key={a.id} className="flex flex-row items-center p-3.5 hover:border-blue-400/60 transition-colors gap-3 border-blue-200/80 bg-blue-50/40 dark:bg-blue-950/10">

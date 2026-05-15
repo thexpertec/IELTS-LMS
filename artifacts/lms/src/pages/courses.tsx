@@ -74,6 +74,10 @@ export default function Courses() {
     updateCourse.mutate({ id, data: { isPublished: !currentStatus } });
   };
 
+  const handleToggleEnrollment = (id: number, current: string) => {
+    updateCourse.mutate({ id, data: { enrollmentType: current === "paid" ? "free" : "paid" } as any });
+  };
+
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6 sm:space-y-8">
       {/* Header */}
@@ -192,6 +196,23 @@ export default function Courses() {
                         )}>
                           {published ? "Published" : "Draft"}
                         </span>
+                        {/* Free / Paid toggle */}
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleToggleEnrollment(course.id, (course as any).enrollmentType ?? "free");
+                          }}
+                          title={(course as any).enrollmentType === "paid" ? "Click to make Free" : "Click to make Paid"}
+                          className={cn(
+                            "inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full border transition-colors cursor-pointer",
+                            (course as any).enrollmentType === "paid"
+                              ? "border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400"
+                              : "border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400"
+                          )}
+                        >
+                          {(course as any).enrollmentType === "paid" ? "Paid" : "Free"}
+                        </button>
                         {course.category && (
                           <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-muted-foreground">
                             {course.category}

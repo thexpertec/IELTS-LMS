@@ -41,6 +41,7 @@ router.get("/quizzes", async (req, res): Promise<void> => {
       lessonType: quizzesTable.lessonType,
       timeLimitMinutes: quizzesTable.timeLimitMinutes,
       isPublished: quizzesTable.isPublished,
+      enrollmentType: quizzesTable.enrollmentType,
       tenantId: quizzesTable.tenantId,
       createdAt: quizzesTable.createdAt,
       updatedAt: quizzesTable.updatedAt,
