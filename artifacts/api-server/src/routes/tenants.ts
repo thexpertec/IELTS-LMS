@@ -366,7 +366,8 @@ router.get("/tenant/courses/:id", async (req, res): Promise<void> => {
   }
 
   // Load chapters + lessons (no content, just metadata for public view)
-  const { chaptersTable, lessonsTable } = await import("@workspace/db");
+  const { chaptersTable, lessonsTable, quizzesTable, quizQuestionsTable } = await import("@workspace/db");
+  const { count } = await import("drizzle-orm");
 
   const chapters = await db
     .select({ id: chaptersTable.id, title: chaptersTable.title, order: chaptersTable.order })
@@ -387,9 +388,42 @@ router.get("/tenant/courses/:id", async (req, res): Promise<void> => {
     .where(eq(lessonsTable.courseId, courseId))
     .orderBy(lessonsTable.order);
 
+  // Load quizzes linked to lessons of this course (published only for public view)
+  const lessonIds = lessons.map((l) => l.id);
+  let quizzesByLesson: Record<number, Array<{ id: number; title: string; questionCount: number; timeLimitMinutes: number | null }>> = {};
+
+  if (lessonIds.length > 0) {
+    const quizRows = await db
+      .select({
+        id: quizzesTable.id,
+        lessonId: quizzesTable.lessonId,
+        title: quizzesTable.title,
+        timeLimitMinutes: quizzesTable.timeLimitMinutes,
+        questionCount: count(quizQuestionsTable.id),
+      })
+      .from(quizzesTable)
+      .leftJoin(quizQuestionsTable, eq(quizQuestionsTable.quizId, quizzesTable.id))
+      .where(and(
+        inArray(quizzesTable.lessonId, lessonIds),
+        eq(quizzesTable.isPublished, true),
+      ))
+      .groupBy(quizzesTable.id, quizzesTable.lessonId, quizzesTable.title, quizzesTable.timeLimitMinutes)
+      .orderBy(quizzesTable.id);
+
+    for (const q of quizRows) {
+      if (!q.lessonId) continue;
+      if (!quizzesByLesson[q.lessonId]) quizzesByLesson[q.lessonId] = [];
+      quizzesByLesson[q.lessonId].push({
+        id: q.id,
+        title: q.title,
+        questionCount: Number(q.questionCount),
+        timeLimitMinutes: q.timeLimitMinutes,
+      });
+    }
+  }
+
   // Enrollment count (active/completed)
   const { enrollmentsTable } = await import("@workspace/db");
-  const { count } = await import("drizzle-orm");
   const [{ enrolled }] = await db
     .select({ enrolled: count() })
     .from(enrollmentsTable)
@@ -397,7 +431,10 @@ router.get("/tenant/courses/:id", async (req, res): Promise<void> => {
 
   const curriculum = chapters.map((ch) => ({
     ...ch,
-    lessons: lessons.filter((l) => l.chapterId === ch.id),
+    lessons: lessons.filter((l) => l.chapterId === ch.id).map((l) => ({
+      ...l,
+      quizzes: quizzesByLesson[l.id] ?? [],
+    })),
   }));
 
   res.json({
