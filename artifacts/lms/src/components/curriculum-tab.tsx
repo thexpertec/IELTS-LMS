@@ -42,7 +42,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Plus, Video, Clock, GripVertical, Trash2, Edit,
   ChevronDown, ChevronRight, LayoutList, Pencil, Check, X,
-  ClipboardList, Timer, FileText, Layers, ArrowUpDown,
+  ClipboardList, Timer, FileText, Layers, ArrowUpDown, Lock, LockOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -139,12 +139,13 @@ function LessonCardInner({
             }}
             title={isPaid ? "Click to make Free" : "Click to make Paid"}
             className={cn(
-              "text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors cursor-pointer",
+              "flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors cursor-pointer",
               isPaid
                 ? "border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400"
                 : "border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400"
             )}
           >
+            {isPaid ? <Lock className="w-3 h-3" /> : <LockOpen className="w-3 h-3" />}
             {isPaid ? "Paid" : "Free"}
           </button>
         )}
@@ -542,12 +543,13 @@ function UnitSection({
                         }}
                         title={isPaid ? "Click to make Free" : "Click to make Paid"}
                         className={cn(
-                          "shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors cursor-pointer",
+                          "shrink-0 flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors cursor-pointer",
                           isPaid
                             ? "border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400"
                             : "border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400"
                         )}
                       >
+                        {isPaid ? <Lock className="w-3 h-3" /> : <LockOpen className="w-3 h-3" />}
                         {isPaid ? "Paid" : "Free"}
                       </button>
                       <Link href={`/quizzes/${quiz.id}`}>

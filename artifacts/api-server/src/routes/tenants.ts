@@ -383,6 +383,7 @@ router.get("/tenant/courses/:id", async (req, res): Promise<void> => {
       lessonType: lessonsTable.lessonType,
       durationMinutes: lessonsTable.durationMinutes,
       order: lessonsTable.order,
+      enrollmentType: lessonsTable.enrollmentType,
     })
     .from(lessonsTable)
     .where(eq(lessonsTable.courseId, courseId))

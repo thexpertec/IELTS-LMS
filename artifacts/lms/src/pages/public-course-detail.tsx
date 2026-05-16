@@ -6,7 +6,7 @@ import {
   FileText, LayoutGrid, Type, Users, ChevronRight, ChevronDown,
   ChevronUp, Play, Volume2, Image, HelpCircle, CheckCircle2,
   BookMarked, AlertCircle, BadgeCheck, UserCheck, CalendarDays,
-  ListChecks,
+  ListChecks, Lock, LockOpen,
 } from "lucide-react";
 
 const BC_RED   = "#C8102E";
@@ -28,6 +28,7 @@ interface PublicLesson {
   lessonType: string;
   durationMinutes: number | null;
   order: number;
+  enrollmentType: string | null;
   quizzes: PublicQuiz[];
 }
 
@@ -412,6 +413,10 @@ export default function PublicCourseDetail() {
                                     <span className="text-xs px-2 py-0.5 rounded bg-gray-200 text-gray-500 uppercase tracking-wide shrink-0">
                                       {lesson.lessonType}
                                     </span>
+                                    {lesson.enrollmentType === "paid"
+                                      ? <Lock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                                      : <LockOpen className="w-3.5 h-3.5 shrink-0" style={{ color: BC_BLUE }} />
+                                    }
                                   </div>
 
                                   {/* Quiz sub-rows */}

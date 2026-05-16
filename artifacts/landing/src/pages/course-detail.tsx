@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/accordion";
 import {
   Star, Users, Clock, BookOpen, Award, Play, CheckCircle2, Download,
-  Headphones, FileText, ClipboardList, Lock, Globe, RefreshCw, Zap,
+  Headphones, FileText, ClipboardList, Lock, LockOpen, Globe, RefreshCw, Zap,
   Mic, PenTool, BarChart3, MessageSquare, Youtube, Twitter, Linkedin,
   ChevronRight, ArrowLeft, Share2, Heart, Shield, CreditCard,
   ChevronDown, ChevronUp, Quote, TrendingUp, Brain, Video,
@@ -668,9 +668,12 @@ export default function CourseDetail() {
                             <ItemIcon type={item.type as string} />
                             <span className="flex-1 text-sm text-slate-700 group-hover:text-slate-900 transition-colors">{item.title}</span>
                             {item.free ? (
-                              <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100 flex-shrink-0">Preview</span>
+                              <>
+                                <LockOpen className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                                <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100 flex-shrink-0">Preview</span>
+                              </>
                             ) : (
-                              <Lock className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
+                              <Lock className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                             )}
                             {item.duration && (
                               <span className="text-xs text-slate-400 flex-shrink-0 ml-1">{item.duration}</span>
