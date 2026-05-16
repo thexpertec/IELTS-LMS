@@ -131,6 +131,16 @@ export default function PublicCourseDetail() {
     staleTime: 1000 * 60 * 10,
   });
 
+  const { data: cms = {} } = useQuery<Record<string, Record<string, unknown>>>({
+    queryKey: ["tenant-cms-sections-public"],
+    queryFn: async () => {
+      const res = await fetch("/api/tenant/cms-sections", { credentials: "include" });
+      if (!res.ok) return {};
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
   const { data: course, isLoading, isError } = useQuery<CourseDetail>({
     queryKey: ["public-course-detail", courseId],
     queryFn: async () => {
@@ -156,7 +166,10 @@ export default function PublicCourseDetail() {
     onError:   () => setRegError("Something went wrong. Please try again."),
   });
 
-  const academyName = tenant?.name ?? "IELTS Academy";
+  const academyName  = tenant?.name ?? "IELTS Academy";
+  const logoUrl      = String((cms.branding as any)?.logoUrl ?? "") || tenant?.logoUrl || "";
+  const footerText   = String((cms.branding as any)?.footerText ?? "") || `© ${new Date().getFullYear()} ${academyName}. All rights reserved.`;
+  const contactEmail = String((cms.contact   as any)?.email    ?? "");
 
   function toggleChapter(id: number) {
     setOpenChapters((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -209,8 +222,8 @@ export default function PublicCourseDetail() {
       {/* ── Tier 2: Navy logo bar ───────────────────────────────────────────── */}
       <div style={{ backgroundColor: BC_NAVY }} className="shrink-0">
         <div className="max-w-screen-xl mx-auto px-4 h-[72px] flex items-center gap-4">
-          {tenant?.logoUrl ? (
-            <img src={tenant.logoUrl} alt={academyName} className="h-10 w-auto" />
+          {logoUrl ? (
+            <img src={logoUrl} alt={academyName} className="h-10 w-auto" />
           ) : (
             <div className="flex items-center gap-3">
               <div className="grid grid-cols-3 gap-0.5 w-8 h-8 shrink-0">
@@ -620,12 +633,20 @@ export default function PublicCourseDetail() {
 
       {/* ── Footer ───────────────────────────────────────────────────────────── */}
       <footer style={{ backgroundColor: BC_NAVY }} className="py-8 mt-auto">
-        <div className="max-w-screen-xl mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <span className="text-white font-bold text-lg">{academyName}</span>
-          <p className="text-white/40 text-sm text-center">
-            © {new Date().getFullYear()} {academyName}. All rights reserved.
-          </p>
+        <div className="max-w-screen-xl mx-auto px-4 md:px-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <span className="text-white font-bold text-lg">{academyName}</span>
+            <div className="flex gap-6">
+              <Link href="/courses-list" className="text-white/60 hover:text-white text-sm transition-colors">Courses</Link>
+              <Link href="/student/login" className="text-white/60 hover:text-white text-sm transition-colors">Student Login</Link>
+              {contactEmail && (
+                <a href={`mailto:${contactEmail}`} className="text-white/60 hover:text-white text-sm transition-colors">{contactEmail}</a>
+              )}
+            </div>
+            <p className="text-white/40 text-sm text-center">{footerText}</p>
+          </div>
         </div>
+        <div style={{ backgroundColor: BC_RED }} className="h-1.5 w-full mt-6" />
       </footer>
 
     </div>

@@ -107,6 +107,16 @@ export default function PublicCourses() {
     staleTime: 1000 * 60 * 10,
   });
 
+  const { data: cms = {} } = useQuery<Record<string, Record<string, unknown>>>({
+    queryKey: ["tenant-cms-sections-public"],
+    queryFn: async () => {
+      const res = await fetch("/api/tenant/cms-sections", { credentials: "include" });
+      if (!res.ok) return {};
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
   const { data: courses = [], isLoading, refetch: refetchCourses } = useQuery<PublicCourse[]>({
     queryKey: ["tenant-courses-public"],
     queryFn: async () => {
@@ -118,6 +128,20 @@ export default function PublicCourses() {
   });
 
   const academyName = tenant?.name ?? "IELTS Academy";
+
+  /* ── CMS-derived content ── */
+  const logoUrl      = String((cms.branding as any)?.logoUrl ?? "") || tenant?.logoUrl || "";
+  const footerText   = String((cms.branding as any)?.footerText ?? "") || `© ${new Date().getFullYear()} ${academyName}`;
+  const contactEmail = String((cms.contact   as any)?.email    ?? "");
+  const coursesHdr   = (cms.courses_page ?? {}) as Record<string, unknown>;
+  const pageHeading  = String(coursesHdr.heading     ?? "") || "Our Courses";
+  const pageDesc     = String(coursesHdr.description ?? "");
+  const courseCta    = String(coursesHdr.ctaText     ?? "") || "View Course →";
+  const aboutSec     = (cms.about ?? {}) as Record<string, unknown>;
+  const aboutBody    = String(aboutSec.body    ?? "");
+  const aboutTitle   = String(aboutSec.title   ?? "") || "About Our Academy";
+  const aboutTagline = String(aboutSec.tagline ?? "");
+  const aboutFounded = String(aboutSec.founded ?? "");
 
   /* ── Derived ── */
   const categories = Array.from(new Set(courses.map((c) => c.category).filter(Boolean))) as string[];
@@ -150,8 +174,8 @@ export default function PublicCourses() {
       {/* ── Tier 2: Navy logo bar ───────────────────────────────────────────── */}
       <div style={{ backgroundColor: BC_NAVY }} className="shrink-0">
         <div className="max-w-screen-xl mx-auto px-4 h-[72px] flex items-center gap-4">
-          {tenant?.logoUrl ? (
-            <img src={tenant.logoUrl} alt={academyName} className="h-10 w-auto" />
+          {logoUrl ? (
+            <img src={logoUrl} alt={academyName} className="h-10 w-auto" />
           ) : (
             <div className="flex items-center gap-3">
               <div className="grid grid-cols-3 gap-0.5 w-8 h-8 shrink-0">
@@ -202,11 +226,11 @@ export default function PublicCourses() {
                 <ChevronRight className="inline w-3 h-3 mx-1" />
                 <span className="text-white">Courses</span>
               </p>
-              <h1 className="text-white font-bold text-[30px] leading-tight">Our Courses</h1>
+              <h1 className="text-white font-bold text-[30px] leading-tight">{pageHeading}</h1>
               <p className="text-white/60 text-[14px] mt-1">
-                {courses.length > 0
+                {pageDesc || (courses.length > 0
                   ? `${courses.length} course${courses.length !== 1 ? "s" : ""} available from ${academyName}`
-                  : `Browse all courses from ${academyName}`}
+                  : `Browse all courses from ${academyName}`)}
               </p>
             </div>
 
@@ -440,7 +464,7 @@ export default function PublicCourses() {
                             className="w-full py-2.5 text-white text-[13px] font-semibold hover:opacity-90 transition-opacity"
                             style={{ backgroundColor: BC_RED }}
                           >
-                            View Course →
+                            {courseCta}
                           </button>
                         </Link>
                       </div>
@@ -453,13 +477,33 @@ export default function PublicCourses() {
         </div>
       </div>
 
+      {/* ── About section (CMS-controlled, hidden when body is empty) ─────── */}
+      {aboutBody && (
+        <div className="border-t border-gray-100 bg-gray-50">
+          <div className="max-w-screen-xl mx-auto px-4 md:px-8 py-12">
+            <div className="max-w-3xl">
+              <h2 className="font-bold text-[22px] mb-4" style={{ color: BC_NAVY }}>{aboutTitle}</h2>
+              {aboutTagline && (
+                <p className="text-[15px] font-medium mb-3" style={{ color: BC_RED }}>{aboutTagline}</p>
+              )}
+              <p className="text-[14px] text-gray-700 leading-relaxed whitespace-pre-line">{aboutBody}</p>
+              {aboutFounded && (
+                <p className="mt-4 text-[12px] text-gray-400 uppercase tracking-widest">
+                  Established {aboutFounded}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Footer ─────────────────────────────────────────────────────────── */}
       <footer style={{ backgroundColor: BC_NAVY }} className="mt-auto">
         <div className="max-w-screen-xl mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              {tenant?.logoUrl ? (
-                <img src={tenant.logoUrl} alt={academyName} className="h-7 w-auto" />
+              {logoUrl ? (
+                <img src={logoUrl} alt={academyName} className="h-7 w-auto" />
               ) : (
                 <div className="grid grid-cols-3 gap-0.5 w-5 h-5">
                   {Array.from({ length: 9 }).map((_, i) => (
@@ -473,8 +517,11 @@ export default function PublicCourses() {
               <Link href="/" className="text-white/60 hover:text-white text-[13px] transition-colors">Home</Link>
               <Link href="/student/login" className="text-white/60 hover:text-white text-[13px] transition-colors">Student Login</Link>
               <a href="/lms/admin-login" className="text-white/60 hover:text-white text-[13px] transition-colors">Admin Login</a>
+              {contactEmail && (
+                <a href={`mailto:${contactEmail}`} className="text-white/60 hover:text-white text-[13px] transition-colors">{contactEmail}</a>
+              )}
             </div>
-            <p className="text-white/35 text-[12px]">© {new Date().getFullYear()} {academyName}</p>
+            <p className="text-white/35 text-[12px]">{footerText}</p>
           </div>
         </div>
         <div style={{ backgroundColor: BC_RED }} className="h-1.5 w-full" />

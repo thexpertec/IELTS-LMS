@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Save, ChevronDown, ChevronUp, Globe, RotateCcw, CheckCircle2,
   Megaphone, User, Phone, Image, Layers, Home, Type, Star,
-  ListOrdered, BarChart2, MousePointerClick, Layout,
+  ListOrdered, BarChart2, MousePointerClick, Layout, BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -274,13 +274,29 @@ const SECTION_DEFS: Record<string, SectionDef> = {
     ],
   },
 
-  /* ── 11. About the Academy ───────────────────────────────────── */
-  about: {
-    label: "About the Academy",
-    description: "Short 'About Us' text shown on the public course listing page.",
-    icon: Layout,
+  /* ── 11. Courses Listing Page Header ────────────────────────── */
+  courses_page: {
+    label: "Courses Listing Page Header",
+    description: "The heading, description, and course card CTA button text on the public course listing page.",
+    icon: BookOpen,
     iconColor: "text-blue-600",
     iconBg: "bg-blue-50 dark:bg-blue-900/30",
+    tag: "Courses Page",
+    defaultContent: { heading: "Our Courses", description: "", ctaText: "View Course →" },
+    fields: [
+      { key: "heading",     label: "Page Heading",  type: "text",     placeholder: "Our Courses" },
+      { key: "description", label: "Subheading / Description", type: "textarea", placeholder: "Leave blank to auto-show course count" },
+      { key: "ctaText",     label: "Course Card Button Text",  type: "text",     placeholder: "View Course →" },
+    ],
+  },
+
+  /* ── 12. About the Academy ───────────────────────────────────── */
+  about: {
+    label: "About the Academy",
+    description: "An About Us block shown on the course listing page above the footer. Leave blank to hide it.",
+    icon: Layout,
+    iconColor: "text-indigo-600",
+    iconBg: "bg-indigo-50 dark:bg-indigo-900/30",
     tag: "Courses Page",
     defaultContent: { title: "About Our Academy", body: "", founded: "", tagline: "" },
     fields: [
@@ -538,6 +554,7 @@ const SECTION_ORDER = [
   "branding",
   "contact",
   "announcements",
+  "courses_page",
   "about",
 ];
 
