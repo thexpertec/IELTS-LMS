@@ -56,9 +56,10 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   ];
 
   const cmsSubItems = [
-    { name: "Overview", href: "/cms" },
+    { name: "Overview",      href: "/cms" },
     { name: "Page Sections", href: "/cms/sections" },
-    { name: "Blog & Posts", href: "/cms/posts" },
+    { name: "Blog & Posts",  href: "/cms/posts" },
+    { name: "SEO Settings",  href: "/cms/seo" },
   ];
 
   const SidebarContent = () => (

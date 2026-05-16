@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { SeoHead } from "@/components/seo-head";
 import {
   BookOpen, PenTool, Headphones, Mic, Home,
   GraduationCap, ClipboardList, BarChart3, MessageSquare,
@@ -102,9 +103,22 @@ const SKILL_ICON_MAP: Record<number, React.ComponentType<{ className?: string; s
 };
 const SKILL_COLORS = [BC_BLUE, BC_RED, BC_CYAN, "#6B2D8B"];
 
+function useSeoSettings() {
+  return useQuery<Record<string, unknown>>({
+    queryKey: ["tenant-seo-public"],
+    queryFn: async () => {
+      const res = await fetch("/api/tenant/seo", { credentials: "include" });
+      if (!res.ok) return {};
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 10,
+  });
+}
+
 export default function TenantLanding() {
   const { data: tenant } = usePublicTenantInfo();
   const { data: cms = {} } = useCmsSections();
+  const { data: seo = {} } = useSeoSettings();
 
   const academyName = tenant?.name ?? "IELTS Academy";
 
@@ -155,8 +169,34 @@ export default function TenantLanding() {
   const contactEmail   = str(contactSec.email) || tenant?.adminEmail || "";
   const footerText     = str(brandSec.footerText) || `© ${new Date().getFullYear()} ${academyName}. Powered by IELTS Academy LMS.`;
 
+  const siteTitle = String(seo.siteTitle ?? "") || academyName;
+  const titleTpl  = String(seo.titleTemplate ?? "") || `%s | ${siteTitle}`;
+  const homeTitle = String(seo.homepageTitle ?? "") || titleTpl.replace("%s", academyName);
+  const homeDesc  = String(seo.homepageDescription ?? "") || String(seo.defaultDescription ?? "") || tenant?.description || "";
+  const seoOgImg  = String(seo.ogImage ?? "") || logoUrl;
+  const seoNoIdx  = seo.noIndex === true;
+
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans text-[#333]">
+      <SeoHead
+        title={homeTitle}
+        description={homeDesc}
+        keywords={String(seo.defaultKeywords ?? "")}
+        ogTitle={homeTitle}
+        ogDescription={homeDesc}
+        ogImage={seoOgImg}
+        ogType="website"
+        twitterCard={(seo.twitterCard as "summary" | "summary_large_image") ?? "summary_large_image"}
+        noIndex={seoNoIdx}
+        structuredData={siteTitle ? {
+          "@context": "https://schema.org",
+          "@type": "EducationalOrganization",
+          "name": siteTitle,
+          "description": homeDesc,
+          "url": window.location.origin,
+          ...(seoOgImg ? { "logo": seoOgImg } : {}),
+        } : undefined}
+      />
 
       {/* TIER 1 — Red utility bar */}
       <div style={{ backgroundColor: BC_RED }} className="shrink-0">

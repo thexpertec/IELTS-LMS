@@ -43,6 +43,7 @@ import CmsIndex from "@/pages/cms/index";
 import CmsSections from "@/pages/cms/sections";
 import CmsPosts from "@/pages/cms/posts";
 import CmsPostEditor from "@/pages/cms/post-editor";
+import CmsSeo from "@/pages/cms/seo";
 
 // Student quiz pages
 import StudentQuizList from "@/pages/student/quiz-list";
@@ -248,6 +249,9 @@ function Router() {
       </Route>
       <Route path="/cms/posts/:id">
         <AdminGuard><CmsPostEditor /></AdminGuard>
+      </Route>
+      <Route path="/cms/seo">
+        <AdminGuard><CmsSeo /></AdminGuard>
       </Route>
 
       <Route component={NotFound} />

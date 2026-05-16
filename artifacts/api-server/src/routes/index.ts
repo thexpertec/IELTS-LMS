@@ -18,6 +18,7 @@ import chatRouter from "./chat";
 import cmsRouter from "./cms";
 import tenantCmsRouter from "./tenant-cms";
 import mediaRouter from "./media";
+import seoRouter from "./seo";
 
 const router: IRouter = Router();
 
@@ -40,5 +41,6 @@ router.use(chatRouter);
 router.use(cmsRouter);
 router.use(tenantCmsRouter);
 router.use(mediaRouter);
+router.use(seoRouter);
 
 export default router;

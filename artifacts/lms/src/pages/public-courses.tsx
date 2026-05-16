@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { SeoHead } from "@/components/seo-head";
 import {
   BookOpen, PenTool, Headphones, Mic, Home, Search,
   GraduationCap, Clock, FileText, LayoutGrid, Type, Users,
@@ -127,6 +128,16 @@ export default function PublicCourses() {
     staleTime: 1000 * 60 * 5,
   });
 
+  const { data: seo = {} } = useQuery<Record<string, unknown>>({
+    queryKey: ["tenant-seo-public"],
+    queryFn: async () => {
+      const res = await fetch("/api/tenant/seo", { credentials: "include" });
+      if (!res.ok) return {};
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 10,
+  });
+
   const academyName = tenant?.name ?? "IELTS Academy";
 
   /* ── CMS-derived content ── */
@@ -156,8 +167,26 @@ export default function PublicCourses() {
     return matchSearch && matchCat;
   });
 
+  const siteTitle    = String(seo.siteTitle ?? "") || academyName;
+  const titleTpl     = String(seo.titleTemplate ?? "") || `%s | ${siteTitle}`;
+  const coursesTitle = String(seo.coursesPageTitle ?? "") || titleTpl.replace("%s", pageHeading);
+  const coursesDesc  = String(seo.coursesPageDescription ?? "") || String(seo.defaultDescription ?? "") || `Browse IELTS courses from ${academyName}`;
+  const seoOgImg     = String(seo.ogImage ?? "") || logoUrl;
+  const seoNoIdx     = seo.noIndex === true;
+
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans text-[#333]">
+      <SeoHead
+        title={coursesTitle}
+        description={coursesDesc}
+        keywords={String(seo.defaultKeywords ?? "")}
+        ogTitle={coursesTitle}
+        ogDescription={coursesDesc}
+        ogImage={seoOgImg}
+        ogType="website"
+        twitterCard={(seo.twitterCard as "summary" | "summary_large_image") ?? "summary_large_image"}
+        noIndex={seoNoIdx}
+      />
 
       {/* ── Tier 1: Red utility bar ─────────────────────────────────────────── */}
       <div style={{ backgroundColor: BC_RED }} className="shrink-0">

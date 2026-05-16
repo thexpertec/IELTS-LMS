@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useParams } from "wouter";
+import { SeoHead } from "@/components/seo-head";
 import {
   BookOpen, PenTool, Headphones, Mic, Home, GraduationCap, Clock,
   FileText, LayoutGrid, Type, Users, ChevronRight, ChevronDown,
@@ -166,6 +167,16 @@ export default function PublicCourseDetail() {
     onError:   () => setRegError("Something went wrong. Please try again."),
   });
 
+  const { data: seo = {} } = useQuery<Record<string, unknown>>({
+    queryKey: ["tenant-seo-public"],
+    queryFn: async () => {
+      const res = await fetch("/api/tenant/seo", { credentials: "include" });
+      if (!res.ok) return {};
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 10,
+  });
+
   const academyName  = tenant?.name ?? "IELTS Academy";
   const logoUrl      = String((cms.branding as any)?.logoUrl ?? "") || tenant?.logoUrl || "";
   const footerText   = String((cms.branding as any)?.footerText ?? "") || `© ${new Date().getFullYear()} ${academyName}. All rights reserved.`;
@@ -204,8 +215,35 @@ export default function PublicCourseDetail() {
     );
   }
 
+  const siteTitle    = String(seo.siteTitle ?? "") || academyName;
+  const titleTpl     = String(seo.titleTemplate ?? "") || `%s | ${siteTitle}`;
+  const courseTitle  = titleTpl.replace("%s", course.title);
+  const courseDesc   = course.description || String(seo.defaultDescription ?? "");
+  const seoOgImg     = course.imageUrl || String(seo.ogImage ?? "") || logoUrl;
+  const seoNoIdx     = seo.noIndex === true;
+
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans text-[#333]">
+      <SeoHead
+        title={courseTitle}
+        description={courseDesc}
+        keywords={[course.category, course.level, "IELTS", String(seo.defaultKeywords ?? "")].filter(Boolean).join(", ")}
+        ogTitle={courseTitle}
+        ogDescription={courseDesc}
+        ogImage={seoOgImg}
+        ogType="article"
+        twitterCard={(seo.twitterCard as "summary" | "summary_large_image") ?? "summary_large_image"}
+        noIndex={seoNoIdx}
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "Course",
+          "name": course.title,
+          "description": courseDesc,
+          "provider": { "@type": "Organization", "name": siteTitle },
+          ...(course.instructor ? { "instructor": { "@type": "Person", "name": course.instructor } } : {}),
+          ...(seoOgImg ? { "image": seoOgImg } : {}),
+        }}
+      />
 
       {/* ── Tier 1: Red utility bar ─────────────────────────────────────────── */}
       <div style={{ backgroundColor: BC_RED }} className="shrink-0">
