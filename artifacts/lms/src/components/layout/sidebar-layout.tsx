@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, BookOpen, Users, UserPlus, GraduationCap, ClipboardList,
   Menu, FileText, LogOut, Settings2, MessageSquare, Building2, Eye, Image, X,
+  Newspaper, ChevronDown, ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,7 @@ interface SidebarLayoutProps {
 export function SidebarLayout({ children }: SidebarLayoutProps) {
   const [location, setLocation] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [cmsOpen, setCmsOpen] = useState(false);
   const { user, logout } = useAuth();
   const { startAdminPreview } = useStudent();
 
@@ -38,6 +40,8 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   });
   const unreadMessages = chatConversations?.reduce((s, c) => s + (c.unread ?? 0), 0) ?? 0;
 
+  const isCmsActive = location.startsWith("/cms");
+
   const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
     { name: "Courses", href: "/courses", icon: BookOpen },
@@ -49,6 +53,12 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     { name: "Messages", href: "/messages", icon: MessageSquare },
     { name: "Lesson Types", href: "/lesson-types", icon: Settings2 },
     { name: "Organization", href: "/organization-settings", icon: Building2 },
+  ];
+
+  const cmsSubItems = [
+    { name: "Overview", href: "/cms" },
+    { name: "Page Sections", href: "/cms/sections" },
+    { name: "Blog & Posts", href: "/cms/posts" },
   ];
 
   const SidebarContent = () => (
@@ -93,6 +103,47 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
             </Link>
           );
         })}
+
+        {/* CMS group */}
+        <div>
+          <button
+            onClick={() => setCmsOpen((o) => !o)}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors",
+              isCmsActive
+                ? "bg-[#CC0000] text-white"
+                : "text-white/65 hover:bg-white/8 hover:text-white"
+            )}
+          >
+            <Newspaper className="w-4 h-4 flex-shrink-0" />
+            <span className="flex-1 text-left">Content (CMS)</span>
+            {(cmsOpen || isCmsActive)
+              ? <ChevronDown className="w-3.5 h-3.5 flex-shrink-0" />
+              : <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" />}
+          </button>
+          {(cmsOpen || isCmsActive) && (
+            <div className="pl-3 mt-0.5 space-y-0.5">
+              {cmsSubItems.map((sub) => {
+                const isSubActive = location === sub.href;
+                return (
+                  <Link
+                    key={sub.href}
+                    href={sub.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={cn(
+                      "flex items-center gap-2.5 px-3 py-2 text-xs font-medium transition-colors border-l-2 ml-1",
+                      isSubActive
+                        ? "border-white/60 text-white bg-white/10"
+                        : "border-white/15 text-white/55 hover:text-white hover:bg-white/8 hover:border-white/40"
+                    )}
+                  >
+                    {sub.name}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </nav>
 
       {/* Bottom actions */}

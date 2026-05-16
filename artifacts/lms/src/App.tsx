@@ -38,6 +38,12 @@ import OrganizationSettings from "@/pages/organization-settings";
 import MediaLibrary from "@/pages/media-library";
 import NotFound from "@/pages/not-found";
 
+// CMS pages
+import CmsIndex from "@/pages/cms/index";
+import CmsSections from "@/pages/cms/sections";
+import CmsPosts from "@/pages/cms/posts";
+import CmsPostEditor from "@/pages/cms/post-editor";
+
 // Student quiz pages
 import StudentQuizList from "@/pages/student/quiz-list";
 import StudentQuizTake from "@/pages/student/quiz-take";
@@ -228,6 +234,20 @@ function Router() {
       </Route>
       <Route path="/media">
         <AdminGuard><MediaLibrary /></AdminGuard>
+      </Route>
+
+      {/* CMS */}
+      <Route path="/cms">
+        <AdminGuard><CmsIndex /></AdminGuard>
+      </Route>
+      <Route path="/cms/sections">
+        <AdminGuard><CmsSections /></AdminGuard>
+      </Route>
+      <Route path="/cms/posts">
+        <AdminGuard><CmsPosts /></AdminGuard>
+      </Route>
+      <Route path="/cms/posts/:id">
+        <AdminGuard><CmsPostEditor /></AdminGuard>
       </Route>
 
       <Route component={NotFound} />
