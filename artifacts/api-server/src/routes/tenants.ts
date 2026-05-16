@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
-import { eq, ilike, and, inArray, type SQL } from "drizzle-orm";
+import { eq, ilike, and, inArray, like, type SQL } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import { db, tenantsTable, coursesTable } from "@workspace/db";
+import { db, tenantsTable, coursesTable, cmsSectionsTable } from "@workspace/db";
 import { DEFAULT_TENANT_SETTINGS } from "@workspace/db/schema";
 import { usersTable } from "@workspace/db/schema";
 import { generateDbPrefix } from "../lib/db-prefix";
@@ -288,6 +288,32 @@ router.get("/tenant/public", async (req, res): Promise<void> => {
     welcomeMessage: (tenant.settings as any)?.portal?.welcomeMessage ?? "",
     accentColor: (tenant.settings as any)?.branding?.accentColor ?? "",
   });
+});
+
+// GET /api/tenant/cms-sections — public: returns CMS section content for this tenant
+router.get("/tenant/cms-sections", async (req, res): Promise<void> => {
+  const tenantId = req.session?.tenantId;
+  const host = (req.headers["x-forwarded-host"] ?? req.headers.host ?? "") as string;
+
+  let resolvedTenantId: number | null = tenantId ?? null;
+  if (!resolvedTenantId) {
+    const tenant = await findTenantByDomain(host);
+    resolvedTenantId = tenant?.id ?? null;
+  }
+  if (!resolvedTenantId) { res.json({}); return; }
+
+  const prefix = `t${resolvedTenantId}_`;
+  const rows = await db
+    .select()
+    .from(cmsSectionsTable)
+    .where(like(cmsSectionsTable.sectionKey, `${prefix}%`));
+
+  const result: Record<string, unknown> = {};
+  for (const row of rows) {
+    const key = row.sectionKey.replace(prefix, "");
+    result[key] = row.content;
+  }
+  res.json(result);
 });
 
 // GET /api/tenant/courses — public: returns published courses for this tenant
