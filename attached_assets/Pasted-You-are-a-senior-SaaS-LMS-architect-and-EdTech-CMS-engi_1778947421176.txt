@@ -1,0 +1,173 @@
+You are a senior SaaS LMS architect and EdTech CMS engineer.
+
+I already have a partially developed IELTS LMS CMS platform similar to ERP360 LMS. The current CMS already contains modules such as Dashboard, Courses, Quizzes, Assignments, Students, Enrollments, Media Library, Organizations, Messages, and basic CMS sections.
+
+Your task is NOT to rebuild the LMS from scratch.
+
+Your task is to:
+1. Analyze the existing CMS architecture.
+2. Extend the current CMS with missing modules and frontend-control systems.
+3. Implement a HYBRID CMS architecture where:
+   - Marketing/frontend sections use inline editing.
+   - LMS core systems use structured CMS architecture.
+
+OBJECTIVE:
+Transform the current LMS into a premium Band 7+ IELTS EdTech platform with complete frontend control, marketing systems, SEO management, analytics, AI systems, and scalable LMS architecture.
+
+IMPORTANT REQUIREMENTS:
+
+A. INLINE EDITING SYSTEM
+Implement inline editing ONLY for:
+- Homepage hero sections
+- CTA sections
+- IELTS module cards
+- Landing pages
+- Testimonials
+- FAQ sections
+- Promotional banners
+- Footer and header sections
+- Blog content
+- Pricing tables
+- Marketing pages
+- About/contact pages
+
+Inline editing system must support:
+- Click-to-edit
+- Drag-drop section sorting
+- Live preview
+- Mobile preview
+- Undo/redo
+- Draft/live publishing
+- Reusable blocks
+- Dynamic CTA editing
+- Responsive controls
+
+B. STRUCTURED CMS MODULES
+Keep these modules fully structured and database-driven:
+- Quizzes
+- Question bank
+- Mock tests
+- Students
+- Enrollments
+- Payments
+- Analytics
+- AI evaluation systems
+- Curriculum builder
+- Certificates
+- Permissions
+- Instructor management
+
+C. MISSING CMS MODULES TO IMPLEMENT
+
+1. WEBSITE BUILDER
+- Dynamic homepage builder
+- Section management
+- Navigation builder
+- Mega menu
+- Footer builder
+- Theme customization
+
+2. LANDING PAGE BUILDER
+- IELTS webinar pages
+- Free mock test funnels
+- Lead generation pages
+- Countdown timers
+- Dynamic CTA blocks
+
+3. SEO MANAGEMENT MODULE
+- Meta titles/descriptions
+- Sitemap management
+- Schema support
+- Canonical URLs
+- Redirect manager
+- Open Graph support
+
+4. TESTIMONIAL MANAGEMENT
+- Student reviews
+- Video testimonials
+- Band score showcases
+- Approval workflows
+
+5. ANALYTICS ENGINE
+- Conversion analytics
+- Student engagement
+- Quiz performance
+- Funnel tracking
+- Revenue reports
+
+6. PAYMENT MANAGEMENT
+- Transactions
+- Coupons
+- Subscriptions
+- Invoices
+- Refund management
+
+7. CRM & LEAD MANAGEMENT
+- Student inquiries
+- WhatsApp integration
+- Follow-up system
+- Lead pipeline
+
+8. EMAIL & NOTIFICATION SYSTEM
+- Email automation
+- Push notifications
+- WhatsApp alerts
+- Reminder campaigns
+
+9. MOCK TEST ENGINE
+- Full IELTS simulation
+- Timers
+- Review system
+- Band calculation
+
+10. AI MODULES
+- AI writing evaluation
+- AI speaking evaluation
+- AI study planner
+- AI recommendations
+
+11. ROLE & PERMISSIONS SYSTEM
+- Super admin
+- Admin
+- Instructor
+- Evaluator
+- Student support
+- Content manager
+
+12. CERTIFICATE SYSTEM
+- Dynamic certificate builder
+- Verification QR
+- PDF generation
+
+13. BLOG CMS IMPROVEMENTS
+- Categories
+- Tags
+- SEO controls
+- Featured posts
+- Related posts
+
+TECHNICAL REQUIREMENTS:
+- Use modular scalable architecture.
+- Preserve existing LMS modules.
+- Extend existing database instead of rebuilding.
+- Use API-driven architecture.
+- Maintain responsive mobile-first UI.
+- Ensure scalability for future mobile apps.
+- Use reusable React/Next.js components.
+- Use clean SaaS-style admin UX.
+
+OUTPUT REQUIREMENTS:
+1. Suggested upgraded CMS architecture.
+2. Database structure additions.
+3. Missing module relationships.
+4. Inline editing architecture.
+5. Frontend rendering strategy.
+6. API structure.
+7. Admin UX flow.
+8. Scalability strategy.
+9. Role permission hierarchy.
+10. Recommended development phases.
+
+IMPORTANT:
+Do not replace the current LMS structure.
+Extend and upgrade the existing CMS into a premium IELTS EdTech operating system.
