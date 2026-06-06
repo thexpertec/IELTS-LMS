@@ -112,6 +112,9 @@ function Router() {
       {/* Admin login */}
       <Route path="/admin-login" component={AdminLogin} />
 
+      {/* Legacy quiz shortlink redirect */}
+      <Route path="/s/quiz/:id">{({ id }: { id: string }) => <Redirect to={`/student/quizzes/${id}`} />}</Route>
+
       {/* Student Portal */}
       <Route path="/student/login" component={StudentLogin} />
       <Route path="/student"><Redirect to="/student/login" /></Route>
