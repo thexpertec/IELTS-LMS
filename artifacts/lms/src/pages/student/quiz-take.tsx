@@ -99,6 +99,80 @@ function matchingRowAnswered(answers: AnswerMap, qId: number, rowIdx: number): b
 }
 
 // ─────────────────────────────────────────────
+// Answer correctness checker
+// ─────────────────────────────────────────────
+function computeCorrectness(
+  q: { id: number; type: string; options: unknown },
+  answers: AnswerMap,
+): { allCorrect: boolean; label: string } {
+  const opts = q.options as Record<string, unknown>;
+  const ans = answers[q.id];
+  const str = (v: unknown) => String(v ?? "").trim().toLowerCase();
+
+  switch (q.type) {
+    case "fill_blank": {
+      const blanks = (opts.blanks as string[]) ?? [];
+      const student = (ans as string[]) ?? [];
+      const allCorrect = blanks.every((b, i) => str(student[i]) === str(b));
+      return { allCorrect, label: allCorrect ? "" : `Correct: ${blanks.join(" / ")}` };
+    }
+    case "fill_blank_dropdown": {
+      const sentences = ((opts.sentences as string[]) ?? []).filter(Boolean);
+      const correct = (opts.correct as string[]) ?? [];
+      const student = (ans as Record<number, string>) ?? {};
+      const allCorrect = sentences.every((_, i) => student[i] === correct[i]);
+      return { allCorrect, label: allCorrect ? "" : `Correct: ${correct.join(" / ")}` };
+    }
+    case "dropdown": {
+      const allCorrect = (ans as string) === opts.correct;
+      return { allCorrect, label: allCorrect ? "" : `Correct: ${opts.correct}` };
+    }
+    case "choose_word": {
+      const allCorrect = str(ans) === str(opts.correct);
+      return { allCorrect, label: allCorrect ? "" : `Correct: ${opts.correct}` };
+    }
+    case "short_answer": {
+      if (!opts.correct) return { allCorrect: true, label: "" };
+      const allCorrect = str(ans) === str(opts.correct);
+      return { allCorrect, label: allCorrect ? "" : `Correct: ${opts.correct}` };
+    }
+    case "true_false_ng": {
+      const allCorrect = (ans as string) === opts.correct;
+      return { allCorrect, label: allCorrect ? "" : `Correct: ${opts.correct}` };
+    }
+    case "multi_select": {
+      const correct = [...(opts.correct as number[])].sort((a, b) => a - b);
+      const student = [...((ans as number[]) ?? [])].sort((a, b) => a - b);
+      const allCorrect = JSON.stringify(correct) === JSON.stringify(student);
+      const correctLabels = correct.map((i) => (opts.options as string[])[i]).join(", ");
+      return { allCorrect, label: allCorrect ? "" : `Correct: ${correctLabels}` };
+    }
+    case "matching":
+    case "drag_match": {
+      const leftItems = ((opts.leftItems as string[]) ?? []).filter(Boolean);
+      const rightItems = (opts.rightItems as string[]) ?? [];
+      const pairs = (opts.pairs as { left: number; right: number }[]) ?? [];
+      const student = (ans as Record<number, string>) ?? {};
+      const allCorrect = leftItems.every((_, i) => {
+        const pair = pairs.find((p) => p.left === i);
+        const correctRight = pair !== undefined ? rightItems[pair.right] : "";
+        return student[i] === correctRight;
+      });
+      return { allCorrect, label: allCorrect ? "" : "Some matches are incorrect" };
+    }
+    case "table_fill_blank": {
+      const correct = (opts.correct as string[]) ?? [];
+      const student = (ans as string[]) ?? [];
+      if (!correct.length) return { allCorrect: true, label: "" };
+      const allCorrect = correct.every((c, i) => str(student[i]) === str(c));
+      return { allCorrect, label: allCorrect ? "" : `Correct: ${correct.join(" / ")}` };
+    }
+    default:
+      return { allCorrect: true, label: "" };
+  }
+}
+
+// ─────────────────────────────────────────────
 // Timer hook
 // ─────────────────────────────────────────────
 function useTimer(limitMinutes?: number | null, onExpire?: () => void) {
@@ -822,6 +896,7 @@ export default function StudentQuizTake() {
 
   const [answers, setAnswers] = useState<AnswerMap>({});
   const [submitted, setSubmitted] = useState(false);
+  const [validated, setValidated] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [submitOpen, setSubmitOpen] = useState(false);
   const [score, setScore] = useState<{ answered: number; total: number } | null>(null);
@@ -1076,7 +1151,7 @@ export default function StudentQuizTake() {
   }
 
   // ── Completion screen ──
-  if (submitted && score) {
+  if (submitted && score && !validated) {
     const pct = score.total > 0 ? Math.round((score.answered / score.total) * 100) : 0;
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-background gap-6 px-6">
@@ -1099,13 +1174,20 @@ export default function StudentQuizTake() {
             <p className="text-sm text-muted-foreground mt-1">Completion</p>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3 justify-center">
+          <Button
+            variant="outline"
+            onClick={() => { setValidated(true); setActivePart(0); }}
+          >
+            Validate Answers
+          </Button>
           <Button
             variant="outline"
             onClick={() => {
               setAnswers({});
               setScore(null);
               setSubmitted(false);
+              setValidated(false);
               setActivePart(0);
             }}
           >
@@ -1126,34 +1208,55 @@ export default function StudentQuizTake() {
     <div className="h-screen flex flex-col overflow-hidden bg-background">
 
       {/* ── HEADER ── */}
-      <header className="flex-shrink-0 h-12 bg-primary text-primary-foreground flex items-center px-4 gap-3 z-10">
-        <span className="font-semibold text-sm tracking-wide truncate flex-1">{quiz.title}</span>
-        {timerDisplay && (
-          <div className={cn(
-            "flex items-center gap-1.5 text-sm font-mono px-3 py-1 rounded shrink-0",
-            isWarning ? "bg-red-500/80 text-white" : "bg-black/20"
-          )}>
-            <Clock className="w-3.5 h-3.5" />
-            <span>{timerDisplay}</span>
-          </div>
-        )}
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 text-xs bg-transparent border-white/40 text-white hover:bg-white/10 hover:text-white shrink-0"
-          onClick={() => setReviewOpen(true)}
-        >
-          <List className="w-3.5 h-3.5 mr-1" />
-          REVIEW
-        </Button>
-        <Button
-          size="sm"
-          className="h-7 text-xs bg-white text-primary hover:bg-white/90 font-semibold shrink-0"
-          onClick={() => setSubmitOpen(true)}
-        >
-          SUBMIT
-        </Button>
-      </header>
+      {validated ? (
+        <header className="flex-shrink-0 h-12 bg-amber-600 text-white flex items-center px-4 gap-3 z-10">
+          <span className="font-semibold text-sm tracking-wide truncate flex-1">📋 Review: {quiz.title}</span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs bg-transparent border-white/40 text-white hover:bg-white/10 hover:text-white shrink-0"
+            onClick={() => { setValidated(false); }}
+          >
+            ← Back to Results
+          </Button>
+          <Button
+            size="sm"
+            className="h-7 text-xs bg-white text-amber-700 hover:bg-white/90 font-semibold shrink-0"
+            onClick={() => { setAnswers({}); setScore(null); setSubmitted(false); setValidated(false); setActivePart(0); }}
+          >
+            Reattempt
+          </Button>
+        </header>
+      ) : (
+        <header className="flex-shrink-0 h-12 bg-primary text-primary-foreground flex items-center px-4 gap-3 z-10">
+          <span className="font-semibold text-sm tracking-wide truncate flex-1">{quiz.title}</span>
+          {timerDisplay && (
+            <div className={cn(
+              "flex items-center gap-1.5 text-sm font-mono px-3 py-1 rounded shrink-0",
+              isWarning ? "bg-red-500/80 text-white" : "bg-black/20"
+            )}>
+              <Clock className="w-3.5 h-3.5" />
+              <span>{timerDisplay}</span>
+            </div>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs bg-transparent border-white/40 text-white hover:bg-white/10 hover:text-white shrink-0"
+            onClick={() => setReviewOpen(true)}
+          >
+            <List className="w-3.5 h-3.5 mr-1" />
+            REVIEW
+          </Button>
+          <Button
+            size="sm"
+            className="h-7 text-xs bg-white text-primary hover:bg-white/90 font-semibold shrink-0"
+            onClick={() => setSubmitOpen(true)}
+          >
+            SUBMIT
+          </Button>
+        </header>
+      )}
 
       {/* ── MAIN PANELS ── */}
       <div className="flex-1 flex overflow-hidden">
@@ -1273,14 +1376,22 @@ export default function StudentQuizTake() {
                     </div>
 
                     {/* Questions */}
-                    <div className="space-y-5">
+                    <div className={cn("space-y-5", validated && "pointer-events-none select-none")}>
                       {tabQs.map((q) => {
                         const si = slotMap.get(q.id)!;
                         const slotStart = si.slotStart + 1;
                         const opts = q.options as FillBlankOpts & DropdownOpts & ChooseWordOpts & MatchingOpts;
+                        const vResult = validated ? computeCorrectness(q, answers) : null;
 
                         return (
-                          <div key={q.id}>
+                          <div
+                            key={q.id}
+                            className={cn(
+                              "rounded-lg p-2 -mx-2 transition-colors",
+                              vResult?.allCorrect === true && "bg-green-50 dark:bg-green-950/20 border border-green-300",
+                              vResult?.allCorrect === false && "bg-red-50 dark:bg-red-950/20 border border-red-300",
+                            )}
+                          >
                             {q.questionText && (
                               <p className="text-xs text-muted-foreground mb-1 italic">{q.questionText}</p>
                             )}
@@ -1319,6 +1430,15 @@ export default function StudentQuizTake() {
                             )}
                             {q.type === "table_fill_blank" && (
                               <TableFillBlankQuestion opts={opts as TableFillBlankOpts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
+                            )}
+                            {/* Validation result badge */}
+                            {vResult && (
+                              <p className={cn(
+                                "mt-2 text-xs font-semibold",
+                                vResult.allCorrect ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                              )}>
+                                {vResult.allCorrect ? "✓ Correct" : `✗ Incorrect${vResult.label ? ` — ${vResult.label}` : ""}`}
+                              </p>
                             )}
                           </div>
                         );

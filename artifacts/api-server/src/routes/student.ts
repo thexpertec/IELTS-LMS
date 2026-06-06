@@ -632,6 +632,12 @@ router.post("/student/lessons/:lessonId/complete", async (req, res): Promise<voi
     return;
   }
 
+  // Preview enrollments are synthetic (ID >= PREVIEW_ENROLLMENT_ID_OFFSET) — skip DB writes
+  if (enrollmentId >= PREVIEW_ENROLLMENT_ID_OFFSET) {
+    res.json({ id: 0, enrollmentId, lessonId, completed, completedAt: completed ? new Date().toISOString() : null });
+    return;
+  }
+
   const existing = await db
     .select()
     .from(lessonProgressTable)
