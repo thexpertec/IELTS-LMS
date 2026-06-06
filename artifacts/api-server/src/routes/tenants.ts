@@ -700,52 +700,69 @@ router.post("/tenants/:id/restore", async (req, res): Promise<void> => {
     await db.delete(quizzesTable).where(inArray(quizzesTable.id, existingQuizIds));
   }
 
-  // Step 2: re-insert courses with new IDs, build old→new maps
+  // Helper: chunk an array into batches
+  function chunk<T>(arr: T[], size: number): T[][] {
+    const out: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+  }
+
+  // Step 2: batch-insert courses, map old id → new id (PG returns rows in insertion order)
   const courseIdMap = new Map<number, number>();
-  for (const c of courses) {
-    const { id: _oldId, createdAt: _ca, updatedAt: _ua, ...rest } = c;
-    const [inserted] = await db.insert(coursesTable).values({ ...rest, tenantId: id }).returning({ id: coursesTable.id });
-    courseIdMap.set(_oldId, inserted.id);
+  if (courses.length > 0) {
+    const rows = courses.map(({ id: oldId, createdAt: _ca, updatedAt: _ua, ...rest }: any) => ({ ...rest, tenantId: id, _oldId: oldId }));
+    const oldCourseIds = rows.map((r: any) => r._oldId);
+    const values = rows.map(({ _oldId: _, ...v }: any) => v);
+    const inserted = await db.insert(coursesTable).values(values).returning({ id: coursesTable.id });
+    inserted.forEach((r, i) => courseIdMap.set(oldCourseIds[i], r.id));
   }
 
-  // Step 3: re-insert chapters
+  // Step 3: batch-insert chapters
   const chapterIdMap = new Map<number, number>();
-  for (const ch of chapters) {
-    const { id: _oldId, createdAt: _ca, courseId: oldCourseId, ...rest } = ch;
-    const newCourseId = courseIdMap.get(oldCourseId);
-    if (!newCourseId) continue;
-    const [inserted] = await db.insert(chaptersTable).values({ ...rest, courseId: newCourseId }).returning({ id: chaptersTable.id });
-    chapterIdMap.set(_oldId, inserted.id);
+  const validChapters = chapters.filter(({ courseId }: any) => courseIdMap.has(courseId));
+  if (validChapters.length > 0) {
+    const oldChapterIds = validChapters.map((ch: any) => ch.id);
+    const values = validChapters.map(({ id: _, createdAt: _ca, courseId: oldCourseId, ...rest }: any) => ({ ...rest, courseId: courseIdMap.get(oldCourseId)! }));
+    const inserted = await db.insert(chaptersTable).values(values).returning({ id: chaptersTable.id });
+    inserted.forEach((r, i) => chapterIdMap.set(oldChapterIds[i], r.id));
   }
 
-  // Step 4: re-insert lessons
+  // Step 4: batch-insert lessons
   const lessonIdMap = new Map<number, number>();
-  for (const l of lessons) {
-    const { id: _oldId, createdAt: _ca, updatedAt: _ua, courseId: oldCourseId, chapterId: oldChapterId, ...rest } = l;
-    const newCourseId = courseIdMap.get(oldCourseId);
-    if (!newCourseId) continue;
-    const newChapterId = oldChapterId != null ? chapterIdMap.get(oldChapterId) ?? null : null;
-    const [inserted] = await db.insert(lessonsTable).values({ ...rest, courseId: newCourseId, chapterId: newChapterId }).returning({ id: lessonsTable.id });
-    lessonIdMap.set(_oldId, inserted.id);
+  const validLessons = lessons.filter(({ courseId }: any) => courseIdMap.has(courseId));
+  if (validLessons.length > 0) {
+    const oldLessonIds = validLessons.map((l: any) => l.id);
+    const values = validLessons.map(({ id: _, createdAt: _ca, updatedAt: _ua, courseId: oldCourseId, chapterId: oldChapterId, ...rest }: any) => ({
+      ...rest,
+      courseId: courseIdMap.get(oldCourseId)!,
+      chapterId: oldChapterId != null ? chapterIdMap.get(oldChapterId) ?? null : null,
+    }));
+    const inserted = await db.insert(lessonsTable).values(values).returning({ id: lessonsTable.id });
+    inserted.forEach((r, i) => lessonIdMap.set(oldLessonIds[i], r.id));
   }
 
-  // Step 5: re-insert quizzes
+  // Step 5: batch-insert quizzes
   const quizIdMap = new Map<number, number>();
-  for (const q of quizzes) {
-    const { id: _oldId, createdAt: _ca, updatedAt: _ua, courseId: oldCourseId, chapterId: oldChapterId, lessonId: oldLessonId, tenantId: _tid, ...rest } = q;
-    const newCourseId = oldCourseId != null ? courseIdMap.get(oldCourseId) ?? null : null;
-    const newChapterId = oldChapterId != null ? chapterIdMap.get(oldChapterId) ?? null : null;
-    const newLessonId = oldLessonId != null ? lessonIdMap.get(oldLessonId) ?? null : null;
-    const [inserted] = await db.insert(quizzesTable).values({ ...rest, courseId: newCourseId, chapterId: newChapterId, lessonId: newLessonId, tenantId: id }).returning({ id: quizzesTable.id });
-    quizIdMap.set(_oldId, inserted.id);
+  if (quizzes.length > 0) {
+    const oldQuizIds = quizzes.map((q: any) => q.id);
+    const values = quizzes.map(({ id: _, createdAt: _ca, updatedAt: _ua, tenantId: _tid, courseId: oldCourseId, chapterId: oldChapterId, lessonId: oldLessonId, ...rest }: any) => ({
+      ...rest,
+      tenantId: id,
+      courseId: oldCourseId != null ? courseIdMap.get(oldCourseId) ?? null : null,
+      chapterId: oldChapterId != null ? chapterIdMap.get(oldChapterId) ?? null : null,
+      lessonId: oldLessonId != null ? lessonIdMap.get(oldLessonId) ?? null : null,
+    }));
+    const inserted = await db.insert(quizzesTable).values(values).returning({ id: quizzesTable.id });
+    inserted.forEach((r, i) => quizIdMap.set(oldQuizIds[i], r.id));
   }
 
-  // Step 6: re-insert quiz questions
-  for (const qq of quizQuestions) {
-    const { id: _oldId, createdAt: _ca, updatedAt: _ua, quizId: oldQuizId, ...rest } = qq;
-    const newQuizId = quizIdMap.get(oldQuizId);
-    if (!newQuizId) continue;
-    await db.insert(quizQuestionsTable).values({ ...rest, quizId: newQuizId });
+  // Step 6: batch-insert quiz questions (chunked to avoid hitting PG parameter limit)
+  const validQQ = quizQuestions.filter(({ quizId }: any) => quizIdMap.has(quizId));
+  if (validQQ.length > 0) {
+    const qqValues = validQQ.map(({ id: _, createdAt: _ca, updatedAt: _ua, quizId: oldQuizId, ...rest }: any) => ({ ...rest, quizId: quizIdMap.get(oldQuizId)! }));
+    for (const batch of chunk(qqValues, 200)) {
+      await db.insert(quizQuestionsTable).values(batch);
+    }
   }
 
   res.json({
