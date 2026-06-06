@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -54,9 +54,11 @@ interface CredentialsInfo {
 
 function BackupRestoreCard({ tenantId }: { tenantId: number }) {
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [downloading, setDownloading] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [pendingFile, setPendingFile] = useState<{ name: string; data: unknown } | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -84,8 +86,8 @@ function BackupRestoreCard({ tenantId }: { tenantId: number }) {
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFileChange = () => {
+    const file = fileInputRef.current?.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
@@ -97,11 +99,12 @@ function BackupRestoreCard({ tenantId }: { tenantId: number }) {
       }
     };
     reader.readAsText(file);
-    e.target.value = "";
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleRestore = async () => {
     if (!pendingFile) return;
+    setConfirmOpen(false);
     setRestoring(true);
     try {
       const res = await fetch(`/api/tenants/${tenantId}/restore`, {
@@ -139,6 +142,14 @@ function BackupRestoreCard({ tenantId }: { tenantId: number }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json,application/json"
+          className="sr-only"
+          onChange={handleFileChange}
+        />
+
         <Button
           size="sm"
           variant="outline"
@@ -171,50 +182,49 @@ function BackupRestoreCard({ tenantId }: { tenantId: number }) {
               >
                 Cancel
               </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button size="sm" className="flex-1 gap-1.5" disabled={restoring}>
-                    {restoring ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                    Restore
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Restore from backup?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will <strong>permanently delete</strong> all existing courses, chapters, lessons, quizzes, and questions for this tenant, then replace them with the contents of <strong>{pendingFile.name}</strong>. This cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      onClick={() => { void handleRestore(); }}
-                    >
-                      Yes, restore
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <Button
+                size="sm"
+                className="flex-1 gap-1.5"
+                disabled={restoring}
+                onClick={() => setConfirmOpen(true)}
+              >
+                {restoring ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                Restore
+              </Button>
             </div>
           </div>
         ) : (
-          <label className="w-full">
-            <input
-              type="file"
-              accept=".json,application/json"
-              className="sr-only"
-              onChange={handleFileSelect}
-            />
-            <Button size="sm" variant="outline" className="w-full gap-2 cursor-pointer" asChild>
-              <span>
-                <Upload className="h-3.5 w-3.5" />
-                Restore from File
-              </span>
-            </Button>
-          </label>
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full gap-2"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Restore from File
+          </Button>
         )}
       </CardContent>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restore from backup?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will <strong>permanently delete</strong> all existing courses, chapters, lessons, quizzes, and questions for this tenant, then replace them with the contents of <strong>{pendingFile?.name}</strong>. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { void handleRestore(); }}
+            >
+              Yes, restore
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
