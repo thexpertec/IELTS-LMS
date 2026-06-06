@@ -3,7 +3,7 @@ import { eq, ilike, and, inArray, like, type SQL } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db, tenantsTable, coursesTable, cmsSectionsTable } from "@workspace/db";
 import { DEFAULT_TENANT_SETTINGS } from "@workspace/db/schema";
-import { usersTable } from "@workspace/db/schema";
+import { usersTable, chaptersTable, lessonsTable, quizzesTable, quizQuestionsTable } from "@workspace/db/schema";
 import { generateDbPrefix } from "../lib/db-prefix";
 import {
   ListTenantsQueryParams,
@@ -613,6 +613,149 @@ router.post("/tenant/register-interest", async (req, res): Promise<void> => {
     .onConflictDoNothing();
 
   res.json({ ok: true, course: course.title });
+});
+
+// ── Backup & Restore ──────────────────────────────────────────────────────────
+
+// GET /api/tenants/:id/backup — export all tenant data as JSON
+router.get("/tenants/:id/backup", async (req, res): Promise<void> => {
+  if (req.session.role !== "saas_admin") {
+    res.status(403).json({ error: "Only SaaS admins can use this endpoint" });
+    return;
+  }
+
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [tenant] = await db.select().from(tenantsTable).where(eq(tenantsTable.id, id)).limit(1);
+  if (!tenant) { res.status(404).json({ error: "Tenant not found" }); return; }
+
+  // Fetch all tenant data
+  const courses = await db.select().from(coursesTable).where(eq(coursesTable.tenantId, id));
+  const courseIds = courses.map((c) => c.id);
+
+  const chapters = courseIds.length > 0
+    ? await db.select().from(chaptersTable).where(inArray(chaptersTable.courseId, courseIds))
+    : [];
+
+  const lessons = courseIds.length > 0
+    ? await db.select().from(lessonsTable).where(inArray(lessonsTable.courseId, courseIds))
+    : [];
+
+  const quizzes = await db.select().from(quizzesTable).where(eq(quizzesTable.tenantId, id));
+  const quizIds = quizzes.map((q) => q.id);
+
+  const quizQuestions = quizIds.length > 0
+    ? await db.select().from(quizQuestionsTable).where(inArray(quizQuestionsTable.quizId, quizIds))
+    : [];
+
+  const backup = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    tenantName: tenant.name,
+    tenantSlug: tenant.slug,
+    courses,
+    chapters,
+    lessons,
+    quizzes,
+    quizQuestions,
+  };
+
+  const filename = `${tenant.slug}-backup-${new Date().toISOString().split("T")[0]}.json`;
+  res.setHeader("Content-Type", "application/json");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.json(backup);
+});
+
+// POST /api/tenants/:id/restore — replace tenant data from a JSON backup
+router.post("/tenants/:id/restore", async (req, res): Promise<void> => {
+  if (req.session.role !== "saas_admin") {
+    res.status(403).json({ error: "Only SaaS admins can use this endpoint" });
+    return;
+  }
+
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [tenant] = await db.select().from(tenantsTable).where(eq(tenantsTable.id, id)).limit(1);
+  if (!tenant) { res.status(404).json({ error: "Tenant not found" }); return; }
+
+  const { courses = [], chapters = [], lessons = [], quizzes = [], quizQuestions = [] } = req.body as {
+    courses: any[];
+    chapters: any[];
+    lessons: any[];
+    quizzes: any[];
+    quizQuestions: any[];
+  };
+
+  // Step 1: delete existing data for this tenant
+  const existingCourses = await db.select({ id: coursesTable.id }).from(coursesTable).where(eq(coursesTable.tenantId, id));
+  const existingCourseIds = existingCourses.map((c) => c.id);
+  if (existingCourseIds.length > 0) {
+    await db.delete(coursesTable).where(inArray(coursesTable.id, existingCourseIds));
+  }
+  const existingQuizzes = await db.select({ id: quizzesTable.id }).from(quizzesTable).where(eq(quizzesTable.tenantId, id));
+  const existingQuizIds = existingQuizzes.map((q) => q.id);
+  if (existingQuizIds.length > 0) {
+    await db.delete(quizzesTable).where(inArray(quizzesTable.id, existingQuizIds));
+  }
+
+  // Step 2: re-insert courses with new IDs, build old→new maps
+  const courseIdMap = new Map<number, number>();
+  for (const c of courses) {
+    const { id: _oldId, createdAt: _ca, updatedAt: _ua, ...rest } = c;
+    const [inserted] = await db.insert(coursesTable).values({ ...rest, tenantId: id }).returning({ id: coursesTable.id });
+    courseIdMap.set(_oldId, inserted.id);
+  }
+
+  // Step 3: re-insert chapters
+  const chapterIdMap = new Map<number, number>();
+  for (const ch of chapters) {
+    const { id: _oldId, createdAt: _ca, courseId: oldCourseId, ...rest } = ch;
+    const newCourseId = courseIdMap.get(oldCourseId);
+    if (!newCourseId) continue;
+    const [inserted] = await db.insert(chaptersTable).values({ ...rest, courseId: newCourseId }).returning({ id: chaptersTable.id });
+    chapterIdMap.set(_oldId, inserted.id);
+  }
+
+  // Step 4: re-insert lessons
+  const lessonIdMap = new Map<number, number>();
+  for (const l of lessons) {
+    const { id: _oldId, createdAt: _ca, updatedAt: _ua, courseId: oldCourseId, chapterId: oldChapterId, ...rest } = l;
+    const newCourseId = courseIdMap.get(oldCourseId);
+    if (!newCourseId) continue;
+    const newChapterId = oldChapterId != null ? chapterIdMap.get(oldChapterId) ?? null : null;
+    const [inserted] = await db.insert(lessonsTable).values({ ...rest, courseId: newCourseId, chapterId: newChapterId }).returning({ id: lessonsTable.id });
+    lessonIdMap.set(_oldId, inserted.id);
+  }
+
+  // Step 5: re-insert quizzes
+  const quizIdMap = new Map<number, number>();
+  for (const q of quizzes) {
+    const { id: _oldId, createdAt: _ca, updatedAt: _ua, courseId: oldCourseId, chapterId: oldChapterId, lessonId: oldLessonId, tenantId: _tid, ...rest } = q;
+    const newCourseId = oldCourseId != null ? courseIdMap.get(oldCourseId) ?? null : null;
+    const newChapterId = oldChapterId != null ? chapterIdMap.get(oldChapterId) ?? null : null;
+    const newLessonId = oldLessonId != null ? lessonIdMap.get(oldLessonId) ?? null : null;
+    const [inserted] = await db.insert(quizzesTable).values({ ...rest, courseId: newCourseId, chapterId: newChapterId, lessonId: newLessonId, tenantId: id }).returning({ id: quizzesTable.id });
+    quizIdMap.set(_oldId, inserted.id);
+  }
+
+  // Step 6: re-insert quiz questions
+  for (const qq of quizQuestions) {
+    const { id: _oldId, createdAt: _ca, updatedAt: _ua, quizId: oldQuizId, ...rest } = qq;
+    const newQuizId = quizIdMap.get(oldQuizId);
+    if (!newQuizId) continue;
+    await db.insert(quizQuestionsTable).values({ ...rest, quizId: newQuizId });
+  }
+
+  res.json({
+    ok: true,
+    courses: courseIdMap.size,
+    chapters: chapterIdMap.size,
+    lessons: lessonIdMap.size,
+    quizzes: quizIdMap.size,
+    quizQuestions: quizQuestions.length,
+  });
 });
 
 // POST /api/tenants/:id/login-as — SaaS admin assumes the tenant's admin session

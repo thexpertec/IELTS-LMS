@@ -15,7 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Building2, Trash2, ExternalLink, Save, KeyRound, LogIn, CheckCircle, Eye, EyeOff, RefreshCw } from "lucide-react";
+import { ArrowLeft, Loader2, Building2, Trash2, ExternalLink, Save, KeyRound, LogIn, CheckCircle, Eye, EyeOff, RefreshCw, Download, Upload, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +50,173 @@ interface CredentialsInfo {
   exists: boolean;
   email: string;
   name: string | null;
+}
+
+function BackupRestoreCard({ tenantId }: { tenantId: number }) {
+  const { toast } = useToast();
+  const [downloading, setDownloading] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [pendingFile, setPendingFile] = useState<{ name: string; data: unknown } | null>(null);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const res = await fetch(`/api/tenants/${tenantId}/backup`, { credentials: "include" });
+      if (!res.ok) {
+        const err = await res.json() as { error: string };
+        throw new Error(err.error);
+      }
+      const disposition = res.headers.get("Content-Disposition") ?? "";
+      const match = disposition.match(/filename="([^"]+)"/);
+      const filename = match?.[1] ?? `tenant-${tenantId}-backup.json`;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "Backup downloaded", description: filename });
+    } catch (err) {
+      toast({ title: "Download failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target?.result as string);
+        setPendingFile({ name: file.name, data });
+      } catch {
+        toast({ title: "Invalid file", description: "The selected file is not valid JSON.", variant: "destructive" });
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
+  const handleRestore = async () => {
+    if (!pendingFile) return;
+    setRestoring(true);
+    try {
+      const res = await fetch(`/api/tenants/${tenantId}/restore`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pendingFile.data),
+      });
+      if (!res.ok) {
+        const err = await res.json() as { error: string };
+        throw new Error(err.error);
+      }
+      const result = await res.json() as { courses: number; chapters: number; lessons: number; quizzes: number; quizQuestions: number };
+      toast({
+        title: "Restore complete",
+        description: `Imported ${result.courses} courses, ${result.chapters} chapters, ${result.lessons} lessons, ${result.quizzes} quizzes, ${result.quizQuestions} questions.`,
+      });
+      setPendingFile(null);
+    } catch (err) {
+      toast({ title: "Restore failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setRestoring(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Download className="h-4 w-4" />
+          Backup & Restore
+        </CardTitle>
+        <CardDescription className="text-xs">
+          Export all courses, lessons, and quizzes — or restore from a previous backup.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full gap-2"
+          onClick={() => { void handleDownload(); }}
+          disabled={downloading}
+        >
+          {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+          Download Backup
+        </Button>
+
+        <Separator />
+
+        {pendingFile ? (
+          <div className="space-y-3">
+            <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800">
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-amber-800 dark:text-amber-400">This will replace all existing data</p>
+                <p className="text-xs text-amber-700/80 dark:text-amber-500 truncate">{pendingFile.name}</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setPendingFile(null)}
+                disabled={restoring}
+              >
+                Cancel
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm" className="flex-1 gap-1.5" disabled={restoring}>
+                    {restoring ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                    Restore
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Restore from backup?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will <strong>permanently delete</strong> all existing courses, chapters, lessons, quizzes, and questions for this tenant, then replace them with the contents of <strong>{pendingFile.name}</strong>. This cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={() => { void handleRestore(); }}
+                    >
+                      Yes, restore
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
+        ) : (
+          <label className="w-full">
+            <input
+              type="file"
+              accept=".json,application/json"
+              className="sr-only"
+              onChange={handleFileSelect}
+            />
+            <Button size="sm" variant="outline" className="w-full gap-2 cursor-pointer" asChild>
+              <span>
+                <Upload className="h-3.5 w-3.5" />
+                Restore from File
+              </span>
+            </Button>
+          </label>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 function CredentialsCard({ tenantId }: { tenantId: number }) {
@@ -527,6 +694,9 @@ export default function TenantDetail() {
         <div className="space-y-6">
           {/* Login Credentials card */}
           <CredentialsCard tenantId={id} />
+
+          {/* Backup & Restore card */}
+          <BackupRestoreCard tenantId={id} />
 
           <Card>
             <CardHeader>
