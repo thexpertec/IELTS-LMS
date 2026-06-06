@@ -676,7 +676,7 @@ export default function CourseView() {
                             {q.description && <p className="text-xs text-muted-foreground truncate">{q.description}</p>}
                             <p className="text-xs text-muted-foreground">{q.questionCount} question{q.questionCount !== 1 ? "s" : ""}</p>
                           </div>
-                          <Link href={`/s/quiz/${q.id}`}>
+                          <Link href={`/student/quizzes/${q.id}`}>
                             <Button size="sm" className="h-8 px-3 text-xs bg-violet-600 hover:bg-violet-700">
                               Start
                             </Button>
