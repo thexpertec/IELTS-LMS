@@ -97,7 +97,7 @@ interface FillBlankOpts          { sentence: string; blanks: string[] }
 interface FillBlankDropdownOpts  { instruction: string; sentences: string[]; choices: string[]; correct: string[] }
 interface DropdownOpts           { stem: string; choices: string[]; correct: string }
 interface ChooseWordOpts         { instruction: string; wordLimit: number; passageText?: string; imageUrl?: string; correct: string }
-interface MatchingOpts           { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[]; instruction?: string }
+interface MatchingOpts           { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[]; instruction?: string; leftColumnName?: string; rightColumnName?: string }
 interface Matching3ColOpts       { columns: [string, string, string]; answerColIndex: 0 | 1 | 2; rows: Array<{ a: string; b: string; c: string }>; instruction?: string }
 interface DragMatchOpts          { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[]; instruction?: string }
 interface ShortAnswerOpts        { prompt: string; correct?: string; wordLimit?: number }
@@ -146,7 +146,7 @@ function defaultOptions(type: QType): QOptions {
     case "fill_blank_dropdown": return { instruction: "", sentences: ["", ""], choices: ["A", "B", "C"], correct: ["", ""] };
     case "dropdown":            return { stem: "", choices: ["", "", ""], correct: "" };
     case "choose_word":         return { instruction: "Choose ONE WORD from the passage below.", wordLimit: 1, passageText: "", imageUrl: "", correct: "" };
-    case "matching":            return { leftItems: ["", ""], rightItems: ["", ""], pairs: [], instruction: "" };
+    case "matching":            return { leftItems: ["", ""], rightItems: ["", ""], pairs: [], instruction: "", leftColumnName: "", rightColumnName: "" };
     case "matching_3col":       return { columns: ["Column A", "Column B", "Column C"], answerColIndex: 2, rows: [{ a: "", b: "", c: "" }, { a: "", b: "", c: "" }], instruction: "" };
     case "drag_match":          return { leftItems: ["", ""], rightItems: ["", ""], pairs: [], instruction: "" };
     case "short_answer":        return { prompt: "", correct: "", wordLimit: undefined };
@@ -450,9 +450,19 @@ function MatchingEditor({ opts, onChange }: { opts: MatchingOpts; onChange: (o: 
         />
       </div>
       <div className="space-y-2">
-        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-xs font-medium text-muted-foreground px-1">
-          <span>Left Column</span>
-          <span>Matching Right Column</span>
+        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+          <Input
+            placeholder="Left column name (e.g. Country)"
+            value={opts.leftColumnName ?? ""}
+            onChange={(e) => onChange({ ...opts, leftColumnName: e.target.value })}
+            className="text-xs font-semibold h-8"
+          />
+          <Input
+            placeholder="Right column name (e.g. Capital)"
+            value={opts.rightColumnName ?? ""}
+            onChange={(e) => onChange({ ...opts, rightColumnName: e.target.value })}
+            className="text-xs font-semibold h-8"
+          />
           <span className="w-8" />
         </div>
         {opts.leftItems.map((_, i) => (

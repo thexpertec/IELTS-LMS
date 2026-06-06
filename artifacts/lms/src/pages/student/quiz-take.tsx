@@ -35,7 +35,7 @@ interface FillBlankOpts         { sentence: string; blanks: string[] }
 interface FillBlankDropdownOpts { instruction: string; sentences: string[]; choices: string[]; correct: string[] }
 interface DropdownOpts          { stem: string; choices: string[]; correct: string }
 interface ChooseWordOpts        { instruction: string; wordLimit: number; passageText?: string; imageUrl?: string; correct: string }
-interface MatchingOpts          { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[]; instruction?: string }
+interface MatchingOpts          { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[]; instruction?: string; leftColumnName?: string; rightColumnName?: string }
 interface Matching3ColOpts      { columns: [string, string, string]; answerColIndex: 0 | 1 | 2; rows: Array<{ a: string; b: string; c: string }>; instruction?: string }
 interface DragMatchOpts         { leftItems: string[]; rightItems: string[]; pairs: { left: number; right: number }[]; instruction?: string }
 interface ShortAnswerOpts       { prompt: string; correct?: string; wordLimit?: number }
@@ -295,8 +295,8 @@ function MatchingQuestion({
       )}
       <div className="grid grid-cols-[24px_1fr_1fr] gap-2 text-xs font-semibold text-muted-foreground px-1 mb-1">
         <span />
-        <span>Column A</span>
-        <span>Column B</span>
+        <span>{opts.leftColumnName || "Column A"}</span>
+        <span>{opts.rightColumnName || "Column B"}</span>
       </div>
       {opts.leftItems.filter(Boolean).map((item, i) => {
         const rowAnswered = matchingRowAnswered(answers, qId, i);
