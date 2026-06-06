@@ -104,7 +104,7 @@ function matchingRowAnswered(answers: AnswerMap, qId: number, rowIdx: number): b
 function computeCorrectness(
   q: { id: number; type: string; options: unknown },
   answers: AnswerMap,
-): { allCorrect: boolean; label: string } {
+): { allCorrect: boolean; label: string; slotCorrect: boolean[] } {
   const opts = q.options as Record<string, unknown>;
   const ans = answers[q.id];
   const str = (v: unknown) => String(v ?? "").trim().toLowerCase();
@@ -113,39 +113,47 @@ function computeCorrectness(
     case "fill_blank": {
       const blanks = (opts.blanks as string[]) ?? [];
       const student = (ans as string[]) ?? [];
-      const allCorrect = blanks.every((b, i) => str(student[i]) === str(b));
-      return { allCorrect, label: allCorrect ? "" : `Correct: ${blanks.join(" / ")}` };
+      const slotCorrect = blanks.map((b, i) => str(student[i]) === str(b));
+      const allCorrect = slotCorrect.every(Boolean);
+      return { allCorrect, label: allCorrect ? "" : `Correct: ${blanks.join(" / ")}`, slotCorrect };
     }
     case "fill_blank_dropdown": {
       const sentences = ((opts.sentences as string[]) ?? []).filter(Boolean);
       const correct = (opts.correct as string[]) ?? [];
       const student = (ans as Record<number, string>) ?? {};
-      const allCorrect = sentences.every((_, i) => student[i] === correct[i]);
-      return { allCorrect, label: allCorrect ? "" : `Correct: ${correct.join(" / ")}` };
+      const slotCorrect = sentences.map((_, i) => student[i] === correct[i]);
+      const allCorrect = slotCorrect.every(Boolean);
+      return { allCorrect, label: allCorrect ? "" : `Correct: ${correct.join(" / ")}`, slotCorrect };
     }
     case "dropdown": {
       const allCorrect = (ans as string) === opts.correct;
-      return { allCorrect, label: allCorrect ? "" : `Correct: ${opts.correct}` };
+      return { allCorrect, label: allCorrect ? "" : `Correct: ${opts.correct}`, slotCorrect: [allCorrect] };
     }
     case "choose_word": {
       const allCorrect = str(ans) === str(opts.correct);
-      return { allCorrect, label: allCorrect ? "" : `Correct: ${opts.correct}` };
+      return { allCorrect, label: allCorrect ? "" : `Correct: ${opts.correct}`, slotCorrect: [allCorrect] };
     }
     case "short_answer": {
-      if (!opts.correct) return { allCorrect: true, label: "" };
+      if (!opts.correct) return { allCorrect: true, label: "", slotCorrect: [true] };
       const allCorrect = str(ans) === str(opts.correct);
-      return { allCorrect, label: allCorrect ? "" : `Correct: ${opts.correct}` };
+      return { allCorrect, label: allCorrect ? "" : `Correct: ${opts.correct}`, slotCorrect: [allCorrect] };
     }
     case "true_false_ng": {
       const allCorrect = (ans as string) === opts.correct;
-      return { allCorrect, label: allCorrect ? "" : `Correct: ${opts.correct}` };
+      return { allCorrect, label: allCorrect ? "" : `Correct: ${opts.correct}`, slotCorrect: [allCorrect] };
     }
     case "multi_select": {
       const correct = [...(opts.correct as number[])].sort((a, b) => a - b);
       const student = [...((ans as number[]) ?? [])].sort((a, b) => a - b);
       const allCorrect = JSON.stringify(correct) === JSON.stringify(student);
       const correctLabels = correct.map((i) => (opts.options as string[])[i]).join(", ");
-      return { allCorrect, label: allCorrect ? "" : `Correct: ${correctLabels}` };
+      const nOpts = (opts.options as string[]).length;
+      const slotCorrect = Array.from({ length: nOpts }, (_, i) => {
+        const inCorrect = correct.includes(i);
+        const inStudent = student.includes(i);
+        return inCorrect === inStudent;
+      });
+      return { allCorrect, label: allCorrect ? "" : `Correct: ${correctLabels}`, slotCorrect };
     }
     case "matching":
     case "drag_match": {
@@ -153,22 +161,24 @@ function computeCorrectness(
       const rightItems = (opts.rightItems as string[]) ?? [];
       const pairs = (opts.pairs as { left: number; right: number }[]) ?? [];
       const student = (ans as Record<number, string>) ?? {};
-      const allCorrect = leftItems.every((_, i) => {
+      const slotCorrect = leftItems.map((_, i) => {
         const pair = pairs.find((p) => p.left === i);
         const correctRight = pair !== undefined ? rightItems[pair.right] : "";
         return student[i] === correctRight;
       });
-      return { allCorrect, label: allCorrect ? "" : "Some matches are incorrect" };
+      const allCorrect = slotCorrect.every(Boolean);
+      return { allCorrect, label: allCorrect ? "" : "Some matches are incorrect", slotCorrect };
     }
     case "table_fill_blank": {
       const correct = (opts.correct as string[]) ?? [];
       const student = (ans as string[]) ?? [];
-      if (!correct.length) return { allCorrect: true, label: "" };
-      const allCorrect = correct.every((c, i) => str(student[i]) === str(c));
-      return { allCorrect, label: allCorrect ? "" : `Correct: ${correct.join(" / ")}` };
+      if (!correct.length) return { allCorrect: true, label: "", slotCorrect: [] };
+      const slotCorrect = correct.map((c, i) => str(student[i]) === str(c));
+      const allCorrect = slotCorrect.every(Boolean);
+      return { allCorrect, label: allCorrect ? "" : `Correct: ${correct.join(" / ")}`, slotCorrect };
     }
     default:
-      return { allCorrect: true, label: "" };
+      return { allCorrect: true, label: "", slotCorrect: [] };
   }
 }
 
@@ -214,8 +224,8 @@ function QNum({ num, answered }: { num: number | string; answered: boolean }) {
 }
 
 function FillBlankQuestion({
-  opts, qId, answers, setAnswers, slotStart,
-}: { opts: FillBlankOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number }) {
+  opts, qId, answers, setAnswers, slotStart, slotCorrect,
+}: { opts: FillBlankOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number; slotCorrect?: boolean[] }) {
   const current = (answers[qId] as string[] | undefined) ?? Array(opts.blanks.length).fill("");
   const update = (i: number, val: string) => {
     const next = [...current];
@@ -234,7 +244,14 @@ function FillBlankQuestion({
             {i < parts.length - 1 && (
               <input
                 type="text"
-                className="inline-block border-0 border-b border-border mx-1 px-1 text-sm w-32 bg-transparent focus:outline-none focus:border-primary"
+                className={cn(
+                  "inline-block border-0 mx-1 px-1 text-sm w-32 bg-transparent focus:outline-none",
+                  slotCorrect === undefined
+                    ? "border-b border-border focus:border-primary"
+                    : slotCorrect[i]
+                    ? "border-b-2 border-b-green-500 text-green-700 dark:text-green-400"
+                    : "border-b-2 border-b-red-500 text-red-600 dark:text-red-400 bg-red-50/30 dark:bg-red-950/20"
+                )}
                 placeholder="write answer"
                 value={current[i] ?? ""}
                 onChange={(e) => update(i, e.target.value)}
@@ -248,8 +265,8 @@ function FillBlankQuestion({
 }
 
 function FillBlankDropdownQuestion({
-  opts, qId, answers, setAnswers, slotStart,
-}: { opts: FillBlankDropdownOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number }) {
+  opts, qId, answers, setAnswers, slotStart, slotCorrect,
+}: { opts: FillBlankDropdownOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number; slotCorrect?: boolean[] }) {
   const current = (answers[qId] as Record<number, string> | undefined) ?? {};
   const sentences = opts.sentences.filter(Boolean);
   const slotEnd = slotStart + sentences.length - 1;
@@ -269,20 +286,29 @@ function FillBlankDropdownQuestion({
         {sentences.map((sentence, i) => {
           const slotNum = slotStart + i;
           const val = current[i] ?? "";
+          const sc = slotCorrect?.[i];
           return (
-            <div key={i} className="flex items-center flex-wrap gap-x-2 gap-y-1 text-sm leading-relaxed">
+            <div key={i} className={cn(
+              "flex items-center flex-wrap gap-x-2 gap-y-1 text-sm leading-relaxed rounded-md px-2 py-1",
+              sc === true && "bg-green-50 dark:bg-green-950/20",
+              sc === false && "bg-red-50 dark:bg-red-950/20",
+            )}>
               <span className="font-medium text-muted-foreground w-6 shrink-0">{slotNum}</span>
               <span className="flex-1 min-w-0">{sentence}</span>
               <span className={cn(
                 "inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold shrink-0 select-none",
-                val ? "bg-[#2563EB] text-white" : "bg-[#2563EB]/20 text-[#2563EB] dark:text-blue-300"
+                sc === true ? "bg-green-600 text-white"
+                : sc === false ? "bg-red-500 text-white"
+                : val ? "bg-[#2563EB] text-white" : "bg-[#2563EB]/20 text-[#2563EB] dark:text-blue-300"
               )}>
                 {slotNum}
               </span>
               <select
                 className={cn(
                   "border-2 rounded-full px-3 py-0.5 text-sm bg-white dark:bg-transparent focus:outline-none transition-colors",
-                  val
+                  sc === true ? "border-green-500 text-green-700 dark:border-green-400 dark:text-green-300"
+                  : sc === false ? "border-red-500 text-red-600 dark:border-red-400 dark:text-red-300"
+                  : val
                     ? "border-[#2563EB] text-[#2563EB] dark:border-blue-400 dark:text-blue-300"
                     : "border-[#c7cfe0] text-muted-foreground dark:border-border"
                 )}
@@ -303,9 +329,10 @@ function FillBlankDropdownQuestion({
 }
 
 function DropdownQuestion({
-  opts, qId, answers, setAnswers, slotStart,
-}: { opts: DropdownOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number }) {
+  opts, qId, answers, setAnswers, slotStart, slotCorrect,
+}: { opts: DropdownOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number; slotCorrect?: boolean[] }) {
   const answered = !!(answers[qId] as string)?.trim();
+  const sc = slotCorrect?.[0];
   return (
     <div id={`q-${qId}`} className="flex items-start gap-2">
       <QNum num={slotStart} answered={answered} />
@@ -315,7 +342,11 @@ function DropdownQuestion({
           value={(answers[qId] as string) ?? ""}
           onValueChange={(val) => setAnswers({ ...answers, [qId]: val })}
         >
-          <SelectTrigger className="w-full max-w-xs h-8 text-xs">
+          <SelectTrigger className={cn(
+            "w-full max-w-xs h-8 text-xs",
+            sc === true && "border-green-500 text-green-700 dark:border-green-400",
+            sc === false && "border-red-500 text-red-600 dark:border-red-400 bg-red-50 dark:bg-red-950/20",
+          )}>
             <SelectValue placeholder="Select your answer..." />
           </SelectTrigger>
           <SelectContent>
@@ -356,8 +387,8 @@ function ChooseWordQuestion({
 }
 
 function MatchingQuestion({
-  opts, qId, answers, setAnswers, startNum,
-}: { opts: MatchingOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; startNum: number }) {
+  opts, qId, answers, setAnswers, startNum, slotCorrect,
+}: { opts: MatchingOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; startNum: number; slotCorrect?: boolean[] }) {
   const current = (answers[qId] as Record<number, string>) ?? {};
   const update = (leftIdx: number, rightVal: string) => {
     setAnswers({ ...answers, [qId]: { ...current, [leftIdx]: rightVal } });
@@ -374,17 +405,28 @@ function MatchingQuestion({
       </div>
       {opts.leftItems.filter(Boolean).map((item, i) => {
         const rowAnswered = matchingRowAnswered(answers, qId, i);
+        const sc = slotCorrect?.[i];
         return (
-          <div key={i} className="grid grid-cols-[24px_1fr_1fr] gap-3 items-center">
+          <div key={i} className={cn(
+            "grid grid-cols-[24px_1fr_1fr] gap-3 items-center rounded-md px-1 py-0.5",
+            sc === true && "bg-green-50 dark:bg-green-950/20",
+            sc === false && "bg-red-50 dark:bg-red-950/20",
+          )}>
             <span className={cn(
               "text-xs font-bold shrink-0",
-              rowAnswered ? "text-primary" : "text-primary/60"
+              sc === true ? "text-green-600 dark:text-green-400"
+              : sc === false ? "text-red-500"
+              : rowAnswered ? "text-primary" : "text-primary/60"
             )}>
               {startNum + i}
             </span>
             <p className="text-sm px-3 py-2 bg-muted/60 rounded">{item}</p>
             <Select value={current[i] ?? ""} onValueChange={(val) => update(i, val)}>
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger className={cn(
+                "h-8 text-xs",
+                sc === true && "border-green-500 text-green-700 dark:border-green-400",
+                sc === false && "border-red-500 text-red-600 dark:border-red-400",
+              )}>
                 <SelectValue placeholder="Match..." />
               </SelectTrigger>
               <SelectContent>
@@ -601,8 +643,8 @@ function Matching3ColQuestion({
 }
 
 function MultiSelectQuestion({
-  opts, qId, answers, setAnswers, slotStart,
-}: { opts: MultiSelectOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number }) {
+  opts, qId, answers, setAnswers, slotStart, slotCorrect,
+}: { opts: MultiSelectOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number; slotCorrect?: boolean[] }) {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const selected: number[] = (answers[qId] as number[] | undefined) ?? [];
   const maxSelect = opts.maxSelect ?? 1;
@@ -629,6 +671,11 @@ function MultiSelectQuestion({
         {opts.options.filter(Boolean).map((option, i) => {
           const isSelected = selected.includes(i);
           const isDisabled = !isSelected && selected.length >= maxSelect;
+          const sc = slotCorrect?.[i];
+          const showValidation = slotCorrect !== undefined;
+          const isWrongSelected = showValidation && isSelected && sc === false;
+          const isMissed = showValidation && !isSelected && sc === false;
+          const isCorrectSelected = showValidation && isSelected && sc === true;
           return (
             <button
               key={i}
@@ -638,17 +685,25 @@ function MultiSelectQuestion({
               className={cn(
                 "w-full flex items-start gap-3 px-3 py-2.5 rounded text-left transition-colors",
                 isDisabled ? "opacity-40 cursor-not-allowed" : "hover:bg-muted/60",
+                isWrongSelected && "bg-red-50 dark:bg-red-950/20",
+                isCorrectSelected && "bg-green-50 dark:bg-green-950/20",
+                isMissed && "bg-amber-50 dark:bg-amber-950/20 opacity-80",
               )}
             >
               <span className={cn(
                 "w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold shrink-0 mt-0.5",
-                isSelected ? "bg-[#2d6a2d] text-white dark:bg-green-700" : "bg-muted text-muted-foreground"
+                isWrongSelected ? "bg-red-500 text-white"
+                : isCorrectSelected ? "bg-green-600 text-white"
+                : isSelected ? "bg-[#2d6a2d] text-white dark:bg-green-700" : "bg-muted text-muted-foreground"
               )}>
                 {letters[i] ?? i + 1}
               </span>
               <span className={cn(
                 "w-5 h-5 flex items-center justify-center border-2 rounded-sm shrink-0 mt-0.5 transition-colors",
-                isSelected ? "border-[#2d6a2d] bg-[#2d6a2d] dark:border-green-600 dark:bg-green-600" : "border-[#b0b8c9] bg-white dark:bg-transparent dark:border-border"
+                isWrongSelected ? "border-red-500 bg-red-500"
+                : isCorrectSelected ? "border-green-600 bg-green-600"
+                : isSelected ? "border-[#2d6a2d] bg-[#2d6a2d] dark:border-green-600 dark:bg-green-600"
+                : "border-[#b0b8c9] bg-white dark:bg-transparent dark:border-border"
               )}>
                 {isSelected && (
                   <svg viewBox="0 0 12 10" className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -670,30 +725,36 @@ function MultiSelectQuestion({
 }
 
 function TrueFalseNgQuestion({
-  opts, qId, answers, setAnswers, slotStart,
-}: { opts: TrueFalseNgOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number }) {
+  opts, qId, answers, setAnswers, slotStart, slotCorrect,
+}: { opts: TrueFalseNgOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number; slotCorrect?: boolean[] }) {
   const choices = ["TRUE", "FALSE", "NOT GIVEN"] as const;
   const selected = (answers[qId] as string) ?? "";
+  const sc = slotCorrect?.[0];
   return (
     <div id={`q-${qId}`} className="flex items-start gap-2">
       <QNum num={slotStart} answered={!!selected} />
       <div className="flex-1 space-y-2.5">
         <p className="text-sm leading-relaxed">{opts.statement}</p>
         <div className="flex flex-wrap gap-2">
-          {choices.map((choice) => (
-            <button
-              key={choice}
-              type="button"
-              onClick={() => setAnswers({ ...answers, [qId]: selected === choice ? "" : choice })}
-              className={`px-4 py-1.5 rounded border text-xs font-bold tracking-wider transition-colors ${
-                selected === choice
-                  ? "bg-[#2563EB] text-white border-[#2563EB]"
-                  : "border-[#c7cfe0] text-[#3b5285] hover:border-[#2563EB] hover:text-[#2563EB] bg-white dark:bg-transparent dark:border-border dark:text-muted-foreground dark:hover:border-primary dark:hover:text-primary"
-              }`}
-            >
-              {choice}
-            </button>
-          ))}
+          {choices.map((choice) => {
+            const isSelected = selected === choice;
+            return (
+              <button
+                key={choice}
+                type="button"
+                onClick={() => setAnswers({ ...answers, [qId]: selected === choice ? "" : choice })}
+                className={cn(
+                  "px-4 py-1.5 rounded border text-xs font-bold tracking-wider transition-colors",
+                  isSelected && sc === undefined && "bg-[#2563EB] text-white border-[#2563EB]",
+                  isSelected && sc === true && "bg-green-600 text-white border-green-600",
+                  isSelected && sc === false && "bg-red-500 text-white border-red-500",
+                  !isSelected && "border-[#c7cfe0] text-[#3b5285] hover:border-[#2563EB] hover:text-[#2563EB] bg-white dark:bg-transparent dark:border-border dark:text-muted-foreground dark:hover:border-primary dark:hover:text-primary",
+                )}
+              >
+                {choice}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -701,17 +762,23 @@ function TrueFalseNgQuestion({
 }
 
 function ShortAnswerQuestion({
-  opts, qId, answers, setAnswers, slotStart,
-}: { opts: ShortAnswerOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number }) {
+  opts, qId, answers, setAnswers, slotStart, slotCorrect,
+}: { opts: ShortAnswerOpts; qId: number; answers: AnswerMap; setAnswers: (a: AnswerMap) => void; slotStart: number; slotCorrect?: boolean[] }) {
   const answered = !!(answers[qId] as string)?.trim();
   const wordLimit = opts.wordLimit;
+  const sc = slotCorrect?.[0];
   return (
     <div id={`q-${qId}`} className="flex items-start gap-2">
       <QNum num={slotStart} answered={answered} />
       <div className="flex-1 space-y-2">
         <p className="text-sm leading-relaxed">{opts.prompt}</p>
         <textarea
-          className="w-full border border-border rounded-md px-3 py-2 text-sm bg-transparent focus:outline-none focus:border-primary resize-none min-h-[80px]"
+          className={cn(
+            "w-full border rounded-md px-3 py-2 text-sm bg-transparent focus:outline-none resize-none min-h-[80px]",
+            sc === true ? "border-green-500 focus:border-green-600"
+            : sc === false ? "border-red-500 focus:border-red-600 bg-red-50/30 dark:bg-red-950/20"
+            : "border-border focus:border-primary"
+          )}
           placeholder={wordLimit ? `Write your answer (up to ${wordLimit} word${wordLimit !== 1 ? "s" : ""})…` : "Write your answer…"}
           value={(answers[qId] as string) ?? ""}
           onChange={(e) => setAnswers({ ...answers, [qId]: e.target.value })}
@@ -1396,19 +1463,19 @@ export default function StudentQuizTake() {
                               <p className="text-xs text-muted-foreground mb-1 italic">{q.questionText}</p>
                             )}
                             {q.type === "fill_blank_dropdown" && (
-                              <FillBlankDropdownQuestion opts={opts as FillBlankDropdownOpts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
+                              <FillBlankDropdownQuestion opts={opts as FillBlankDropdownOpts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} slotCorrect={vResult?.slotCorrect} />
                             )}
                             {q.type === "fill_blank" && (
-                              <FillBlankQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
+                              <FillBlankQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} slotCorrect={vResult?.slotCorrect} />
                             )}
                             {q.type === "dropdown" && (
-                              <DropdownQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
+                              <DropdownQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} slotCorrect={vResult?.slotCorrect} />
                             )}
                             {q.type === "choose_word" && (
                               <ChooseWordQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
                             )}
                             {q.type === "matching" && (
-                              <MatchingQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} startNum={slotStart} />
+                              <MatchingQuestion opts={opts} qId={q.id} answers={answers} setAnswers={setAnswers} startNum={slotStart} slotCorrect={vResult?.slotCorrect} />
                             )}
                             {q.type === "drag_match" && (
                               <DragMatchQuestion opts={opts as DragMatchOpts} qId={q.id} answers={answers} setAnswers={setAnswers} startNum={slotStart} />
@@ -1417,13 +1484,13 @@ export default function StudentQuizTake() {
                               <Matching3ColQuestion opts={opts as Matching3ColOpts} qId={q.id} answers={answers} setAnswers={setAnswers} startNum={slotStart} />
                             )}
                             {q.type === "short_answer" && (
-                              <ShortAnswerQuestion opts={opts as ShortAnswerOpts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
+                              <ShortAnswerQuestion opts={opts as ShortAnswerOpts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} slotCorrect={vResult?.slotCorrect} />
                             )}
                             {q.type === "true_false_ng" && (
-                              <TrueFalseNgQuestion opts={opts as TrueFalseNgOpts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
+                              <TrueFalseNgQuestion opts={opts as TrueFalseNgOpts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} slotCorrect={vResult?.slotCorrect} />
                             )}
                             {q.type === "multi_select" && (
-                              <MultiSelectQuestion opts={opts as MultiSelectOpts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} />
+                              <MultiSelectQuestion opts={opts as MultiSelectOpts} qId={q.id} answers={answers} setAnswers={setAnswers} slotStart={slotStart} slotCorrect={vResult?.slotCorrect} />
                             )}
                             {q.type === "writing" && (
                               <WritingQuestion opts={opts as WritingOpts} qId={q.id} answers={answers} setAnswers={setAnswers} />
