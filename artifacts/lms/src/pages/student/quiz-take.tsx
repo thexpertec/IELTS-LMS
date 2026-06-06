@@ -1099,9 +1099,22 @@ export default function StudentQuizTake() {
             <p className="text-sm text-muted-foreground mt-1">Completion</p>
           </div>
         </div>
-        <Button onClick={() => setLocation("/student/quizzes")}>
-          Return to Quizzes
-        </Button>
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setAnswers({});
+              setScore(null);
+              setSubmitted(false);
+              setActivePart(0);
+            }}
+          >
+            Retake Quiz
+          </Button>
+          <Button onClick={() => setLocation("/student/quizzes")}>
+            Return to Quizzes
+          </Button>
+        </div>
       </div>
     );
   }
@@ -1332,11 +1345,21 @@ export default function StudentQuizTake() {
 
         {/* Part tabs — clicking scrolls to that section */}
         {allTabs.length > 1 && (
-          <div className="flex border-b">
+          <div className="flex border-b items-stretch">
+            <button
+              onClick={() => {
+                const prev = clampedPart - 1;
+                if (prev >= 0) { setActivePart(prev); scrollToPartSection(prev); }
+              }}
+              disabled={clampedPart === 0}
+              className="px-3 text-xs font-bold border-r disabled:opacity-30 hover:bg-muted transition-colors shrink-0"
+            >
+              ← Prev
+            </button>
             {allTabs.map((tab, idx) => (
               <button
                 key={idx}
-                onClick={() => scrollToPartSection(idx)}
+                onClick={() => { setActivePart(idx); scrollToPartSection(idx); }}
                 className={cn(
                   "flex-1 py-2 text-xs font-semibold tracking-wide transition-colors",
                   clampedPart === idx
@@ -1344,9 +1367,19 @@ export default function StudentQuizTake() {
                     : "text-muted-foreground hover:bg-muted"
                 )}
               >
-                {tab.label}: {tabSlotRanges[idx]?.min ?? tab.from} to {tabSlotRanges[idx]?.max ?? tab.to} Questions
+                {tab.label}: {tabSlotRanges[idx]?.min ?? tab.from}–{tabSlotRanges[idx]?.max ?? tab.to}
               </button>
             ))}
+            <button
+              onClick={() => {
+                const next = clampedPart + 1;
+                if (next < allTabs.length) { setActivePart(next); scrollToPartSection(next); }
+              }}
+              disabled={clampedPart >= allTabs.length - 1}
+              className="px-3 text-xs font-bold border-l disabled:opacity-30 hover:bg-muted transition-colors shrink-0"
+            >
+              Next →
+            </button>
           </div>
         )}
 
