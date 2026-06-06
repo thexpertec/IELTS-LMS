@@ -3,7 +3,7 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { useDroppable } from "@dnd-kit/core";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Plus, Trash2, ChevronDown, ChevronRight, Image, Volume2, FileText, Save, Check, Upload, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUpload } from "@workspace/object-storage-web";
@@ -282,12 +282,11 @@ export function InlinePartSection({
 
           {/* Passage content */}
           {activeMedia === "passage" && (
-            <Textarea
-              className="text-sm font-mono min-h-[100px] resize-y"
-              placeholder="Paste reading passage here — shown to students on the left while answering…"
+            <RichTextEditor
               value={part.passageText ?? ""}
-              onChange={(e) => handleChange({ passageText: e.target.value })}
-              autoFocus
+              onChange={(value) => handleChange({ passageText: value })}
+              placeholder="Paste reading passage here — shown to students on the left while answering…"
+              minHeight="150px"
             />
           )}
 
