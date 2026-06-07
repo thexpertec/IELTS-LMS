@@ -12,6 +12,9 @@ const PgStore = connectPg(session);
 
 const app: Express = express();
 
+// Trust Replit's reverse proxy so req.secure is correct and secure cookies work in production
+app.set("trust proxy", 1);
+
 app.use(
   pinoHttp({
     logger,
@@ -66,8 +69,12 @@ app.use(
 const PUBLIC_PATHS = new Set([
   "/api/auth/login",
   "/api/auth/register",
+  "/api/auth/student-register",
   "/api/auth/logout",
   "/api/health",
+  "/api/tenant/public",
+  "/api/tenant/cms-sections",
+  "/api/tenant/seo",
 ]);
 
 app.use("/api", async (req: Request, res: Response, next: NextFunction) => {
