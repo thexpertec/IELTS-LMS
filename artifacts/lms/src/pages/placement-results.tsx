@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -234,7 +233,7 @@ export default function PlacementResults() {
   const levelCounts = attempts?.reduce<Record<string, number>>((acc, a) => { acc[a.level] = (acc[a.level] ?? 0) + 1; return acc; }, {}) ?? {};
 
   return (
-    <SidebarLayout>
+    <>
       <div className="p-6 space-y-6 max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -566,6 +565,6 @@ export default function PlacementResults() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </SidebarLayout>
+    </>
   );
 }
