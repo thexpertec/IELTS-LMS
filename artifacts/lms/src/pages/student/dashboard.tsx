@@ -6,6 +6,7 @@ import {
   useGetStudentNotifications,
   useGetStudentAssignments,
 } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
   BookOpen, Bell, FileText, ArrowRight, Clock, CheckCircle,
@@ -50,6 +51,19 @@ export default function StudentDashboard() {
   } = useGamification();
 
   const email = student?.email ?? "";
+
+  const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+  const { data: placementResult } = useQuery({
+    queryKey: ["placement-my-result", email],
+    queryFn: async () => {
+      if (!email) return null;
+      const r = await fetch(`${BASE}/api/placement/my-result?email=${encodeURIComponent(email)}`, { credentials: "include" });
+      if (!r.ok) return null;
+      return r.json() as Promise<{ score: number; level: string; recommendedCourseTitle: string | null; assignedCourseTitle: string | null; assignedCourseId: number | null } | null>;
+    },
+    enabled: !!email,
+    staleTime: 1000 * 60 * 2,
+  });
 
   const { data: enrollments, isLoading: enrollLoading } = useGetStudentEnrollments(
     { email }, { query: { enabled: !!email } }
@@ -151,6 +165,62 @@ export default function StudentDashboard() {
         <div className="absolute -right-4 -bottom-12 w-64 h-64 rounded-full bg-white/5" />
         <div className="absolute right-20 top-6 w-10 h-10 rounded-full bg-white/8" />
       </div>
+
+      {/* ── Placement Status Card ── */}
+      {placementResult === null ? (
+        <div className="rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
+              <Target className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="font-semibold text-slate-900 dark:text-white">Take your placement test</p>
+              <p className="text-sm text-slate-500 mt-0.5">20 quick questions to determine your English level and get a course recommendation</p>
+            </div>
+          </div>
+          <Link href="/student/placement-test">
+            <Button size="sm" className="shrink-0">Start Test <ArrowRight className="w-3.5 h-3.5 ml-1.5" /></Button>
+          </Link>
+        </div>
+      ) : placementResult && placementResult.assignedCourseTitle ? (
+        <div className="rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center shrink-0">
+              <CheckCircle className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="font-semibold text-slate-900 dark:text-white">Your course has been assigned</p>
+              <p className="text-sm text-slate-500 mt-0.5">
+                Placement: <span className="font-medium text-slate-700 dark:text-slate-300">{placementResult.score}/100 · {placementResult.level}</span>
+                {" · "}Course: <span className="font-medium text-emerald-700 dark:text-emerald-400">{placementResult.assignedCourseTitle}</span>
+              </p>
+            </div>
+          </div>
+          <Link href="/student/courses">
+            <Button size="sm" variant="outline" className="shrink-0 border-emerald-300 text-emerald-700 hover:bg-emerald-50">
+              Go to Course <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+            </Button>
+          </Link>
+        </div>
+      ) : placementResult ? (
+        <div className="rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/30 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center shrink-0">
+              <Award className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="font-semibold text-slate-900 dark:text-white">Placement complete — awaiting course assignment</p>
+              <p className="text-sm text-slate-500 mt-0.5">
+                Your score: <span className="font-medium text-slate-700 dark:text-slate-300">{placementResult.score}/100 · Level {placementResult.level}</span>
+                {placementResult.recommendedCourseTitle && <> · Recommended: <span className="font-medium text-blue-600">{placementResult.recommendedCourseTitle}</span></>}
+              </p>
+            </div>
+          </div>
+          <Link href="/student/placement-test">
+            <Button size="sm" variant="outline" className="shrink-0 text-xs border-amber-300 text-amber-700 hover:bg-amber-50">View Result</Button>
+          </Link>
+        </div>
+      ) : null}
 
       {/* ── Daily goal + XP level bar ── */}
       <div className="grid sm:grid-cols-2 gap-4">

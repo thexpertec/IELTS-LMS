@@ -4,6 +4,7 @@ import { seedUsersIfEmpty } from "./lib/seed-users";
 import { seedLessonTypesIfEmpty } from "./lib/seed-lesson-types";
 import { repairDuplicateEnrollments, ensureEnrollmentUniqueConstraint, backfillTenantIds } from "./lib/repair-enrollments";
 import { migrateCoursesTable, migrateQuizzesTable, migrateLessonsTable } from "./lib/migrate-courses";
+import { migratePlacementTables } from "./lib/migrate-placement";
 
 const rawPort = process.env["PORT"];
 
@@ -32,6 +33,7 @@ app.listen(port, (err) => {
     .then(() => repairDuplicateEnrollments())
     .then(() => ensureEnrollmentUniqueConstraint())
     .then(() => backfillTenantIds())
+    .then(() => migratePlacementTables())
     .catch((err) => logger.error({ err }, "Startup repair failed"));
   seedUsersIfEmpty();
   seedLessonTypesIfEmpty();

@@ -70,6 +70,8 @@ import AnalyticsPage from "@/pages/student/analytics";
 import CertificatesPage from "@/pages/student/certificates";
 import NotesPage from "@/pages/student/notes";
 import SettingsPage from "@/pages/student/settings";
+import PlacementResults from "@/pages/placement-results";
+import PlacementTest from "@/pages/student/placement-test";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -177,6 +179,9 @@ function Router() {
       <Route path="/student/settings">
         <StudentGuard><SettingsPage /></StudentGuard>
       </Route>
+      <Route path="/student/placement-test">
+        <StudentGuardNoLayout><PlacementTest /></StudentGuardNoLayout>
+      </Route>
 
       {/* Root */}
       <Route path="/" component={RootRoute} />
@@ -235,6 +240,9 @@ function Router() {
       </Route>
       <Route path="/organization-settings">
         <AdminGuard><OrganizationSettings /></AdminGuard>
+      </Route>
+      <Route path="/placement">
+        <AdminGuard><PlacementResults /></AdminGuard>
       </Route>
       <Route path="/media">
         <AdminGuard><MediaLibrary /></AdminGuard>

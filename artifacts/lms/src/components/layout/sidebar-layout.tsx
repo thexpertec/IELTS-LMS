@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, BookOpen, Users, UserPlus, GraduationCap, ClipboardList,
   Menu, FileText, LogOut, Settings2, MessageSquare, Building2, Eye, Image, X,
-  Newspaper, ChevronDown, ChevronRight,
+  Newspaper, ChevronDown, ChevronRight, Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +49,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     { name: "Assignments", href: "/assignments", icon: FileText },
     { name: "Enrollments", href: "/enrollments", icon: UserPlus },
     { name: "Students", href: "/students", icon: Users },
+    { name: "Placement", href: "/placement", icon: Target },
     { name: "Media Library", href: "/media", icon: Image },
     { name: "Messages", href: "/messages", icon: MessageSquare },
     { name: "Lesson Types", href: "/lesson-types", icon: Settings2 },

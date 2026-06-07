@@ -2,6 +2,14 @@ import { pgTable, text, serial, timestamp, integer, jsonb, boolean } from "drizz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
+export type ScoreRange = {
+  min: number;
+  max: number;
+  level: string;
+  label: string;
+  courseId?: number | null;
+};
+
 export type TenantSettings = {
   features: {
     selfRegistration: boolean;
@@ -12,6 +20,7 @@ export type TenantSettings = {
     maintenanceMode: boolean;
     showStudentProgress: boolean;
     allowFileUploads: boolean;
+    requirePlacementTest: boolean;
   };
   portal: {
     welcomeMessage: string;
@@ -23,7 +32,18 @@ export type TenantSettings = {
     tagline: string;
     accentColor: string;
   };
+  placement?: {
+    scoreRanges: ScoreRange[];
+  };
 };
+
+export const DEFAULT_SCORE_RANGES: ScoreRange[] = [
+  { min: 0, max: 20, level: "A2", label: "Elementary" },
+  { min: 21, max: 40, level: "B1", label: "Pre-Intermediate" },
+  { min: 41, max: 65, level: "B2", label: "Intermediate" },
+  { min: 66, max: 80, level: "C1", label: "Upper-Intermediate" },
+  { min: 81, max: 100, level: "C2", label: "Advanced/Proficiency" },
+];
 
 export const DEFAULT_TENANT_SETTINGS: TenantSettings = {
   features: {
@@ -35,6 +55,7 @@ export const DEFAULT_TENANT_SETTINGS: TenantSettings = {
     maintenanceMode: false,
     showStudentProgress: true,
     allowFileUploads: true,
+    requirePlacementTest: false,
   },
   portal: {
     welcomeMessage: "",
@@ -45,6 +66,15 @@ export const DEFAULT_TENANT_SETTINGS: TenantSettings = {
   branding: {
     tagline: "",
     accentColor: "",
+  },
+  placement: {
+    scoreRanges: [
+      { min: 0, max: 20, level: "A2", label: "Elementary" },
+      { min: 21, max: 40, level: "B1", label: "Pre-Intermediate" },
+      { min: 41, max: 65, level: "B2", label: "Intermediate" },
+      { min: 66, max: 80, level: "C1", label: "Upper-Intermediate" },
+      { min: 81, max: 100, level: "C2", label: "Advanced/Proficiency" },
+    ],
   },
 };
 

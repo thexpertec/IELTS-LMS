@@ -19,6 +19,7 @@ import cmsRouter from "./cms";
 import tenantCmsRouter from "./tenant-cms";
 import mediaRouter from "./media";
 import seoRouter from "./seo";
+import placementRouter from "./placement";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use(cmsRouter);
 router.use(tenantCmsRouter);
 router.use(mediaRouter);
 router.use(seoRouter);
+router.use(placementRouter);
 
 export default router;

@@ -1,0 +1,1 @@
+- [Placement System](placement-system.md) — capability-based placement test + course assignment system; tables, API, admin/student UI all built

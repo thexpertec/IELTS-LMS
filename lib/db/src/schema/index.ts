@@ -18,3 +18,4 @@ export * from "./chat_messages";
 export * from "./cms";
 export * from "./sessions";
 export * from "./media_files";
+export * from "./placement";
