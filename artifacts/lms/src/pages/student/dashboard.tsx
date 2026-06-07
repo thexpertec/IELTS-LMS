@@ -52,13 +52,16 @@ export default function StudentDashboard() {
 
   const email = student?.email ?? "";
 
+  type AssignedCourse = { courseId: number; courseTitle: string; assignedAt: string };
+  type PlacementResult = { score: number; level: string; recommendedCourseTitle: string | null; assignedCourses: AssignedCourse[] } | null;
+
   const { data: placementResult } = useQuery({
     queryKey: ["placement-my-result", email],
     queryFn: async () => {
       if (!email) return null;
       const r = await fetch(`/api/placement/my-result?email=${encodeURIComponent(email)}`, { credentials: "include" });
       if (!r.ok) return null;
-      return r.json() as Promise<{ score: number; level: string; recommendedCourseTitle: string | null; assignedCourseTitle: string | null; assignedCourseId: number | null } | null>;
+      return r.json() as Promise<PlacementResult>;
     },
     enabled: !!email,
     staleTime: 1000 * 60 * 2,
@@ -165,7 +168,7 @@ export default function StudentDashboard() {
         <div className="absolute right-20 top-6 w-10 h-10 rounded-full bg-white/8" />
       </div>
 
-      {/* ── Placement Status Card ── */}
+      {/* ── Placement / Assigned Courses Card ── */}
       {placementResult === null ? (
         <div className="rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-start gap-3">
@@ -181,25 +184,42 @@ export default function StudentDashboard() {
             <Button size="sm" className="shrink-0">Start Test <ArrowRight className="w-3.5 h-3.5 ml-1.5" /></Button>
           </Link>
         </div>
-      ) : placementResult && placementResult.assignedCourseTitle ? (
-        <div className="rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center shrink-0">
-              <CheckCircle className="w-5 h-5 text-white" />
+      ) : placementResult && placementResult.assignedCourses.length > 0 ? (
+        <div className="rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 p-4 space-y-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center shrink-0">
+                <CheckCircle className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-900 dark:text-white">Your courses have been assigned</p>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  Assessment: <span className="font-medium text-slate-700 dark:text-slate-300">{placementResult.score}/100 · Level {placementResult.level}</span>
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="font-semibold text-slate-900 dark:text-white">Your course has been assigned</p>
-              <p className="text-sm text-slate-500 mt-0.5">
-                Assessment: <span className="font-medium text-slate-700 dark:text-slate-300">{placementResult.score}/100 · {placementResult.level}</span>
-                {" · "}Course: <span className="font-medium text-emerald-700 dark:text-emerald-400">{placementResult.assignedCourseTitle}</span>
-              </p>
-            </div>
+            <Link href="/student/courses">
+              <Button size="sm" variant="outline" className="shrink-0 border-emerald-300 text-emerald-700 hover:bg-emerald-50">
+                My Courses <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+              </Button>
+            </Link>
           </div>
-          <Link href="/student/courses">
-            <Button size="sm" variant="outline" className="shrink-0 border-emerald-300 text-emerald-700 hover:bg-emerald-50">
-              Go to Course <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-            </Button>
-          </Link>
+          <div className="grid sm:grid-cols-2 gap-2 pt-1">
+            {placementResult.assignedCourses.map((c) => (
+              <Link key={c.courseId} href="/student/courses">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-white dark:bg-slate-900 border border-emerald-100 dark:border-emerald-900 hover:border-emerald-300 hover:shadow-sm transition-all cursor-pointer group">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center shrink-0">
+                    <GraduationCap className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{c.courseTitle}</p>
+                    <p className="text-xs text-slate-400">Tap to start learning</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-emerald-400 group-hover:text-emerald-600 shrink-0" />
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
       ) : placementResult ? (
         <div className="rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/30 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">

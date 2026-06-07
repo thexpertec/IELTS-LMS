@@ -6,6 +6,7 @@ import {
   studentProfilesTable, enrollmentsTable,
 } from "@workspace/db";
 import type { ScoreRange, TenantSettings } from "@workspace/db/schema";
+import { sendCourseAssignedEmail } from "../lib/email";
 
 const router: IRouter = Router();
 
@@ -104,7 +105,7 @@ router.post("/placement/manual-score", async (req, res): Promise<void> => {
 });
 
 // ── GET /api/placement/my-result?email= ──────────────────
-// Student gets their latest placement result
+// Student gets their latest placement result + all assigned courses
 router.get("/placement/my-result", async (req, res): Promise<void> => {
   const tenantId = await getTenantId(req);
   if (!tenantId) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -114,17 +115,25 @@ router.get("/placement/my-result", async (req, res): Promise<void> => {
     .where(and(eq(placementAttemptsTable.studentEmail, email), eq(placementAttemptsTable.tenantId, tenantId)))
     .orderBy(desc(placementAttemptsTable.takenAt)).limit(1);
   if (!attempt) { res.json(null); return; }
-  const [assignment] = await db.select({ courseId: courseAssignmentsTable.courseId, courseTitle: coursesTable.title })
+  const assignments = await db.select({
+    courseId: courseAssignmentsTable.courseId,
+    courseTitle: coursesTable.title,
+    assignedAt: courseAssignmentsTable.assignedAt,
+  })
     .from(courseAssignmentsTable)
     .leftJoin(coursesTable, eq(courseAssignmentsTable.courseId, coursesTable.id))
     .where(and(eq(courseAssignmentsTable.studentEmail, email), eq(courseAssignmentsTable.tenantId, tenantId), eq(courseAssignmentsTable.isActive, true)))
-    .orderBy(desc(courseAssignmentsTable.assignedAt)).limit(1);
+    .orderBy(desc(courseAssignmentsTable.assignedAt));
   let recommendedCourseTitle: string | null = null;
   if (attempt.recommendedCourseId) {
     const [c] = await db.select({ title: coursesTable.title }).from(coursesTable).where(eq(coursesTable.id, attempt.recommendedCourseId)).limit(1);
     recommendedCourseTitle = c?.title ?? null;
   }
-  res.json({ ...attempt, assignedCourseId: assignment?.courseId ?? null, assignedCourseTitle: assignment?.courseTitle ?? null, recommendedCourseTitle });
+  res.json({
+    ...attempt,
+    recommendedCourseTitle,
+    assignedCourses: assignments.map((x) => ({ courseId: x.courseId, courseTitle: x.courseTitle ?? "", assignedAt: x.assignedAt })),
+  });
 });
 
 // ── GET /api/placement/attempts ───────────────────────────
@@ -195,17 +204,27 @@ router.post("/placement/assign", async (req, res): Promise<void> => {
     .from(enrollmentsTable)
     .where(and(eq(enrollmentsTable.studentEmail, studentEmail), eq(enrollmentsTable.courseId, courseId)))
     .limit(1);
+  const [profile] = await db.select({ displayName: studentProfilesTable.displayName })
+    .from(studentProfilesTable).where(eq(studentProfilesTable.email, studentEmail)).limit(1);
+  const studentName = profile?.displayName ?? studentEmail.split("@")[0];
   if (!existing) {
     try {
-      const [profile] = await db.select({ displayName: studentProfilesTable.displayName })
-        .from(studentProfilesTable).where(eq(studentProfilesTable.email, studentEmail)).limit(1);
       await db.insert(enrollmentsTable).values({
         courseId, studentEmail,
-        studentName: profile?.displayName ?? studentEmail.split("@")[0],
+        studentName,
         status: "active", progressPercent: 0,
       });
     } catch { /* enrollment may already exist */ }
   }
+  // Look up course title and tenant name for the email
+  const [courseRow] = await db.select({ title: coursesTable.title }).from(coursesTable).where(eq(coursesTable.id, courseId)).limit(1);
+  const [tenantRow] = await db.select({ name: tenantsTable.name }).from(tenantsTable).where(eq(tenantsTable.id, tenantId)).limit(1);
+  void sendCourseAssignedEmail({
+    to: studentEmail,
+    studentName,
+    courseName: courseRow?.title ?? "Your Course",
+    tenantName: tenantRow?.name ?? "OneSoft LMS",
+  });
   res.json(assignment);
 });
 
