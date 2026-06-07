@@ -137,11 +137,11 @@ router.get("/placement/attempts", async (req, res): Promise<void> => {
     .orderBy(desc(placementAttemptsTable.takenAt));
   // enrich with assignments and recommended course titles
   const enriched = await Promise.all(rows.map(async (a) => {
-    const [assignment] = await db.select({ courseId: courseAssignmentsTable.courseId, courseTitle: coursesTable.title, assignedAt: courseAssignmentsTable.assignedAt, assignmentType: courseAssignmentsTable.assignmentType })
+    const assignments = await db.select({ courseId: courseAssignmentsTable.courseId, courseTitle: coursesTable.title, assignedAt: courseAssignmentsTable.assignedAt, assignmentType: courseAssignmentsTable.assignmentType })
       .from(courseAssignmentsTable)
       .leftJoin(coursesTable, eq(courseAssignmentsTable.courseId, coursesTable.id))
       .where(and(eq(courseAssignmentsTable.studentEmail, a.studentEmail), eq(courseAssignmentsTable.tenantId, tenantId), eq(courseAssignmentsTable.isActive, true)))
-      .orderBy(desc(courseAssignmentsTable.assignedAt)).limit(1);
+      .orderBy(desc(courseAssignmentsTable.assignedAt));
     let recommendedCourseTitle: string | null = null;
     if (a.recommendedCourseId) {
       const [c] = await db.select({ title: coursesTable.title }).from(coursesTable).where(eq(coursesTable.id, a.recommendedCourseId)).limit(1);
@@ -153,10 +153,7 @@ router.get("/placement/attempts", async (req, res): Promise<void> => {
       ...a,
       studentName: profile?.displayName ?? a.studentEmail.split("@")[0],
       recommendedCourseTitle,
-      assignedCourseId: assignment?.courseId ?? null,
-      assignedCourseTitle: assignment?.courseTitle ?? null,
-      assignedAt: assignment?.assignedAt ?? null,
-      assignmentType: assignment?.assignmentType ?? null,
+      assignedCourses: assignments.map((x) => ({ courseId: x.courseId, courseTitle: x.courseTitle ?? "", assignedAt: x.assignedAt })),
     };
   }));
   res.json(enriched);
@@ -183,10 +180,12 @@ router.post("/placement/assign", async (req, res): Promise<void> => {
     studentEmail: string; courseId: number; placementAttemptId?: number; assignmentType?: string; notes?: string;
   };
   if (!studentEmail || !courseId) { res.status(400).json({ error: "studentEmail and courseId required" }); return; }
-  // Deactivate any existing active assignment for this student
-  await db.update(courseAssignmentsTable)
-    .set({ isActive: false })
-    .where(and(eq(courseAssignmentsTable.studentEmail, studentEmail), eq(courseAssignmentsTable.tenantId, tenantId), eq(courseAssignmentsTable.isActive, true)));
+  // Prevent duplicate active assignment of the same course
+  const [duplicate] = await db.select({ id: courseAssignmentsTable.id })
+    .from(courseAssignmentsTable)
+    .where(and(eq(courseAssignmentsTable.studentEmail, studentEmail), eq(courseAssignmentsTable.tenantId, tenantId), eq(courseAssignmentsTable.courseId, courseId), eq(courseAssignmentsTable.isActive, true)))
+    .limit(1);
+  if (duplicate) { res.status(409).json({ error: "Course already assigned to this student" }); return; }
   const [assignment] = await db.insert(courseAssignmentsTable).values({
     studentEmail, courseId, tenantId, placementAttemptId: placementAttemptId ?? null,
     assignedByEmail, assignmentType: assignmentType ?? "manual", notes: notes ?? null, isActive: true,

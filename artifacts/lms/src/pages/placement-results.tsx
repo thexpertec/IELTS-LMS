@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,6 +14,12 @@ import { useToast } from "@/hooks/use-toast";
 
 const api = (path: string) => path;
 
+interface AssignedCourse {
+  courseId: number;
+  courseTitle: string;
+  assignedAt: string | null;
+}
+
 interface PlacementAttempt {
   id: number;
   studentEmail: string;
@@ -24,9 +29,7 @@ interface PlacementAttempt {
   level: string;
   recommendedCourseId: number | null;
   recommendedCourseTitle: string | null;
-  assignedCourseId: number | null;
-  assignedCourseTitle: string | null;
-  assignedAt: string | null;
+  assignedCourses: AssignedCourse[];
   source: string;
   notes: string | null;
   takenAt: string;
@@ -83,7 +86,7 @@ export default function PlacementResults() {
 
   // Assign dialog
   const [assignDialog, setAssignDialog] = useState<{ open: boolean; attempt: PlacementAttempt | null }>({ open: false, attempt: null });
-  const [assignCourseId, setAssignCourseId] = useState<string>("");
+  const [assignCourseIds, setAssignCourseIds] = useState<number[]>([]);
   const [assignNotes, setAssignNotes] = useState("");
 
   // Manual score dialog
@@ -126,21 +129,26 @@ export default function PlacementResults() {
   });
 
   const assignMutation = useMutation({
-    mutationFn: async ({ studentEmail, courseId, placementAttemptId }: { studentEmail: string; courseId: number; placementAttemptId: number }) => {
-      const r = await fetch(api("/api/placement/assign"), {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentEmail, courseId, placementAttemptId, assignmentType: "manual", notes: assignNotes }),
-      });
-      if (!r.ok) throw new Error(await r.text());
+    mutationFn: async ({ studentEmail, courseIds, placementAttemptId }: { studentEmail: string; courseIds: number[]; placementAttemptId: number }) => {
+      for (const courseId of courseIds) {
+        const r = await fetch(api("/api/placement/assign"), {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ studentEmail, courseId, placementAttemptId, assignmentType: "manual", notes: assignNotes }),
+        });
+        if (!r.ok) {
+          const body = await r.json().catch(() => ({ error: r.statusText })) as { error?: string };
+          if (r.status !== 409) throw new Error(body.error ?? r.statusText);
+        }
+      }
     },
     onSuccess: () => {
-      toast({ title: "Course assigned", description: "Student will see their assigned course on the dashboard." });
+      toast({ title: "Courses assigned", description: "Student will see their assigned courses on the dashboard." });
       queryClient.invalidateQueries({ queryKey: ["placement-attempts"] });
       queryClient.invalidateQueries({ queryKey: ["placement-reports"] });
       setAssignDialog({ open: false, attempt: null });
-      setAssignCourseId("");
+      setAssignCourseIds([]);
       setAssignNotes("");
     },
     onError: (err) => toast({ title: "Failed", description: String(err), variant: "destructive" }),
@@ -203,12 +211,16 @@ export default function PlacementResults() {
   }
 
   function handleAssign() {
-    if (!assignDialog.attempt || !assignCourseId) return;
+    if (!assignDialog.attempt || assignCourseIds.length === 0) return;
     assignMutation.mutate({
       studentEmail: assignDialog.attempt.studentEmail,
-      courseId: parseInt(assignCourseId, 10),
+      courseIds: assignCourseIds,
       placementAttemptId: assignDialog.attempt.id,
     });
+  }
+
+  function toggleCourseId(id: number) {
+    setAssignCourseIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   }
 
   function exportCSV() {
@@ -227,8 +239,8 @@ export default function PlacementResults() {
   }
 
   const totalAssessed = attempts?.length ?? 0;
-  const pendingAssignment = attempts?.filter((a) => !a.assignedCourseId).length ?? 0;
-  const assigned = attempts?.filter((a) => !!a.assignedCourseId).length ?? 0;
+  const pendingAssignment = attempts?.filter((a) => a.assignedCourses.length === 0).length ?? 0;
+  const assigned = attempts?.filter((a) => a.assignedCourses.length > 0).length ?? 0;
   const levelCounts = attempts?.reduce<Record<string, number>>((acc, a) => { acc[a.level] = (acc[a.level] ?? 0) + 1; return acc; }, {}) ?? {};
 
   return (
@@ -346,10 +358,14 @@ export default function PlacementResults() {
                           {a.recommendedCourseTitle ?? <span className="text-slate-400 italic text-xs">Not mapped</span>}
                         </td>
                         <td className="px-4 py-3">
-                          {a.assignedCourseTitle ? (
-                            <span className="inline-flex items-center gap-1 text-emerald-700 text-xs bg-emerald-50 border border-emerald-200 rounded px-2 py-0.5">
-                              <CheckCircle2 className="w-3 h-3" />{a.assignedCourseTitle}
-                            </span>
+                          {a.assignedCourses.length > 0 ? (
+                            <div className="flex flex-col gap-1">
+                              {a.assignedCourses.map((c) => (
+                                <span key={c.courseId} className="inline-flex items-center gap-1 text-emerald-700 text-xs bg-emerald-50 border border-emerald-200 rounded px-2 py-0.5">
+                                  <CheckCircle2 className="w-3 h-3 shrink-0" />{c.courseTitle}
+                                </span>
+                              ))}
+                            </div>
                           ) : (
                             <span className="text-amber-600 text-xs">Pending</span>
                           )}
@@ -358,9 +374,9 @@ export default function PlacementResults() {
                         <td className="px-4 py-3">
                           <div className="flex justify-end gap-1">
                             <Button size="sm" variant="outline" className="h-7 text-xs"
-                              onClick={() => { setAssignDialog({ open: true, attempt: a }); setAssignCourseId(a.assignedCourseId?.toString() ?? ""); }}>
-                              {a.assignedCourseId ? <Pencil className="w-3 h-3 mr-1" /> : <BookOpen className="w-3 h-3 mr-1" />}
-                              {a.assignedCourseId ? "Change" : "Assign"}
+                              onClick={() => { setAssignDialog({ open: true, attempt: a }); setAssignCourseIds([]); }}>
+                              <BookOpen className="w-3 h-3 mr-1" />
+                              {a.assignedCourses.length > 0 ? "Add Course" : "Assign"}
                             </Button>
                             <Button size="sm" variant="ghost" className="h-7 text-red-500 hover:text-red-700 hover:bg-red-50"
                               onClick={() => setDeleteId(a.id)}>
@@ -431,9 +447,9 @@ export default function PlacementResults() {
 
       {/* Assign Course Dialog */}
       <Dialog open={assignDialog.open} onOpenChange={(o) => !o && setAssignDialog({ open: false, attempt: null })}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Assign Course</DialogTitle>
+            <DialogTitle>Assign Courses</DialogTitle>
           </DialogHeader>
           {assignDialog.attempt && (
             <div className="space-y-4">
@@ -447,19 +463,43 @@ export default function PlacementResults() {
                 {assignDialog.attempt.recommendedCourseTitle && (
                   <div className="text-xs text-blue-600 mt-1">Recommended: {assignDialog.attempt.recommendedCourseTitle}</div>
                 )}
+                {assignDialog.attempt.assignedCourses.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-slate-200">
+                    <div className="text-xs text-slate-400 mb-1">Already assigned:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {assignDialog.attempt.assignedCourses.map((c) => (
+                        <span key={c.courseId} className="inline-flex items-center gap-1 text-emerald-700 text-xs bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5">
+                          <CheckCircle2 className="w-3 h-3" />{c.courseTitle}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="space-y-1.5">
-                <Label>Select Course</Label>
-                <Select value={assignCourseId} onValueChange={setAssignCourseId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a course..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {settings?.courses?.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Select courses to add</Label>
+                <div className="border rounded-lg divide-y max-h-52 overflow-y-auto">
+                  {settings?.courses?.map((c) => {
+                    const alreadyAssigned = assignDialog.attempt!.assignedCourses.some((ac) => ac.courseId === c.id);
+                    const isChecked = assignCourseIds.includes(c.id);
+                    return (
+                      <label key={c.id} className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 text-sm ${alreadyAssigned ? "opacity-50 cursor-not-allowed" : ""}`}>
+                        <input
+                          type="checkbox"
+                          className="rounded"
+                          checked={isChecked || alreadyAssigned}
+                          disabled={alreadyAssigned}
+                          onChange={() => !alreadyAssigned && toggleCourseId(c.id)}
+                        />
+                        <span className="flex-1">{c.title}</span>
+                        {alreadyAssigned && <span className="text-xs text-emerald-600">Assigned</span>}
+                      </label>
+                    );
+                  })}
+                </div>
+                {assignCourseIds.length > 0 && (
+                  <p className="text-xs text-slate-500">{assignCourseIds.length} course{assignCourseIds.length > 1 ? "s" : ""} selected</p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label>Notes (optional)</Label>
@@ -469,8 +509,8 @@ export default function PlacementResults() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setAssignDialog({ open: false, attempt: null })}>Cancel</Button>
-            <Button onClick={handleAssign} disabled={!assignCourseId || assignMutation.isPending}>
-              {assignMutation.isPending ? "Assigning..." : "Assign Course"}
+            <Button onClick={handleAssign} disabled={assignCourseIds.length === 0 || assignMutation.isPending}>
+              {assignMutation.isPending ? "Assigning..." : `Assign ${assignCourseIds.length > 0 ? assignCourseIds.length : ""} Course${assignCourseIds.length !== 1 ? "s" : ""}`}
             </Button>
           </DialogFooter>
         </DialogContent>
