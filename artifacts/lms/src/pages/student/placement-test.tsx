@@ -6,8 +6,7 @@ import { useStudent } from "@/context/student-context";
 import { useLocation } from "wouter";
 import { CheckCircle2, ChevronRight, BookOpen, Award, ArrowRight, RotateCcw, Clock } from "lucide-react";
 
-const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
-const api = (path: string) => `${BASE}${path}`;
+const api = (path: string) => path;
 
 interface PlacementQuestion {
   id: number;

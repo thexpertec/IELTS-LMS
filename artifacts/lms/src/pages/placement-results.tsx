@@ -13,8 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Users, ClipboardList, BookOpen, AlertCircle, Plus, Trash2, Pencil, Download, CheckCircle2, Clock, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
-const api = (path: string) => `${BASE}${path}`;
+const api = (path: string) => path;
 
 interface PlacementAttempt {
   id: number;

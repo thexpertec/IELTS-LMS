@@ -52,12 +52,11 @@ export default function StudentDashboard() {
 
   const email = student?.email ?? "";
 
-  const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
   const { data: placementResult } = useQuery({
     queryKey: ["placement-my-result", email],
     queryFn: async () => {
       if (!email) return null;
-      const r = await fetch(`${BASE}/api/placement/my-result?email=${encodeURIComponent(email)}`, { credentials: "include" });
+      const r = await fetch(`/api/placement/my-result?email=${encodeURIComponent(email)}`, { credentials: "include" });
       if (!r.ok) return null;
       return r.json() as Promise<{ score: number; level: string; recommendedCourseTitle: string | null; assignedCourseTitle: string | null; assignedCourseId: number | null } | null>;
     },
