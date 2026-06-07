@@ -238,8 +238,8 @@ export default function PlacementResults() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Placement Results</h1>
-            <p className="text-sm text-slate-500 mt-0.5">Manage student placement assessments and course assignments</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Course Allocation</h1>
+            <p className="text-sm text-slate-500 mt-0.5">Manage student assessments and course assignments</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={openSettings}>Configure Score Ranges</Button>
@@ -304,8 +304,8 @@ export default function PlacementResults() {
               <Card>
                 <CardContent className="py-16 text-center">
                   <ClipboardList className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                  <p className="text-slate-500 font-medium">No placement results yet</p>
-                  <p className="text-slate-400 text-sm mt-1">Students will appear here after taking the placement test.</p>
+                  <p className="text-slate-500 font-medium">No course allocations yet</p>
+                  <p className="text-slate-400 text-sm mt-1">Students will appear here after completing their assessment.</p>
                   <Button size="sm" className="mt-4" onClick={() => setManualDialog(true)}>
                     <Plus className="w-4 h-4 mr-1.5" />Add Manual Score
                   </Button>
@@ -516,7 +516,7 @@ export default function PlacementResults() {
           <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
             <div className="flex items-center gap-3 pb-2 border-b">
               <input type="checkbox" id="rpt" checked={requirePlacement} onChange={(e) => setRequirePlacement((e.target as HTMLInputElement).checked)} className="rounded" />
-              <Label htmlFor="rpt">Require placement test before students can access courses</Label>
+              <Label htmlFor="rpt">Require assessment before students can access courses</Label>
             </div>
             {settingsRanges.map((r, i) => (
               <div key={i} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded p-2">
@@ -556,8 +556,8 @@ export default function PlacementResults() {
       <AlertDialog open={deleteId !== null} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete placement record?</AlertDialogTitle>
-            <AlertDialogDescription>This will permanently remove this student's placement result. Course assignments will not be affected.</AlertDialogDescription>
+            <AlertDialogTitle>Delete allocation record?</AlertDialogTitle>
+            <AlertDialogDescription>This will permanently remove this student's assessment result. Course assignments will not be affected.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>

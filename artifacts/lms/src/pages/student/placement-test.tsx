@@ -113,8 +113,8 @@ export default function PlacementTest() {
         <div className="max-w-2xl mx-auto px-4 py-10">
           <div className={`rounded-2xl border ${lvlStyle.border} ${lvlStyle.bg} p-8 text-center`}>
             <Award className={`w-12 h-12 mx-auto mb-4 ${lvlStyle.color}`} />
-            <h1 className="text-2xl font-bold text-slate-900">Your Placement Result</h1>
-            <p className="text-slate-500 text-sm mt-1 mb-6">You've already completed the placement test.</p>
+            <h1 className="text-2xl font-bold text-slate-900">Your Course Allocation Result</h1>
+            <p className="text-slate-500 text-sm mt-1 mb-6">You've already completed the assessment.</p>
             <div className={`inline-block rounded-xl border ${lvlStyle.border} px-6 py-3 mb-4`}>
               <div className="text-4xl font-black text-slate-900">{existing.score}<span className="text-xl font-normal text-slate-400">/100</span></div>
               <div className={`text-xl font-bold mt-1 ${lvlStyle.color}`}>{existing.level}</div>
@@ -155,7 +155,7 @@ export default function PlacementTest() {
           <div className={`rounded-2xl border ${lvlStyle.border} ${lvlStyle.bg} p-8 text-center`}>
             <Award className={`w-14 h-14 mx-auto mb-4 ${lvlStyle.color}`} />
             <h1 className="text-2xl font-bold text-slate-900">Test Complete!</h1>
-            <p className="text-slate-500 text-sm mt-1 mb-6">Here are your placement results</p>
+            <p className="text-slate-500 text-sm mt-1 mb-6">Here are your assessment results</p>
             <div className={`inline-block rounded-xl border ${lvlStyle.border} bg-white px-8 py-4 mb-6`}>
               <div className="text-5xl font-black text-slate-900">{result.score}<span className="text-2xl font-normal text-slate-400">/100</span></div>
               <div className="text-sm text-slate-400 mt-1">{correctCount} correct out of {QUESTIONS.length} questions</div>
@@ -198,7 +198,7 @@ export default function PlacementTest() {
             <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <ClipboardList className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-slate-900">IELTS Placement Test</h1>
+            <h1 className="text-2xl font-bold text-slate-900">IELTS Course Allocation Assessment</h1>
             <p className="text-slate-600 mt-2 mb-6">
               This short assessment helps us place you in the right course for your English level.
             </p>
@@ -240,7 +240,7 @@ export default function PlacementTest() {
         {/* Progress */}
         <div className="mb-6">
           <div className="flex justify-between items-center mb-2">
-            <h2 className="font-semibold text-slate-900">IELTS Placement Test</h2>
+            <h2 className="font-semibold text-slate-900">IELTS Course Allocation Assessment</h2>
             <span className="text-sm text-slate-500">{answeredCount}/{QUESTIONS.length} answered</span>
           </div>
           <div className="h-2 bg-slate-100 rounded-full overflow-hidden">

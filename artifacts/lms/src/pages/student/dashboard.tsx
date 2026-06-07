@@ -174,7 +174,7 @@ export default function StudentDashboard() {
               <Target className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="font-semibold text-slate-900 dark:text-white">Take your placement test</p>
+              <p className="font-semibold text-slate-900 dark:text-white">Take your course allocation assessment</p>
               <p className="text-sm text-slate-500 mt-0.5">20 quick questions to determine your English level and get a course recommendation</p>
             </div>
           </div>
@@ -191,7 +191,7 @@ export default function StudentDashboard() {
             <div>
               <p className="font-semibold text-slate-900 dark:text-white">Your course has been assigned</p>
               <p className="text-sm text-slate-500 mt-0.5">
-                Placement: <span className="font-medium text-slate-700 dark:text-slate-300">{placementResult.score}/100 · {placementResult.level}</span>
+                Assessment: <span className="font-medium text-slate-700 dark:text-slate-300">{placementResult.score}/100 · {placementResult.level}</span>
                 {" · "}Course: <span className="font-medium text-emerald-700 dark:text-emerald-400">{placementResult.assignedCourseTitle}</span>
               </p>
             </div>
@@ -209,7 +209,7 @@ export default function StudentDashboard() {
               <Award className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="font-semibold text-slate-900 dark:text-white">Placement complete — awaiting course assignment</p>
+              <p className="font-semibold text-slate-900 dark:text-white">Assessment complete — awaiting course allocation</p>
               <p className="text-sm text-slate-500 mt-0.5">
                 Your score: <span className="font-medium text-slate-700 dark:text-slate-300">{placementResult.score}/100 · Level {placementResult.level}</span>
                 {placementResult.recommendedCourseTitle && <> · Recommended: <span className="font-medium text-blue-600">{placementResult.recommendedCourseTitle}</span></>}

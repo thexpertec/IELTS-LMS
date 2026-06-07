@@ -49,7 +49,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     { name: "Assignments", href: "/assignments", icon: FileText },
     { name: "Enrollments", href: "/enrollments", icon: UserPlus },
     { name: "Students", href: "/students", icon: Users },
-    { name: "Placement", href: "/placement", icon: Target },
+    { name: "Course Allocation", href: "/placement", icon: Target },
     { name: "Media Library", href: "/media", icon: Image },
     { name: "Messages", href: "/messages", icon: MessageSquare },
     { name: "Lesson Types", href: "/lesson-types", icon: Settings2 },
