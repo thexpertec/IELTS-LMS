@@ -1,0 +1,83 @@
+Design and develop a **Capability-Based Course Recommendation & Assignment System** for the IELTS LMS.
+
+The system should support two student enrollment workflows:
+
+### 1. Self-Selection Workflow
+
+* Students can browse available IELTS courses and enroll in a course of their choice.
+* The selected course should automatically appear on the student's dashboard.
+* Students can access only the courses assigned or enrolled in.
+
+### 2. Assessment-Based Workflow
+
+* Students who are unsure of their level should first complete a Placement Assessment Test.
+* The LMS should evaluate the student's score and automatically recommend the most suitable course level.
+* Administrators must also be able to manually assign a course after reviewing the student's performance.
+
+### Placement Test Requirements
+
+* Create a placement assessment module.
+* Support configurable score ranges.
+* Example mapping:
+
+  * 0–30 → B1
+  * 31–60 → B2
+  * 61–80 → C1
+  * 81–100 → C2
+* Store assessment results in the student's profile.
+
+### Course Recommendation Engine
+
+* Automatically recommend a course based on the student's placement score.
+* Display the recommended course to the admin.
+* Allow the admin to accept or override the recommendation.
+
+### Course Assignment
+
+* Admin can assign a course manually or based on the recommendation.
+* Assigned courses should automatically appear on the student's dashboard.
+* Students should only see courses assigned to them.
+
+### Student Dashboard
+
+Display:
+
+* Current Assigned Course
+* Placement Test Score
+* Current Level
+* Course Progress
+* Next Recommended Course
+
+### Learning Path
+
+Support automatic progression:
+
+* B1 → B2
+* B2 → C1
+* C1 → C2
+* C2 → Completed
+
+### Admin Features
+
+* View assessment results.
+* View recommended course.
+* Assign/change courses.
+* View course assignment history.
+* Track student progression.
+
+### Reports
+
+Generate reports showing:
+
+* Student Name
+* Placement Score
+* Recommended Course
+* Assigned Course
+* Progress Percentage
+* Completion Status
+
+### Additional Requirement
+
+Add a registration option called **"Placement Test Required"**. When enabled, the student must complete the placement assessment before any course can be assigned. This ensures students are enrolled in courses according to their actual English proficiency level rather than self-selection alone.
+
+The feature should be scalable, configurable, and integrated with the existing IELTS LMS student management and course management modules.
