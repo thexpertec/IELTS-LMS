@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
-import { usersTable, tenantsTable } from "@workspace/db/schema";
+import { usersTable, tenantsTable, studentProfilesTable } from "@workspace/db/schema";
 import { ilike, eq } from "drizzle-orm";
 import { ensureTenantLessonTypes } from "../lib/ensure-tenant-lesson-types";
 import { generateDbPrefix } from "../lib/db-prefix";
@@ -187,6 +187,76 @@ router.get("/me", (req, res) => {
     role: req.session.role,
     tenantId: req.session.tenantId ?? null,
   });
+});
+
+// POST /api/auth/student-register — student self-registration
+router.post("/student-register", async (req, res) => {
+  const { name, email, password, tenantId } = req.body as {
+    name?: string; email?: string; password?: string; tenantId?: number;
+  };
+
+  if (!name || !email || !password) {
+    res.status(400).json({ message: "Name, email, and password are required" });
+    return;
+  }
+  if (password.length < 6) {
+    res.status(400).json({ message: "Password must be at least 6 characters" });
+    return;
+  }
+  if (!tenantId) {
+    res.status(400).json({ message: "Tenant not found" });
+    return;
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const [existing] = await db.select({ id: usersTable.id })
+    .from(usersTable)
+    .where(ilike(usersTable.email, normalizedEmail))
+    .limit(1);
+  if (existing) {
+    res.status(409).json({ message: "An account with this email already exists" });
+    return;
+  }
+
+  const [tenant] = await db.select({ id: tenantsTable.id, dbPrefix: tenantsTable.dbPrefix })
+    .from(tenantsTable).where(eq(tenantsTable.id, tenantId)).limit(1);
+  if (!tenant) {
+    res.status(400).json({ message: "Tenant not found" });
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const baseUsername = normalizedEmail.split("@")[0]!.replace(/[^a-z0-9_]/g, "_");
+  const username = `${baseUsername}_${Date.now().toString(36)}`;
+
+  const [user] = await db.insert(usersTable).values({
+    email: normalizedEmail,
+    username,
+    name: name.trim(),
+    passwordHash,
+    role: "student",
+    tenantId,
+  }).returning();
+
+  // Create student profile
+  try {
+    await db.insert(studentProfilesTable).values({
+      email: normalizedEmail,
+      displayName: name.trim(),
+    });
+  } catch { /* profile may already exist */ }
+
+  // Log them in
+  req.session.userId = user!.id;
+  req.session.email = user!.email;
+  req.session.name = user!.name;
+  req.session.role = user!.role;
+  req.session.tenantId = tenantId;
+  req.session.tenantDbPrefix = tenant.dbPrefix ?? undefined;
+  await new Promise<void>((resolve) => req.session.save(resolve));
+
+  res.json({ id: user!.id, email: user!.email, name: user!.name, role: user!.role, tenantId });
 });
 
 export default router;

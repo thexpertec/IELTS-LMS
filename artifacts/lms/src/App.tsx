@@ -51,6 +51,7 @@ import StudentQuizTake from "@/pages/student/quiz-take";
 
 // Student portal pages
 import StudentLogin from "@/pages/student/login";
+import StudentSignup from "@/pages/student/signup";
 import StudentDashboard from "@/pages/student/dashboard";
 import MyCourses from "@/pages/student/my-courses";
 import CourseView from "@/pages/student/course-view";
@@ -119,6 +120,7 @@ function Router() {
 
       {/* Student Portal */}
       <Route path="/student/login" component={StudentLogin} />
+      <Route path="/student/signup" component={StudentSignup} />
       <Route path="/student"><Redirect to="/student/login" /></Route>
       <Route path="/student/dashboard">
         <StudentGuard><StudentDashboard /></StudentGuard>
