@@ -563,6 +563,143 @@ router.patch("/tenant/settings", async (req, res): Promise<void> => {
   res.json({ ok: true });
 });
 
+// GET /api/tenant/backup — tenant admin downloads their own data backup
+router.get("/tenant/backup", async (req, res): Promise<void> => {
+  const tenantId = req.session.tenantId;
+  if (!tenantId) { res.status(403).json({ error: "Tenant context required" }); return; }
+
+  const [tenant] = await db.select().from(tenantsTable).where(eq(tenantsTable.id, tenantId)).limit(1);
+  if (!tenant) { res.status(404).json({ error: "Tenant not found" }); return; }
+
+  const courses = await db.select().from(coursesTable).where(eq(coursesTable.tenantId, tenantId));
+  const courseIds = courses.map((c) => c.id);
+
+  const chapters = courseIds.length > 0
+    ? await db.select().from(chaptersTable).where(inArray(chaptersTable.courseId, courseIds)) : [];
+  const lessons = courseIds.length > 0
+    ? await db.select().from(lessonsTable).where(inArray(lessonsTable.courseId, courseIds)) : [];
+  const quizzes = await db.select().from(quizzesTable).where(eq(quizzesTable.tenantId, tenantId));
+  const quizIds = quizzes.map((q) => q.id);
+  const quizQuestions = quizIds.length > 0
+    ? await db.select().from(quizQuestionsTable).where(inArray(quizQuestionsTable.quizId, quizIds)) : [];
+
+  const backup = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    tenantName: tenant.name,
+    tenantSlug: tenant.slug,
+    courses,
+    chapters,
+    lessons,
+    quizzes,
+    quizQuestions,
+  };
+
+  const filename = `${tenant.slug}-backup-${new Date().toISOString().split("T")[0]}.json`;
+  res.setHeader("Content-Type", "application/json");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.json(backup);
+});
+
+// POST /api/tenant/restore — tenant admin imports a backup (replaces all course/quiz data)
+router.post("/tenant/restore", async (req, res): Promise<void> => {
+  const tenantId = req.session.tenantId;
+  if (!tenantId) { res.status(403).json({ error: "Tenant context required" }); return; }
+
+  const [tenant] = await db.select().from(tenantsTable).where(eq(tenantsTable.id, tenantId)).limit(1);
+  if (!tenant) { res.status(404).json({ error: "Tenant not found" }); return; }
+
+  const { courses = [], chapters = [], lessons = [], quizzes = [], quizQuestions = [] } = req.body as {
+    courses: any[]; chapters: any[]; lessons: any[]; quizzes: any[]; quizQuestions: any[];
+  };
+
+  function chunk<T>(arr: T[], size: number): T[][] {
+    const out: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+  }
+
+  // Delete existing tenant data
+  const existingCourses = await db.select({ id: coursesTable.id }).from(coursesTable).where(eq(coursesTable.tenantId, tenantId));
+  const existingCourseIds = existingCourses.map((c) => c.id);
+  if (existingCourseIds.length > 0) {
+    await db.delete(coursesTable).where(inArray(coursesTable.id, existingCourseIds));
+  }
+  const existingQuizzes = await db.select({ id: quizzesTable.id }).from(quizzesTable).where(eq(quizzesTable.tenantId, tenantId));
+  const existingQuizIds = existingQuizzes.map((q) => q.id);
+  if (existingQuizIds.length > 0) {
+    await db.delete(quizzesTable).where(inArray(quizzesTable.id, existingQuizIds));
+  }
+
+  // Re-insert courses
+  const courseIdMap = new Map<number, number>();
+  if (courses.length > 0) {
+    const rows = courses.map(({ id: oldId, createdAt: _ca, updatedAt: _ua, ...rest }: any) => ({ ...rest, tenantId, _oldId: oldId }));
+    const oldIds = rows.map((r: any) => r._oldId);
+    const values = rows.map(({ _oldId: _, ...v }: any) => v);
+    const inserted = await db.insert(coursesTable).values(values).returning({ id: coursesTable.id });
+    inserted.forEach((r, i) => courseIdMap.set(oldIds[i], r.id));
+  }
+
+  // Re-insert chapters
+  const chapterIdMap = new Map<number, number>();
+  const validChapters = chapters.filter(({ courseId }: any) => courseIdMap.has(courseId));
+  if (validChapters.length > 0) {
+    const oldIds = validChapters.map((ch: any) => ch.id);
+    const values = validChapters.map(({ id: _, createdAt: _ca, courseId: oldCourseId, ...rest }: any) => ({ ...rest, courseId: courseIdMap.get(oldCourseId)! }));
+    const inserted = await db.insert(chaptersTable).values(values).returning({ id: chaptersTable.id });
+    inserted.forEach((r, i) => chapterIdMap.set(oldIds[i], r.id));
+  }
+
+  // Re-insert lessons
+  const lessonIdMap = new Map<number, number>();
+  const validLessons = lessons.filter(({ courseId }: any) => courseIdMap.has(courseId));
+  if (validLessons.length > 0) {
+    const oldIds = validLessons.map((l: any) => l.id);
+    const values = validLessons.map(({ id: _, createdAt: _ca, updatedAt: _ua, courseId: oldCourseId, chapterId: oldChapterId, ...rest }: any) => ({
+      ...rest,
+      courseId: courseIdMap.get(oldCourseId)!,
+      chapterId: oldChapterId != null ? chapterIdMap.get(oldChapterId) ?? null : null,
+    }));
+    const inserted = await db.insert(lessonsTable).values(values).returning({ id: lessonsTable.id });
+    inserted.forEach((r, i) => lessonIdMap.set(oldIds[i], r.id));
+  }
+
+  // Re-insert quizzes
+  const quizIdMap = new Map<number, number>();
+  if (quizzes.length > 0) {
+    const oldIds = quizzes.map((q: any) => q.id);
+    const values = quizzes.map(({ id: _, createdAt: _ca, updatedAt: _ua, tenantId: _tid, courseId: oldCourseId, chapterId: oldChapterId, lessonId: oldLessonId, ...rest }: any) => ({
+      ...rest, tenantId,
+      courseId: oldCourseId != null ? courseIdMap.get(oldCourseId) ?? null : null,
+      chapterId: oldChapterId != null ? chapterIdMap.get(oldChapterId) ?? null : null,
+      lessonId: oldLessonId != null ? lessonIdMap.get(oldLessonId) ?? null : null,
+    }));
+    const inserted = await db.insert(quizzesTable).values(values).returning({ id: quizzesTable.id });
+    inserted.forEach((r, i) => quizIdMap.set(oldIds[i], r.id));
+  }
+
+  // Re-insert quiz questions
+  const validQQ = quizQuestions.filter(({ quizId }: any) => quizIdMap.has(quizId));
+  if (validQQ.length > 0) {
+    const qqValues = validQQ.map(({ id: _, createdAt: _ca, updatedAt: _ua, quizId: oldQuizId, ...rest }: any) => ({ ...rest, quizId: quizIdMap.get(oldQuizId)! }));
+    for (const batch of chunk(qqValues, 200)) {
+      await db.insert(quizQuestionsTable).values(batch);
+    }
+  }
+
+  res.json({
+    ok: true,
+    imported: {
+      courses: courseIdMap.size,
+      chapters: chapterIdMap.size,
+      lessons: lessonIdMap.size,
+      quizzes: quizIdMap.size,
+      quizQuestions: validQQ.length,
+    },
+  });
+});
+
 // POST /api/tenant/register-interest — public: capture interest in a course (no auth)
 router.post("/tenant/register-interest", async (req, res): Promise<void> => {
   const { courseId, name, email, phone } = req.body as {

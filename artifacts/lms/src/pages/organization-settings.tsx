@@ -25,7 +25,14 @@ import {
   MapPin,
   Link as LinkIcon,
   Image,
+  Download,
+  Upload,
+  Database,
+  TriangleAlert,
+  CheckCircle2,
+  FileJson,
 } from "lucide-react";
+import { useRef } from "react";
 import { useAuth } from "@/context/auth-context";
 
 interface TenantFeatures {
@@ -130,6 +137,15 @@ export default function OrganizationSettings() {
   const [data, setData] = useState<OrgSettings | null>(null);
   const [isTenantAdmin, setIsTenantAdmin] = useState(false);
 
+  // Backup & restore state
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [restoreLoading, setRestoreLoading] = useState(false);
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
+  const [restorePreview, setRestorePreview] = useState<{ courses: number; quizzes: number; lessons: number } | null>(null);
+  const [restoreConfirm, setRestoreConfirm] = useState(false);
+  const [restoreResult, setRestoreResult] = useState<{ courses: number; quizzes: number; lessons: number } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     void fetchSettings();
   }, []);
@@ -206,6 +222,79 @@ export default function OrganizationSettings() {
     );
   }
 
+  async function handleDownloadBackup() {
+    setBackupLoading(true);
+    try {
+      const res = await fetch("/api/tenant/backup", { credentials: "include" });
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const cd = res.headers.get("Content-Disposition") ?? "";
+      const match = cd.match(/filename="([^"]+)"/);
+      const filename = match?.[1] ?? `backup-${new Date().toISOString().split("T")[0]}.json`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "Backup downloaded", description: `Saved as ${filename}` });
+    } catch {
+      toast({ title: "Download failed", description: "Could not generate backup.", variant: "destructive" });
+    } finally {
+      setBackupLoading(false);
+    }
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    setRestoreFile(file);
+    setRestorePreview(null);
+    setRestoreConfirm(false);
+    setRestoreResult(null);
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const json = JSON.parse(ev.target?.result as string) as { courses?: unknown[]; quizzes?: unknown[]; lessons?: unknown[] };
+        setRestorePreview({
+          courses: json.courses?.length ?? 0,
+          quizzes: json.quizzes?.length ?? 0,
+          lessons: json.lessons?.length ?? 0,
+        });
+      } catch {
+        toast({ title: "Invalid file", description: "The selected file is not a valid backup.", variant: "destructive" });
+        setRestoreFile(null);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  async function handleImportBackup() {
+    if (!restoreFile) return;
+    setRestoreLoading(true);
+    setRestoreResult(null);
+    try {
+      const text = await restoreFile.text();
+      const json = JSON.parse(text) as object;
+      const res = await fetch("/api/tenant/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(json),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const result = await res.json() as { imported: { courses: number; quizzes: number; lessons: number } };
+      setRestoreResult(result.imported);
+      setRestoreFile(null);
+      setRestorePreview(null);
+      setRestoreConfirm(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      toast({ title: "Import successful", description: `Restored ${result.imported.courses} courses, ${result.imported.quizzes} IELTS Practice items.` });
+    } catch (err) {
+      toast({ title: "Import failed", description: String(err), variant: "destructive" });
+    } finally {
+      setRestoreLoading(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -273,6 +362,7 @@ export default function OrganizationSettings() {
             { value: "portal",   label: "Portal & Locale",      icon: Globe },
             { value: "branding", label: "Branding",             icon: Palette },
             { value: "plan",     label: "Plan & Limits",        icon: Crown },
+            { value: "backup",   label: "Backup & Restore",     icon: Database },
           ].map(({ value, label, icon: Icon }) => (
             <TabsTrigger
               key={value}
@@ -674,6 +764,149 @@ export default function OrganizationSettings() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* ── Backup & Restore ─────────────────────────────────────── */}
+        <TabsContent value="backup" className="space-y-6 mt-6">
+
+          {/* Download Backup */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Download className="w-4 h-4" /> Download Backup
+              </CardTitle>
+              <CardDescription>
+                Export all your courses, lessons, and IELTS Practice items as a JSON file. Store it somewhere safe — you can use it to restore your data at any time.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid sm:grid-cols-3 gap-3 text-sm">
+                {[
+                  { label: "Courses", icon: Database },
+                  { label: "Lessons & Chapters", icon: FileJson },
+                  { label: "IELTS Practice Items", icon: FileJson },
+                ].map(({ label, icon: Icon }) => (
+                  <div key={label} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2.5">
+                    <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-muted-foreground">{label}</span>
+                  </div>
+                ))}
+              </div>
+              <Button onClick={() => { void handleDownloadBackup(); }} disabled={backupLoading} className="gap-2">
+                {backupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                {backupLoading ? "Generating backup…" : "Download Backup (.json)"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Import / Restore */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Upload className="w-4 h-4" /> Import Backup
+              </CardTitle>
+              <CardDescription>
+                Upload a previously downloaded backup file to restore your data. <strong>This will replace all existing courses and IELTS Practice items</strong> — student enrolments and scores are not affected.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+
+              {/* Drop zone / file picker */}
+              <div
+                className="relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/20 px-6 py-10 text-center cursor-pointer hover:border-primary/40 hover:bg-muted/30 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <FileJson className="w-10 h-10 text-muted-foreground mb-3" />
+                {restoreFile ? (
+                  <>
+                    <p className="font-medium text-sm">{restoreFile.name}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{(restoreFile.size / 1024).toFixed(1)} KB — click to change</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-medium text-sm">Click to select a backup file</p>
+                    <p className="text-xs text-muted-foreground mt-1">Accepts .json backup files only</p>
+                  </>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json,application/json"
+                  className="sr-only"
+                  onChange={handleFileSelect}
+                />
+              </div>
+
+              {/* Preview what's inside the file */}
+              {restorePreview && (
+                <div className="rounded-lg border bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 p-4 space-y-2">
+                  <p className="text-sm font-semibold text-blue-800 dark:text-blue-300 flex items-center gap-1.5">
+                    <FileJson className="w-4 h-4" /> Backup contents
+                  </p>
+                  <div className="grid grid-cols-3 gap-3 text-sm">
+                    {[
+                      { label: "Courses", value: restorePreview.courses },
+                      { label: "Lessons", value: restorePreview.lessons },
+                      { label: "IELTS Practice", value: restorePreview.quizzes },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="text-center rounded-md bg-white dark:bg-blue-900/30 border border-blue-100 dark:border-blue-700 py-2 px-3">
+                        <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{value}</p>
+                        <p className="text-xs text-blue-600/70 dark:text-blue-400">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Warning + confirm */}
+                  <div className="rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 p-3 flex gap-2 mt-2">
+                    <TriangleAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-800 dark:text-amber-300">
+                      Importing will <strong>permanently replace</strong> your current courses and IELTS Practice items. This cannot be undone. Make sure you have a current backup first.
+                    </p>
+                  </div>
+
+                  <label className="flex items-center gap-2 cursor-pointer mt-1">
+                    <input
+                      type="checkbox"
+                      checked={restoreConfirm}
+                      onChange={(e) => setRestoreConfirm((e.target as HTMLInputElement).checked)}
+                      className="rounded"
+                    />
+                    <span className="text-xs text-muted-foreground">I understand this will replace all existing content</span>
+                  </label>
+                </div>
+              )}
+
+              {/* Import button */}
+              {restoreFile && restorePreview && (
+                <Button
+                  onClick={() => { void handleImportBackup(); }}
+                  disabled={!restoreConfirm || restoreLoading}
+                  variant={restoreConfirm ? "default" : "outline"}
+                  className="gap-2 w-full sm:w-auto"
+                >
+                  {restoreLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  {restoreLoading ? "Importing…" : "Import & Restore"}
+                </Button>
+              )}
+
+              {/* Success banner */}
+              {restoreResult && (
+                <div className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/40 p-4 flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-green-800 dark:text-green-300">Import successful!</p>
+                    <p className="text-xs text-green-700/80 dark:text-green-400 mt-0.5">
+                      Restored {restoreResult.courses} course{restoreResult.courses !== 1 ? "s" : ""}, {" "}
+                      {restoreResult.lessons} lesson{restoreResult.lessons !== 1 ? "s" : ""}, and {" "}
+                      {restoreResult.quizzes} IELTS Practice item{restoreResult.quizzes !== 1 ? "s" : ""}.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+            </CardContent>
+          </Card>
+        </TabsContent>
+
       </Tabs>
 
       {/* Sticky save button at bottom on mobile */}
