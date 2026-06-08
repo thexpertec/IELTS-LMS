@@ -104,7 +104,7 @@ export default function QuizNew() {
           data-testid="btn-back"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Quizzes
+          Back to IELTS Practice
         </Button>
         <h1 className="text-3xl font-bold tracking-tight">Create New Quiz</h1>
         <p className="text-muted-foreground mt-1">Set up the quiz details first, then add questions.</p>

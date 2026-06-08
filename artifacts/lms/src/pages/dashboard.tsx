@@ -66,7 +66,7 @@ export default function Dashboard() {
   const quickActions = [
     { label: "New Course", icon: Plus, color: "bg-primary text-primary-foreground", path: "/courses/new" },
     { label: "Students", icon: Users, color: "bg-violet-500 text-white", path: "/students" },
-    { label: "Quizzes", icon: FileQuestion, color: "bg-amber-500 text-white", path: "/quizzes" },
+    { label: "IELTS Practice", icon: FileQuestion, color: "bg-amber-500 text-white", path: "/quizzes" },
     { label: "Assignments", icon: BookCheck, color: "bg-emerald-500 text-white", path: "/assignments" },
     { label: "Enrollments", icon: Layers, color: "bg-rose-500 text-white", path: "/enrollments" },
     { label: "Analytics", icon: BarChart2, color: "bg-indigo-500 text-white", path: "/?section=analytics" },
@@ -155,7 +155,7 @@ export default function Dashboard() {
       {/* ── KPI Row 2 — Quiz Analytics ── */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <KpiCard
-          title="Total Quizzes"
+          title="Total IELTS Practice"
           value={quizAnalytics?.totalQuizzes}
           sub="Created on platform"
           icon={FileQuestion}
@@ -542,7 +542,7 @@ function ActionItemsBanner({
     items.ungradedQuizzes > 0 && {
       key: "quizzes",
       count: items.ungradedQuizzes,
-      label: items.ungradedQuizzes === 1 ? "quiz needs review" : "quizzes need review",
+      label: items.ungradedQuizzes === 1 ? "IELTS Practice needs review" : "IELTS Practices need review",
       description: "Student submissions awaiting score",
       icon: ClipboardCheck,
       iconBg: "bg-blue-100 dark:bg-blue-900/40",

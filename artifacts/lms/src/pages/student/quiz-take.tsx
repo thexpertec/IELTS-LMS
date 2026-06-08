@@ -1210,7 +1210,7 @@ export default function StudentQuizTake() {
         <div className="text-center">
           <p className="text-lg font-semibold">Quiz not found</p>
           <Button className="mt-4" onClick={() => setLocation("/student/quizzes")}>
-            Back to Quizzes
+            Back to IELTS Practice
           </Button>
         </div>
       </div>
@@ -1261,7 +1261,7 @@ export default function StudentQuizTake() {
             Retake Quiz
           </Button>
           <Button onClick={() => setLocation("/student/quizzes")}>
-            Return to Quizzes
+            Return to IELTS Practice
           </Button>
         </div>
       </div>

@@ -38,7 +38,7 @@ const NAV_GROUPS = [
     items: [
       { href: "/student/mock-tests", label: "Mock Tests", icon: Timer },
       { href: "/student/vocabulary", label: "Vocabulary", icon: Layers },
-      { href: "/student/quizzes", label: "Quizzes", icon: ClipboardList },
+      { href: "/student/quizzes", label: "IELTS Practice", icon: ClipboardList },
       { href: "/student/assignments", label: "Assignments", icon: FileText },
     ],
   },
@@ -227,7 +227,7 @@ export function StudentLayout({ children }: { children: ReactNode }) {
               <div className="absolute top-full left-0 hidden group-hover:block z-50 bg-[#0d1b60] border border-white/10 rounded-b-xl shadow-2xl min-w-[180px] py-1">
                 {[
                   { href: "/student/vocabulary", label: "Vocabulary", icon: Layers },
-                  { href: "/student/quizzes", label: "Quizzes", icon: ClipboardList },
+                  { href: "/student/quizzes", label: "IELTS Practice", icon: ClipboardList },
                   { href: "/student/assignments", label: "Assignments", icon: FileText },
                   { href: "/student/certificates", label: "Certificates", icon: Award },
                   { href: "/student/notes", label: "Notes", icon: StickyNote },

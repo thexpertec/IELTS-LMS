@@ -743,7 +743,7 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
           </TabsTrigger>
           <TabsTrigger value="quizzes">
             <ClipboardList className="w-3.5 h-3.5 mr-1.5" />
-            Quizzes
+            IELTS Practice
             {quizzes.length > 0 && <span className="ml-1.5 text-xs bg-muted rounded-full px-1.5">{quizzes.length}</span>}
           </TabsTrigger>
           <TabsTrigger value="assignments">
@@ -914,7 +914,7 @@ export function CurriculumTab({ courseId }: { courseId: number }) {
         ) : quizzes.length === 0 ? (
           <div className="border-2 border-dashed rounded-xl p-12 text-center">
             <ClipboardList className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground text-sm">No quizzes yet.</p>
+            <p className="text-muted-foreground text-sm">No IELTS Practice items yet.</p>
             <Link href={`/quizzes/new?courseId=${courseId}`}>
               <Button size="sm" className="mt-4"><Plus className="w-4 h-4 mr-2" />Create Quiz</Button>
             </Link>

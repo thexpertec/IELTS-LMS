@@ -45,7 +45,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
     { name: "Courses", href: "/courses", icon: BookOpen },
-    { name: "Quizzes", href: "/quizzes", icon: ClipboardList },
+    { name: "IELTS Practice", href: "/quizzes", icon: ClipboardList },
     { name: "Assignments", href: "/assignments", icon: FileText },
     { name: "Enrollments", href: "/enrollments", icon: UserPlus },
     { name: "Students", href: "/students", icon: Users },

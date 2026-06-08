@@ -1804,7 +1804,7 @@ export default function QuizDetail() {
       <div className="p-4 sm:p-8 max-w-4xl mx-auto">
         <p className="text-muted-foreground">Quiz not found.</p>
         <Button variant="ghost" className="mt-4" onClick={() => setLocation("/quizzes")}>
-          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Quizzes
+          <ArrowLeft className="w-4 h-4 mr-2" /> Back to IELTS Practice
         </Button>
       </div>
     );
@@ -1823,7 +1823,7 @@ export default function QuizDetail() {
           data-testid="btn-back"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Quizzes
+          Back to IELTS Practice
         </Button>
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">

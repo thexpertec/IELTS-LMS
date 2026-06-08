@@ -726,7 +726,7 @@ export default function CourseView() {
         {quizzes.length > 0 && (
           <div className="space-y-2 pt-2 border-t">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 flex items-center gap-1.5">
-              <ClipboardList className="w-3.5 h-3.5" />Quizzes
+              <ClipboardList className="w-3.5 h-3.5" />IELTS Practice
             </h3>
             <div className="space-y-2">
               {quizzes.map((quiz) => (
@@ -856,7 +856,7 @@ export default function CourseView() {
           <section className="space-y-3">
             <div className="flex items-center gap-2">
               <Zap className="w-4 h-4 text-violet-500" />
-              <h2 className="text-sm font-semibold">Quizzes</h2>
+              <h2 className="text-sm font-semibold">IELTS Practice</h2>
             </div>
             <div className="space-y-2">
               {quizAttempts.map((row) => {
